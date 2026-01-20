@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>פירוט חופשות בתי ספר 2026</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Assistant', sans-serif;
+            background-color: #f8fafc;
+        }
+    </style>
+</head>
+
+<body class="p-6 md:p-12">
+    <div class="max-w-3xl mx-auto">
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-4xl font-black text-slate-800 mb-2">לוח חופשות בתי ספר 2026</h1>
+                <p class="text-slate-500 font-medium">פירוט ימי החופשה מהמסגרות החינוכיות</p>
+            </div>
+            <a href="vaction.html"
+                class="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl font-bold hover:bg-slate-50 transition shadow-sm">
+                ← חזרה למתכנן
+            </a>
+        </div>
+
+        <div id="holidaysList" class="space-y-6"></div>
+    </div>
+
+    <script>
+        const MONTHS = ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"];
+
+        // 2026 Holiday Data (Hebrew Calendar & General)
+        const HOLIDAYS_2026 = {
+            2: { 1: { title: "חופשת פורים", type: "school" }, 2: { title: "חופשת פורים", type: "school" }, 3: { title: "פורים", type: "holiday" } },
+            3: { 
+                1: { title: "ערב פסח", type: "eve" }, 2: { title: "פסח (חג)", type: "holiday" },
+                3: { title: "חול המועד", type: "holiday" }, 4: { title: "חול המועד", type: "holiday" },
+                5: { title: "חול המועד", type: "holiday" }, 6: { title: "חול המועד", type: "holiday" },
+                7: { title: "ערב חג שני", type: "eve" }, 8: { title: "שביעי של פסח", type: "holiday" },
+                21: { title: "ערב יום העצמאות", type: "eve" }, 22: { title: "יום העצמאות", type: "holiday" },
+                ...Array.from({ length: 10 }, (_, i) => i + 1).reduce((acc, d) => ({ ...acc, [d]: { title: "חופשת פסח", type: "school" } }), {})
+            },
+            4: { 5: { title: "ל\"ג בעומר", type: "school" }, 20: { title: "אסרו חג", type: "school" }, 21: { title: "ערב שבועות", type: "school" }, 22: { title: "שבועות", type: "school" }, 23: { title: "אסרו חג", type: "school" } },
+            6: { ...Array.from({ length: 31 }, (_, i) => i + 1).reduce((acc, d) => ({ ...acc, [d]: { title: "חופש גדול", type: "school" } }), {}) },
+            7: { ...Array.from({ length: 31 }, (_, i) => i + 1).reduce((acc, d) => ({ ...acc, [d]: { title: "חופש גדול", type: "school" } }), {}) },
+            8: { 
+                 11: { title: "ערב ראש השנה", type: "school" }, 12: { title: "ראש השנה", type: "school" }, 13: { title: "ראש השנה", type: "school" }, 
+                 20: { title: "ערב יו\"כ", type: "school" }, 21: { title: "יום כיפור", type: "school" }, 
+                 ...Array.from({ length: 6 }, (_, i) => i + 25).reduce((acc, d) => ({ ...acc, [d]: { title: "חופשת סוכות", type: "school" } }), {})
+            },
+            9: { 1: { title: "חופשת סוכות", type: "school" }, 2: { title: "חופשת סוכות", type: "school" }, 3: { title: "חופשת סוכות", type: "school" }, 4: { title: "אסרו חג", type: "school" } },
+            11: { ...Array.from({ length: 7 }, (_, i) => i + 4).reduce((acc, d) => ({ ...acc, [d]: { title: "חופשת חנוכה", type: "school" } }), {}) }
+        };
+
+        const PAID_HOLIDAYS_2026 = {
+            3: { 1: { title: "ערב פסח", value: 0.5 }, 2: { title: "פסח (חג)", value: 1.0 }, 7: { title: "ערב חג שני", value: 0.5 }, 8: { title: "שביעי של פסח", value: 1.0 }, 21: { title: "ערב יום העצמאות", value: 0.5 }, 22: { title: "יום העצמאות", value: 1.0 } },
+            4: { 21: { title: "ערב שבועות", value: 0.5 }, 22: { title: "שבועות", value: 1.0 } },
+            8: { 11: { title: "ערב ראש השנה", value: 0.5 }, 12: { title: "ראש השנה", value: 1.0 }, 13: { title: "ראש השנה", value: 1.0 }, 20: { title: "ערב יום כיפור", value: 0.5 }, 21: { title: "יום כיפור", value: 1.0 }, 25: { title: "ערב סוכות", value: 0.5 }, 26: { title: "סוכות", value: 1.0 } },
+            9: { 2: { title: "ערב שמחת תורה", value: 0.5 }, 3: { title: "שמחת תורה", value: 1.0 } }
+        };
+
+        function getPaidHoliday(mIdx, day) {
+            const h = (PAID_HOLIDAYS_2026[mIdx] || {})[day];
+            if (!h) return null;
+            const dayOfWeek = new Date(2026, mIdx, day).getDay();
+            if (dayOfWeek === 5 || dayOfWeek === 6) return null;
+            return h;
+        }
+
+        const state = JSON.parse(localStorage.getItem('vacation_plan_2026_v2')) || [];
+        const container = document.getElementById('holidaysList');
+
+        for (let m = 0; m < 12; m++) {
+            const daysInMonth = new Date(2026, m + 1, 0).getDate();
+            const userDays = (state[m] && state[m].userDays) || {};
+            const baseHolidays = HOLIDAYS_2026[m] || {};
+            
+            const monthEvents = [];
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                const userDay = userDays[d];
+                const paid = getPaidHoliday(m, d);
+                const holiday = baseHolidays[d];
+
+                if (userDay && userDay.type !== 'none') {
+                    const labels = { school: 'חופשת מסגרת', work: 'חופשת עבודה', camp: 'יום קייטנה' };
+                    monthEvents.push({ day: d, title: `${labels[userDay.type]} (${userDay.value})`, type: userDay.type });
+                } else if (paid) {
+                    monthEvents.push({ day: d, title: `חופשה בתשלום: ${paid.title} (${paid.value})`, type: 'paid' });
+                } else if (holiday) {
+                    monthEvents.push({ day: d, title: holiday.title, type: holiday.type });
+                }
+            }
+
+            if (monthEvents.length > 0) {
+                const section = document.createElement('div');
+                section.className = "bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-6";
+                
+                const typeColors = {
+                    school: 'bg-indigo-50 border-indigo-100 text-indigo-700',
+                    work: 'bg-emerald-50 border-emerald-100 text-emerald-700',
+                    camp: 'bg-orange-50 border-orange-100 text-orange-700',
+                    paid: 'bg-amber-50 border-amber-100 text-amber-700',
+                    holiday: 'bg-rose-50 border-rose-100 text-rose-700',
+                    eve: 'bg-slate-50 border-slate-100 text-slate-700'
+                };
+
+                let html = `
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="bg-slate-100 text-slate-700 font-bold px-3 py-1 rounded-lg text-lg w-24 text-center">${MONTHS[m]}</div>
+                        <div class="h-px bg-slate-100 flex-1"></div>
+                    </div>
+                    <div class="space-y-2">
+                `;
+
+                monthEvents.forEach(e => {
+                    const colorClass = typeColors[e.type] || 'bg-slate-50 border-slate-100 text-slate-700';
+                    html += `
+                        <div class="flex items-center justify-between p-3 rounded-xl border ${colorClass} transition-all hover:scale-[1.01]">
+                            <span class="font-bold">${e.title}</span>
+                            <span class="text-xs font-black opacity-60">${e.day} ב${MONTHS[m]}</span>
+                        </div>
+                    `;
+                });
+
+                section.innerHTML = html + `</div>`;
+                container.appendChild(section);
+            }
+        }
+    </script>
+</body>
+
+</html>
