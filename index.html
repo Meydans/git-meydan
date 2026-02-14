@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mandatory Grocery Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+  </head>
+  <body class="bg-slate-950 text-slate-100 min-h-screen">
+    <main class="max-w-2xl mx-auto p-4 sm:p-6">
+      <header class="mb-6">
+        <h1 class="text-2xl sm:text-3xl font-bold">Mandatory Grocery Manager</h1>
+        <p class="text-slate-400 mt-1">Check what you already have, then generate and sync your shopping list.</p>
+      </header>
+
+      <section id="authCard" class="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5">
+        <p class="mb-4 text-slate-300">Sign in to load mandatory items from Google Sheets.</p>
+        <div class="flex gap-3">
+          <button id="signInBtn" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500">Sign in with Google</button>
+          <button id="signOutBtn" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 hidden">Sign out</button>
+        </div>
+        <p id="authStatus" class="mt-3 text-sm text-slate-400"></p>
+      </section>
+
+      <section id="appCard" class="hidden mt-6 bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-lg font-semibold">Inventory Check</h2>
+          <button id="reloadBtn" class="px-3 py-1.5 text-sm rounded-lg bg-slate-700 hover:bg-slate-600">Reload Master</button>
+        </div>
+
+        <p class="text-sm text-slate-400 mb-3">Check items you <strong>already have</strong>.</p>
+        <div id="mandatoryList" class="space-y-2 max-h-72 overflow-auto pr-1"></div>
+
+        <div class="mt-5 flex flex-wrap gap-3">
+          <button id="generateBtn" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500">Generate List (AI)</button>
+          <button id="syncBtn" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+            Sync to Sheet
+          </button>
+        </div>
+
+        <div class="mt-5">
+          <h3 class="font-semibold mb-2">Categorized Shopping List</h3>
+          <pre id="resultView" class="bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm whitespace-pre-wrap min-h-24"></pre>
+        </div>
+
+        <p id="appStatus" class="mt-3 text-sm text-slate-400"></p>
+      </section>
+    </main>
+
+    <script>
+      // ====== CONFIG ======
+      const CLIENT_ID = "427247172628-tqle335su4809um35beovkdedm26lhf6.apps.googleusercontent.com";
+      const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
+      const SPREADSHEET_ID = "1EZ3XjCTLHOnt-d3hQpCJ67Mfg0DYwKCN3xEyAgCY_ws";
+      const GEMINI_API_KEY = "AIzaSyCW9tI7oltBW-xL4av8nzBAQw9HLa0Zcdk";
+      const GEMINI_MODEL = "gemini-2.0-flash";
+
+      // ====== STATE ======
+      let tokenClient;
+      let accessToken = null;
+      let masterItems = [];
+      let lastCategorizedRows = []; // [[Category, Item], ...]
+
+      // ====== UI ======
+      const appCard = document.getElementById("appCard");
+      const signInBtn = document.getElementById("signInBtn");
+      const signOutBtn = document.getElementById("signOutBtn");
+      const reloadBtn = document.getElementById("reloadBtn");
+      const generateBtn = document.getElementById("generateBtn");
+      const syncBtn = document.getElementById("syncBtn");
+      const mandatoryList = document.getElementById("mandatoryList");
+      const resultView = document.getElementById("resultView");
+      const authStatus = document.getElementById("authStatus");
+      const appStatus = document.getElementById("appStatus");
+
+      function setAuthStatus(msg) {
+        authStatus.textContent = msg;
+      }
+      function setAppStatus(msg) {
+        appStatus.textContent = msg;
+      }
+
+      // ====== AUTH ======
+      window.onload = () => {
+        tokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: CLIENT_ID,
+          scope: SCOPES,
+          callback: async (resp) => {
+            if (resp.error) {
+              setAuthStatus(`Sign-in failed: ${resp.error}`);
+              return;
+            }
+            accessToken = resp.access_token;
+            signInBtn.classList.add("hidden");
+            signOutBtn.classList.remove("hidden");
+            appCard.classList.remove("hidden");
+            setAuthStatus("Signed in.");
+            await loadMasterItems();
+          }
+        });
+
+        signInBtn.addEventListener("click", () => tokenClient.requestAccessToken({ prompt: "consent" }));
+        signOutBtn.addEventListener("click", signOut);
+        reloadBtn.addEventListener("click", loadMasterItems);
+        generateBtn.addEventListener("click", generateListWithGemini);
+        syncBtn.addEventListener("click", syncCurrentSheet);
+      };
+
+      function signOut() {
+        if (accessToken) {
+          google.accounts.oauth2.revoke(accessToken, () => {});
+        }
+        accessToken = null;
+        masterItems = [];
+        lastCategorizedRows = [];
+        mandatoryList.innerHTML = "";
+        resultView.textContent = "";
+        syncBtn.disabled = true;
+        appCard.classList.add("hidden");
+        signInBtn.classList.remove("hidden");
+        signOutBtn.classList.add("hidden");
+        setAuthStatus("Signed out.");
+        setAppStatus("");
+      }
+
+      // ====== SHEETS ======
+      async function sheetsFetch(path, options = {}) {
+        if (!accessToken) throw new Error("Not authenticated.");
+        const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/${path}`, {
+          ...options,
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+            ...(options.headers || {})
+          }
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error?.message || "Sheets API error.");
+        return data;
+      }
+
+      async function loadMasterItems() {
+        try {
+          setAppStatus("Loading mandatory items...");
+          const data = await sheetsFetch("values/Master!A2:A");
+          masterItems = (data.values || []).flat().map((v) => String(v).trim()).filter(Boolean);
+          renderMandatoryList();
+          setAppStatus(`Loaded ${masterItems.length} mandatory item(s).`);
+        } catch (err) {
+          setAppStatus(`Load failed: ${err.message}`);
+        }
+      }
+
+      function renderMandatoryList() {
+        if (!masterItems.length) {
+          mandatoryList.innerHTML = '<p class="text-slate-400 text-sm">No items found in Master!A2:A</p>';
+          return;
+        }
+        mandatoryList.innerHTML = masterItems
+          .map(
+            (item, i) => `
+          <label class="flex items-center gap-3 p-2 rounded-lg bg-slate-800/60">
+            <input type="checkbox" data-idx="${i}" class="h-4 w-4 accent-emerald-500" />
+            <span>${escapeHtml(item)}</span>
+          </label>
+        `
+          )
+          .join("");
+      }
+
+      function getMissingItems() {
+        const checkedIdx = new Set([...mandatoryList.querySelectorAll('input[type="checkbox"]:checked')].map((el) => Number(el.dataset.idx)));
+        return masterItems.filter((_, i) => !checkedIdx.has(i));
+      }
+
+      // ====== GEMINI ======
+      async function generateListWithGemini() {
+        try {
+          const missing = getMissingItems();
+          if (!missing.length) {
+            resultView.textContent = "Nothing missing. You already have everything.";
+            lastCategorizedRows = [];
+            syncBtn.disabled = true;
+            setAppStatus("No missing items.");
+            return;
+          }
+
+          setAppStatus("Generating categorized list with Gemini...");
+          const prompt = `
+You are a grocery assistant.
+Task:
+1) Take the missing items below.
+2) Group them by supermarket aisle (example categories: Produce, Dairy, Meat, Seafood, Frozen, Bakery, Pantry, Beverages, Household, Personal Care, Other).
+3) Return ONLY valid JSON in this exact format:
+{
+  "categories": [
+    { "name": "Produce", "items": ["apples", "lettuce"] }
+  ]
+}
+Missing items:
+${JSON.stringify(missing)}
+          `.trim();
+
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { temperature: 0.2 }
+            })
+          });
+
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error?.message || "Gemini API error.");
+
+          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          const parsed = parseGeminiJson(text);
+
+          const rows = [];
+          let pretty = "";
+          for (const cat of parsed.categories || []) {
+            const name = String(cat.name || "Other").trim();
+            const items = Array.isArray(cat.items) ? cat.items.map((v) => String(v).trim()).filter(Boolean) : [];
+            if (!items.length) continue;
+            pretty += `${name}\n`;
+            for (const item of items) {
+              pretty += `  - ${item}\n`;
+              rows.push([name, item]);
+            }
+            pretty += "\n";
+          }
+
+          if (!rows.length) throw new Error("Gemini returned no usable items.");
+
+          lastCategorizedRows = rows;
+          resultView.textContent = pretty.trim();
+          syncBtn.disabled = false;
+          setAppStatus("Generated. Syncing to Current...");
+          await syncCurrentSheet();
+        } catch (err) {
+          setAppStatus(`Generate failed: ${err.message}`);
+        }
+      }
+
+      function parseGeminiJson(text) {
+        const cleaned = text.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/i, "").trim();
+        return JSON.parse(cleaned);
+      }
+
+      async function syncCurrentSheet() {
+        try {
+          if (!lastCategorizedRows.length) {
+            setAppStatus("Nothing to sync yet.");
+            return;
+          }
+          setAppStatus("Syncing to Current sheet...");
+
+          await sheetsFetch("values/Current!A:B:clear", { method: "POST", body: JSON.stringify({}) });
+
+          const values = [["Category", "Item"], ...lastCategorizedRows];
+          await sheetsFetch("values/Current!A1?valueInputOption=RAW", {
+            method: "PUT",
+            body: JSON.stringify({ values })
+          });
+
+          setAppStatus(`Synced ${lastCategorizedRows.length} item(s) to Current.`);
+        } catch (err) {
+          setAppStatus(`Sync failed: ${err.message}`);
+        }
+      }
+
+      function escapeHtml(str) {
+        return str
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+    </script>
+  </body>
+</html>
