@@ -28,6 +28,15 @@
           <h2 class="text-lg font-semibold">Inventory Check</h2>
           <button id="reloadBtn" class="px-3 py-1.5 text-sm rounded-lg bg-slate-700 hover:bg-slate-600">Reload Master</button>
         </div>
+        <div class="mb-4 flex gap-2">
+          <input
+            id="newMandatoryInput"
+            type="text"
+            placeholder="Add mandatory item (e.g., milk)"
+            class="flex-1 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+          <button id="addMandatoryBtn" class="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500">Add Item</button>
+        </div>
 
         <p class="text-sm text-slate-400 mb-3">Check items you <strong>already have</strong>.</p>
         <div id="mandatoryList" class="space-y-2 max-h-72 overflow-auto pr-1"></div>
@@ -67,6 +76,8 @@
       const signInBtn = document.getElementById("signInBtn");
       const signOutBtn = document.getElementById("signOutBtn");
       const reloadBtn = document.getElementById("reloadBtn");
+      const newMandatoryInput = document.getElementById("newMandatoryInput");
+      const addMandatoryBtn = document.getElementById("addMandatoryBtn");
       const generateBtn = document.getElementById("generateBtn");
       const syncBtn = document.getElementById("syncBtn");
       const mandatoryList = document.getElementById("mandatoryList");
@@ -103,6 +114,10 @@
         signInBtn.addEventListener("click", () => tokenClient.requestAccessToken({ prompt: "consent" }));
         signOutBtn.addEventListener("click", signOut);
         reloadBtn.addEventListener("click", loadMasterItems);
+        addMandatoryBtn.addEventListener("click", addMandatoryItem);
+        newMandatoryInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") addMandatoryItem();
+        });
         generateBtn.addEventListener("click", generateListWithGemini);
         syncBtn.addEventListener("click", syncCurrentSheet);
       };
@@ -149,6 +164,32 @@
           setAppStatus(`Loaded ${masterItems.length} mandatory item(s).`);
         } catch (err) {
           setAppStatus(`Load failed: ${err.message}`);
+        }
+      }
+
+      async function addMandatoryItem() {
+        try {
+          const value = newMandatoryInput.value.trim();
+          if (!value) {
+            setAppStatus("Enter an item name first.");
+            return;
+          }
+          if (masterItems.some((item) => item.toLowerCase() === value.toLowerCase())) {
+            setAppStatus("That item already exists in Master.");
+            return;
+          }
+          setAppStatus("Adding item to Master...");
+          await sheetsFetch("values/Master!A:A:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS", {
+            method: "POST",
+            body: JSON.stringify({
+              values: [[value]]
+            })
+          });
+          newMandatoryInput.value = "";
+          await loadMasterItems();
+          setAppStatus(`Added "${value}" to Master.`);
+        } catch (err) {
+          setAppStatus(`Add item failed: ${err.message}`);
         }
       }
 
