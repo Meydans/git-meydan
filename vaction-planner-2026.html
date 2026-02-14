@@ -1,0 +1,1861 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="מתכנן חופשות 2026 - אפליקציה לניהול ותכנון חופשות, ימי לימוד וחופשות עבודה לשנת 2026, מותאמת ללוח השנה הישראלי">
+    <title>מתכנן חופשות 2026</title>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --font-hebrew: 'Assistant', sans-serif;
+            --background: hsl(210, 40%, 98%);
+            --foreground: hsl(215, 25%, 15%);
+            --card: hsl(0, 0%, 100%);
+            --card-foreground: hsl(215, 25%, 15%);
+            --primary: hsl(238, 65%, 54%);
+            --primary-foreground: hsl(0, 0%, 100%);
+            --secondary: hsl(210, 20%, 96%);
+            --secondary-foreground: hsl(215, 20%, 35%);
+            --muted: hsl(210, 20%, 96%);
+            --muted-foreground: hsl(215, 15%, 47%);
+            --border: hsl(214, 30%, 91%);
+            --radius: 0.75rem;
+
+            --work: hsl(158, 65%, 40%);
+            --work-light: hsl(158, 60%, 94%);
+            --work-foreground: hsl(158, 80%, 25%);
+            --school: hsl(238, 60%, 55%);
+            --school-light: hsl(238, 60%, 96%);
+            --school-foreground: hsl(238, 70%, 35%);
+            --camp: hsl(25, 90%, 55%);
+            --camp-light: hsl(25, 100%, 95%);
+            --camp-foreground: hsl(25, 80%, 35%);
+            --holiday: hsl(350, 75%, 55%);
+            --holiday-light: hsl(350, 70%, 96%);
+            --holiday-foreground: hsl(350, 80%, 40%);
+            --paid: hsl(43, 90%, 50%);
+            --paid-light: hsl(43, 100%, 94%);
+            --paid-foreground: hsl(43, 80%, 35%);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-hebrew);
+            background: var(--background);
+            color: var(--foreground);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo-icon {
+            width: 4rem;
+            height: 4rem;
+            background: var(--primary);
+            border-radius: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.3);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 900;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            color: var(--muted-foreground);
+            font-weight: 700;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        button {
+            font-family: var(--font-hebrew);
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            border: 2px solid var(--border);
+            background: var(--card);
+            color: var(--foreground);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        button:hover {
+            background: var(--secondary);
+        }
+
+        button.primary {
+            background: var(--primary);
+            color: var(--primary-foreground);
+            border-color: var(--primary);
+        }
+
+        button.primary:hover {
+            opacity: 0.9;
+        }
+
+        button.danger {
+            background: var(--holiday-light);
+            color: var(--holiday);
+            border-color: transparent;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            background: var(--card);
+            padding: 1.5rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border-bottom: 6px solid;
+        }
+
+        .stat-card.work-net {
+            border-bottom-color: var(--work);
+        }
+
+        .stat-card.work-gross {
+            border-bottom-color: var(--work);
+            opacity: 0.8;
+        }
+
+        .stat-card.school {
+            border-bottom-color: var(--school);
+        }
+
+        .stat-card.camp {
+            border-bottom-color: var(--camp);
+        }
+
+        .stat-card.next {
+            border-bottom-color: var(--holiday);
+        }
+
+        .stat-label {
+            font-size: 0.65rem;
+            font-weight: 900;
+            color: var(--muted-foreground);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 900;
+            letter-spacing: -0.02em;
+        }
+
+        .stat-card.work-net .stat-value,
+        .stat-card.work-gross .stat-value {
+            color: var(--work-foreground);
+        }
+
+        .stat-card.school .stat-value {
+            color: var(--school-foreground);
+        }
+
+        .stat-card.camp .stat-value {
+            color: var(--camp-foreground);
+        }
+
+        .stat-suffix {
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: var(--muted-foreground);
+            margin-right: 0.5rem;
+        }
+
+        .stat-sublabel {
+            font-size: 0.6rem;
+            color: var(--muted-foreground);
+            font-weight: 700;
+            margin-top: 0.5rem;
+        }
+
+        .stat-extra {
+            font-size: 0.6rem;
+            color: var(--holiday);
+            font-weight: 900;
+            margin-top: 0.25rem;
+        }
+
+        /* Optimization Panel */
+        .optimizer-panel {
+            margin-bottom: 3rem;
+            background: var(--card);
+            border: 2px solid var(--border);
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+        }
+
+        .optimizer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .optimizer-title {
+            font-size: 1.5rem;
+            font-weight: 900;
+        }
+
+        .optimizer-subtitle {
+            color: var(--muted-foreground);
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        .optimizer-budget {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            font-weight: 800;
+            color: var(--muted-foreground);
+        }
+
+        .optimizer-budget input {
+            width: 4.5rem;
+            padding: 0.5rem;
+            border-radius: 0.65rem;
+            border: 2px solid var(--border);
+            font-family: var(--font-hebrew);
+            font-weight: 800;
+        }
+
+        .optimizer-budget input:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+
+        .optimizer-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .optimizer-card {
+            background: var(--secondary);
+            border-radius: 1rem;
+            padding: 1rem;
+            border: 1px solid var(--border);
+        }
+
+        .optimizer-card-label {
+            font-size: 0.65rem;
+            font-weight: 900;
+            color: var(--muted-foreground);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.25rem;
+        }
+
+        .optimizer-card-value {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: var(--foreground);
+        }
+
+        .optimizer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1rem;
+        }
+
+        .optimizer-box {
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            background: hsl(0, 0%, 100%);
+            padding: 1rem;
+        }
+
+        .optimizer-box h3 {
+            font-size: 1rem;
+            font-weight: 900;
+            margin-bottom: 0.75rem;
+        }
+
+        .optimizer-item {
+            padding: 0.6rem;
+            border-radius: 0.75rem;
+            background: var(--secondary);
+            border: 1px solid var(--border);
+        }
+
+        .optimizer-item+.optimizer-item {
+            margin-top: 0.5rem;
+        }
+
+        .optimizer-item-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 900;
+        }
+
+        .optimizer-item-meta {
+            font-size: 0.75rem;
+            font-weight: 800;
+            color: var(--muted-foreground);
+            margin-top: 0.2rem;
+        }
+
+        .optimizer-item-reasons {
+            margin-top: 0.3rem;
+            font-size: 0.7rem;
+            color: var(--muted-foreground);
+            font-weight: 700;
+        }
+
+        .optimizer-empty {
+            color: var(--muted-foreground);
+            font-weight: 700;
+            font-size: 0.9rem;
+            padding: 0.75rem;
+            border-radius: 0.75rem;
+            background: var(--secondary);
+        }
+
+        /* Months Grid */
+        .months-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        /* Holidays Center */
+        .holidays-center {
+            margin-top: 3rem;
+            background: var(--card);
+            border: 2px solid var(--border);
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+        }
+
+        .holidays-center-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .holidays-center-title {
+            font-size: 1.5rem;
+            font-weight: 900;
+        }
+
+        .holidays-center-subtitle {
+            color: var(--muted-foreground);
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        .holidays-center-list {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .holidays-month {
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1rem;
+            background: hsl(0, 0%, 100%);
+        }
+
+        .holidays-month-header {
+            font-weight: 900;
+            color: var(--foreground);
+            margin-bottom: 0.75rem;
+            font-size: 1.05rem;
+        }
+
+        .holiday-event {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.75rem;
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        .holiday-event+.holiday-event {
+            margin-top: 0.5rem;
+        }
+
+        .holiday-event.day-work {
+            background: var(--work-light);
+            color: var(--work-foreground);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+
+        .holiday-event.day-school {
+            background: var(--school-light);
+            color: var(--school-foreground);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
+        .holiday-event.day-camp {
+            background: var(--camp-light);
+            color: var(--camp-foreground);
+            border: 1px solid rgba(249, 115, 22, 0.2);
+        }
+
+        .holiday-event.day-unpaid {
+            background: hsl(0, 0%, 96%);
+            color: hsl(0, 0%, 35%);
+            border: 1px solid rgba(115, 115, 115, 0.25);
+        }
+
+        .holiday-event.day-paid {
+            background: var(--paid-light);
+            color: var(--paid-foreground);
+            border: 1px solid rgba(234, 179, 8, 0.2);
+        }
+
+        .holiday-event.day-holiday {
+            background: var(--holiday-light);
+            color: var(--holiday-foreground);
+            border: 1px solid rgba(244, 63, 94, 0.2);
+        }
+
+        .holiday-empty {
+            color: var(--muted-foreground);
+            font-weight: 700;
+            padding: 1rem;
+            border-radius: 1rem;
+            background: var(--secondary);
+            text-align: center;
+        }
+
+        .month-card {
+            background: var(--card);
+            padding: 1.5rem;
+            border-radius: 1.5rem;
+            border: 2px solid var(--border);
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .month-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08);
+        }
+
+        .month-card.done {
+            opacity: 0.5;
+            filter: grayscale(1);
+        }
+
+        .month-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1.5rem;
+        }
+
+        .month-name {
+            font-size: 1.875rem;
+            font-weight: 900;
+        }
+
+        .month-actions {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .month-actions button {
+            width: 2.5rem;
+            height: 2.5rem;
+            padding: 0;
+            justify-content: center;
+            border-radius: 0.75rem;
+            background: var(--secondary);
+            border: none;
+        }
+
+        .month-checkbox {
+            width: 1.5rem;
+            height: 1.5rem;
+            cursor: pointer;
+            accent-color: var(--primary);
+        }
+
+        .goal-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid transparent;
+            background: var(--secondary);
+            border-radius: 0.75rem;
+            font-family: var(--font-hebrew);
+            font-weight: 700;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .goal-input:focus {
+            border-color: var(--primary);
+            outline: none;
+            background: var(--card);
+        }
+
+        .month-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+        }
+
+        .mini-stat {
+            padding: 0.5rem;
+            border-radius: 1rem;
+            text-align: center;
+        }
+
+        .mini-stat.work {
+            background: var(--work-light);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+
+        .mini-stat.school {
+            background: var(--school-light);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
+        .mini-stat.camp {
+            background: var(--camp-light);
+            border: 1px solid rgba(249, 115, 22, 0.2);
+        }
+
+        .mini-stat-label {
+            font-size: 0.5rem;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .mini-stat.work .mini-stat-label {
+            color: var(--work-foreground);
+        }
+
+        .mini-stat.school .mini-stat-label {
+            color: var(--school-foreground);
+        }
+
+        .mini-stat.camp .mini-stat-label {
+            color: var(--camp-foreground);
+        }
+
+        .mini-stat-value {
+            font-size: 0.875rem;
+            font-weight: 900;
+        }
+
+        .mini-stat.work .mini-stat-value {
+            color: var(--work-foreground);
+        }
+
+        .mini-stat.school .mini-stat-value {
+            color: var(--school-foreground);
+        }
+
+        .mini-stat.camp .mini-stat-value {
+            color: var(--camp-foreground);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--card);
+            border-radius: 1.5rem;
+            max-width: 1000px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 2rem;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            position: sticky;
+            top: 0;
+            background: var(--card);
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .modal-title {
+            font-size: 2rem;
+            font-weight: 900;
+        }
+
+        .close-btn {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 50%;
+            font-size: 1.25rem;
+            padding: 0;
+            justify-content: center;
+        }
+
+        /* Calendar Grid */
+        .weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 0.5rem;
+            text-align: center;
+            font-weight: 900;
+            color: var(--muted-foreground);
+            margin-bottom: 0.5rem;
+        }
+
+        .weekdays span:nth-child(n+6) {
+            color: var(--holiday);
+            opacity: 0.5;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 0.5rem;
+            user-select: none;
+        }
+
+        .day-cell {
+            min-height: 100px;
+            padding: 0.75rem;
+            border-radius: 1rem;
+            border: 1px solid var(--border);
+            background: var(--card);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            transition: all 0.15s;
+        }
+
+        .day-cell:hover {
+            border-color: var(--primary);
+            opacity: 0.9;
+        }
+
+        .day-cell.selected {
+            transform: scale(0.95);
+            opacity: 0.8;
+            box-shadow: 0 0 0 2px var(--primary);
+        }
+
+        .day-cell.weekend {
+            background: var(--holiday-light);
+            opacity: 0.5;
+        }
+
+        .day-cell.user-work {
+            box-shadow: 0 0 0 2px var(--work);
+            background: var(--work-light);
+        }
+
+        .day-cell.user-school {
+            box-shadow: 0 0 0 2px var(--school);
+            background: var(--school-light);
+        }
+
+        .day-cell.user-camp {
+            box-shadow: 0 0 0 2px var(--camp);
+            background: var(--camp-light);
+        }
+
+        .day-cell.user-unpaid {
+            box-shadow: 0 0 0 2px hsl(0, 0%, 45%);
+            background: hsl(0, 0%, 96%);
+        }
+
+        .day-cell.paid {
+            box-shadow: 0 0 0 2px var(--paid);
+            background: var(--paid-light);
+        }
+
+        .day-number {
+            font-size: 0.75rem;
+            font-weight: 900;
+            color: var(--muted-foreground);
+        }
+
+        .recommended-star {
+            align-self: flex-start;
+            font-size: 0.7rem;
+            font-weight: 900;
+            line-height: 1;
+            color: hsl(43, 90%, 40%);
+            background: hsl(43, 100%, 94%);
+            border: 1px solid rgba(234, 179, 8, 0.35);
+            border-radius: 999px;
+            padding: 0.12rem 0.35rem;
+        }
+
+        .recommended-star.two {
+            color: hsl(25, 90%, 35%);
+            background: hsl(25, 100%, 93%);
+            border-color: rgba(249, 115, 22, 0.35);
+        }
+
+        .day-label {
+            font-size: 0.55rem;
+            font-weight: 900;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.5rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .day-label.work {
+            background: var(--card);
+            color: var(--work-foreground);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+
+        .day-label.school {
+            background: var(--card);
+            color: var(--school-foreground);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
+        .day-label.camp {
+            background: var(--card);
+            color: var(--camp-foreground);
+            border: 1px solid rgba(249, 115, 22, 0.2);
+        }
+
+        .day-label.unpaid {
+            background: var(--card);
+            color: hsl(0, 0%, 35%);
+            border: 1px solid rgba(115, 115, 115, 0.25);
+        }
+
+        .day-label.paid {
+            background: var(--card);
+            color: var(--paid-foreground);
+            border: 1px solid rgba(234, 179, 8, 0.2);
+        }
+
+        .day-label.holiday {
+            background: var(--holiday-light);
+            color: var(--holiday-foreground);
+            opacity: 0.7;
+        }
+
+        /* Batch Editor */
+        .batch-editor {
+            display: none;
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: rgba(99, 102, 241, 0.05);
+            border-radius: 1rem;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
+        .batch-editor.show {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .batch-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .batch-icon {
+            width: 2.5rem;
+            height: 2.5rem;
+            background: var(--primary);
+            color: var(--primary-foreground);
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .batch-title {
+            font-size: 0.65rem;
+            font-weight: 900;
+            color: var(--primary);
+            text-transform: uppercase;
+        }
+
+        .batch-count {
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .batch-count strong {
+            font-weight: 900;
+        }
+
+        .batch-controls {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        select {
+            font-family: var(--font-hebrew);
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            border: 2px solid var(--border);
+            background: var(--card);
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        select:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 1.75rem;
+            }
+
+            .stat-value {
+                font-size: 2rem;
+            }
+
+            .day-cell {
+                min-height: 70px;
+                padding: 0.5rem;
+            }
+
+            .modal {
+                padding: 1rem;
+            }
+        }
+
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+
+            .month-card {
+                break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header class="no-print">
+            <div class="logo-section">
+                <div class="logo-icon">✈️</div>
+                <div>
+                    <h1>מתכנן חופשות 2026</h1>
+                    <p class="subtitle">הניהול החכם של ימי החופש שלך</p>
+                </div>
+            </div>
+            <div class="actions">
+                <button onclick="exportData()" class="primary">💾 שמירה</button>
+                <button onclick="document.getElementById('importFile').click()">📤 טעינה</button>
+                <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+                <button onclick="resetData()" class="danger">🔄</button>
+            </div>
+        </header>
+        <div class="stats-grid" id="statsGrid"></div>
+        <section class="optimizer-panel">
+            <div class="optimizer-header">
+                <div>
+                    <h2 class="optimizer-title">ציון אופטימליות והמלצות</h2>
+                    <p class="optimizer-subtitle">מקסום חפיפה עם מסגרות וייעול ניצול ימי החופש מהעבודה</p>
+                </div>
+                <label class="optimizer-budget">
+                    מכסה שנתית
+                    <input id="optimizerBudget" type="number" min="1" max="60" step="0.5">
+                    ימים
+                </label>
+            </div>
+            <div id="optimizerPanel"></div>
+        </section>
+        <div class="months-grid" id="monthsGrid"></div>
+        <section class="holidays-center">
+            <div class="holidays-center-header">
+                <div>
+                    <h2 class="holidays-center-title">מרכז החופשות</h2>
+                    <p class="holidays-center-subtitle">הנתונים מתעדכנים אוטומטית לפי מה שהוזן במתכנן</p>
+                </div>
+            </div>
+            <div class="holidays-center-list" id="holidaysCenterList"></div>
+        </section>
+    </div>
+    <!-- Modal -->
+    <div class="modal-overlay" id="modalOverlay" onclick="if(event.target === this) closeModal()">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle"></h2>
+                <button class="close-btn" onclick="closeModal()">✕</button>
+            </div>
+            <div class="weekdays">
+                <span>א</span><span>ב</span><span>ג</span><span>ד</span><span>ה</span><span>ו</span><span>ש</span>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+            <div class="batch-editor" id="batchEditor">
+                <div class="batch-info">
+                    <div class="batch-icon">✏️</div>
+                    <div>
+                        <div class="batch-title">עריכה מהירה</div>
+                        <div class="batch-count">נבחרו <strong id="selectedCount">0</strong> ימים</div>
+                    </div>
+                </div>
+                <div class="batch-controls">
+                    <select id="batchType">
+                        <option value="none">🔄 ללא חופש</option>
+                        <option value="work">💼 חופשת עבודה</option>
+                        <option value="school">🎒 חופשה מסגרות</option>
+                        <option value="camp">⛺ יום קייטנה</option>
+                        <option value="unpaid">🧾 חופשה ללא תשלום</option>
+                    </select>
+                    <select id="batchValue">
+                        <option value="1">יום מלא (1)</option>
+                        <option value="0.5">חצי יום (0.5)</option>
+                    </select>
+                    <button onclick="applyBatch()" class="primary">החל שינויים</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const MONTHS_HE = ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"];
+        const STORAGE_KEY = 'vacation_plan_2026_v2';
+        const OPTIMIZER_STORAGE_KEY = 'vacation_optimizer_2026_v1';
+        const ALLOWED_DAY_TYPES = new Set(['work', 'school', 'camp', 'unpaid']);
+        const ALLOWED_DAY_VALUES = new Set([0.5, 1]);
+        const DEFAULT_OPTIMIZER_CONFIG = {
+            annualBudget: 20,
+            weekendPolicy: 'neutral',
+            objective: 'max_overlap',
+            penaltyProfile: 'high_regular_school_penalty'
+        };
+
+        // Paid holidays from work
+        const PAID_HOLIDAYS = {
+            3: { 1: { title: "ערב פסח", value: 0.5 }, 2: { title: "פסח", value: 1 }, 7: { title: "ערב חג שני", value: 0.5 }, 8: { title: "שביעי של פסח", value: 1 }, 21: { title: "ערב יום העצמאות", value: 0.5 }, 22: { title: "יום העצמאות", value: 1 } },
+            4: { 21: { title: "ערב שבועות", value: 0.5 }, 22: { title: "שבועות", value: 1 } },
+            8: { 11: { title: "ערב רה\"ש", value: 0.5 }, 12: { title: "ראש השנה", value: 1 }, 13: { title: "ראש השנה", value: 1 }, 20: { title: "ערב יו\"כ", value: 0.5 }, 21: { title: "יום כיפור", value: 1 }, 25: { title: "ערב סוכות", value: 0.5 }, 26: { title: "סוכות", value: 1 } },
+            9: { 2: { title: "ערב שמחת תורה", value: 0.5 }, 3: { title: "שמחת תורה", value: 1 } }
+        };
+        // School holidays
+        const HOLIDAYS = {
+            2: { 1: "חופשת פורים", 2: "חופשת פורים", 3: "פורים" },
+            3: { 1: "ערב פסח", 2: "פסח", 3: "חול המועד", 4: "חול המועד", 5: "חול המועד", 6: "חול המועד", 7: "ערב חג שני", 8: "שביעי של פסח", 9: "חופשת פסח", 10: "חופשת פסח", 21: "ערב יום העצמאות", 22: "יום העצמאות" },
+            4: { 5: "ל\"ג בעומר", 20: "אסרו חג", 21: "ערב שבועות", 22: "שבועות", 23: "אסרו חג" },
+            8: { 11: "ערב רה\"ש", 12: "ראש השנה", 13: "ראש השנה", 20: "ערב יו\"כ", 21: "יום כיפור", 25: "חופשת סוכות", 26: "חופשת סוכות", 27: "חופשת סוכות", 28: "חופשת סוכות", 29: "חופשת סוכות", 30: "חופשת סוכות" },
+            9: { 1: "חופשת סוכות", 2: "חופשת סוכות", 3: "חופשת סוכות", 4: "אסרו חג" },
+            11: { 4: "חנוכה", 5: "חנוכה", 6: "חנוכה", 7: "חנוכה", 8: "חנוכה", 9: "חנוכה", 10: "חנוכה" }
+        };
+        // Fill summer vacation
+        for (let d = 1; d <= 31; d++) { HOLIDAYS[6] = HOLIDAYS[6] || {}; HOLIDAYS[6][d] = "חופש גדול"; }
+        for (let d = 1; d <= 31; d++) { HOLIDAYS[7] = HOLIDAYS[7] || {}; HOLIDAYS[7][d] = "חופש גדול"; }
+        let state = [];
+        let currentMonth = null;
+        let selectedDays = new Set();
+        let isSelecting = false;
+        let selectionStart = null;
+        let optimizerConfig = { ...DEFAULT_OPTIMIZER_CONFIG };
+        let latestOptimizationResult = null;
+
+        function createDefaultState() {
+            return MONTHS_HE.map(month => ({ month, goal: '', done: false, userDays: {} }));
+        }
+
+        function escapeHtml(text) {
+            return String(text)
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#39;');
+        }
+
+        function normalizeState(raw) {
+            const normalized = createDefaultState();
+            if (!Array.isArray(raw)) return normalized;
+
+            for (let i = 0; i < MONTHS_HE.length; i++) {
+                const sourceMonth = raw[i];
+                if (!sourceMonth || typeof sourceMonth !== 'object') continue;
+
+                const monthState = normalized[i];
+                monthState.goal = typeof sourceMonth.goal === 'string' ? sourceMonth.goal : '';
+                monthState.done = Boolean(sourceMonth.done);
+
+                const sourceUserDays = sourceMonth.userDays;
+                if (!sourceUserDays || typeof sourceUserDays !== 'object') continue;
+
+                const daysInMonth = getDaysInMonth(i);
+                for (const [rawDay, value] of Object.entries(sourceUserDays)) {
+                    const day = Number(rawDay);
+                    if (!Number.isInteger(day) || day < 1 || day > daysInMonth) continue;
+                    if (!value || typeof value !== 'object') continue;
+                    if (!ALLOWED_DAY_TYPES.has(value.type)) continue;
+
+                    const dayValue = Number(value.value);
+                    if (!ALLOWED_DAY_VALUES.has(dayValue)) continue;
+
+                    monthState.userDays[day] = { type: value.type, value: dayValue };
+                }
+            }
+            return normalized;
+        }
+
+        function normalizeOptimizerConfig(raw) {
+            const normalized = { ...DEFAULT_OPTIMIZER_CONFIG };
+            if (!raw || typeof raw !== 'object') return normalized;
+            const budget = Number(raw.annualBudget);
+            if (Number.isFinite(budget) && budget >= 1 && budget <= 60) normalized.annualBudget = budget;
+            if (raw.weekendPolicy === 'neutral') normalized.weekendPolicy = raw.weekendPolicy;
+            if (raw.objective === 'max_overlap') normalized.objective = raw.objective;
+            if (raw.penaltyProfile === 'high_regular_school_penalty') normalized.penaltyProfile = raw.penaltyProfile;
+            return normalized;
+        }
+
+        function initOptimizerConfig() {
+            const saved = localStorage.getItem(OPTIMIZER_STORAGE_KEY);
+            if (!saved) {
+                optimizerConfig = { ...DEFAULT_OPTIMIZER_CONFIG };
+                return;
+            }
+            try {
+                optimizerConfig = normalizeOptimizerConfig(JSON.parse(saved));
+            } catch {
+                optimizerConfig = { ...DEFAULT_OPTIMIZER_CONFIG };
+            }
+        }
+
+        function saveOptimizerConfig() {
+            localStorage.setItem(OPTIMIZER_STORAGE_KEY, JSON.stringify(optimizerConfig));
+        }
+
+        function initState() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (!saved) {
+                state = createDefaultState();
+                return;
+            }
+
+            try {
+                state = normalizeState(JSON.parse(saved));
+            } catch {
+                state = createDefaultState();
+            }
+        }
+        function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+        function getDaysInMonth(idx) { return new Date(2026, idx + 1, 0).getDate(); }
+        function getFirstDay(idx) { return new Date(2026, idx, 1).getDay(); }
+        function isWeekend(idx, d) { const day = new Date(2026, idx, d).getDay(); return day === 5 || day === 6; }
+
+        function getPaidHoliday(idx, d) {
+            const h = PAID_HOLIDAYS[idx]?.[d];
+            if (!h || isWeekend(idx, d)) return null;
+            return h;
+        }
+        function getHoliday(idx, d) { return HOLIDAYS[idx]?.[d] || null; }
+        function toOrdinal(idx, d) {
+            return Math.floor((new Date(2026, idx, d) - new Date(2026, 0, 1)) / 86400000);
+        }
+        function fromOrdinal(ordinal) {
+            const date = new Date(2026, 0, 1 + ordinal);
+            return { monthIdx: date.getMonth(), day: date.getDate() };
+        }
+        function formatDays(value) {
+            return Number.isInteger(value) ? String(value) : value.toFixed(1);
+        }
+        function formatDateLabel(monthIdx, day) {
+            return `${day} ${MONTHS_HE[monthIdx]}`;
+        }
+        function formatRangeLabel(start, end) {
+            if (start.monthIdx === end.monthIdx) return `${start.day}-${end.day} ${MONTHS_HE[start.monthIdx]}`;
+            return `${start.day} ${MONTHS_HE[start.monthIdx]} - ${end.day} ${MONTHS_HE[end.monthIdx]}`;
+        }
+        function clamp(value, min, max) {
+            return Math.max(min, Math.min(max, value));
+        }
+        function getRawDayFlags(monthIdx, day) {
+            const holiday = getHoliday(monthIdx, day);
+            const holidayText = holiday ? String(holiday) : '';
+            const isCampDay = holidayText.includes('חופש גדול') || holidayText.includes('קייטנה');
+            const hasSchoolBreak = Boolean(holiday) && !isCampDay;
+            const hasPaidHoliday = Boolean(getPaidHoliday(monthIdx, day));
+            const weekend = isWeekend(monthIdx, day);
+            return { holidayText, isCampDay, hasSchoolBreak, hasPaidHoliday, weekend };
+        }
+        function isRestLike(flags) {
+            return flags.weekend || flags.hasPaidHoliday || flags.hasSchoolBreak || flags.isCampDay;
+        }
+        function getDayContext(monthIdx, day) {
+            const flags = getRawDayFlags(monthIdx, day);
+            const ordinal = toOrdinal(monthIdx, day);
+            const prev = ordinal > 0 ? fromOrdinal(ordinal - 1) : null;
+            const next = ordinal < 364 ? fromOrdinal(ordinal + 1) : null;
+            const prevFlags = prev ? getRawDayFlags(prev.monthIdx, prev.day) : null;
+            const nextFlags = next ? getRawDayFlags(next.monthIdx, next.day) : null;
+            const userPlannedType = state[monthIdx]?.userDays?.[day]?.type || null;
+            const hasSchoolBreak = flags.hasSchoolBreak || userPlannedType === 'school';
+
+            const adjacentToPaidOrHoliday = Boolean(
+                (prevFlags && isRestLike(prevFlags)) || (nextFlags && isRestLike(nextFlags))
+            );
+            const bridgesRestGap = Boolean(prevFlags && nextFlags && isRestLike(prevFlags) && isRestLike(nextFlags));
+            const isRegularSchoolDay = !flags.weekend && !hasSchoolBreak && !flags.isCampDay && !flags.hasPaidHoliday;
+
+            return {
+                monthIdx,
+                day,
+                ordinal,
+                isWeekend: flags.weekend,
+                hasSchoolBreak,
+                isCampDay: flags.isCampDay,
+                hasPaidHoliday: flags.hasPaidHoliday,
+                isRegularSchoolDay,
+                adjacentToPaidOrHoliday,
+                bridgesRestGap,
+                userPlannedType
+            };
+        }
+        function scoreWorkVacationDay(context, value) {
+            let score = 0;
+            const reasons = [];
+
+            // 1. Anchor: kids framework availability
+            if (context.hasSchoolBreak) {
+                score += 60;
+                reasons.push('חופשת מסגרות');
+            } else if (context.isCampDay) {
+                score += 25;
+                reasons.push('יום קייטנה');
+            } else if (context.isRegularSchoolDay) {
+                score -= 40;
+                reasons.push('יום לימודים רגיל (פוטנציאל לעבודה שקטה)');
+            }
+
+            // 2. Financial viability
+            const isUnpaid = context.userPlannedType === 'unpaid';
+            if (isUnpaid) {
+                const penalty = context.hasSchoolBreak ? 20 : 45;
+                score -= penalty;
+                reasons.push(`חופשה ללא תשלום (קנס מופחת בגלל צורך: ${penalty}-)`);
+            }
+
+            if (context.hasPaidHoliday) {
+                score -= 25;
+                reasons.push('כבר קיים חג בתשלום');
+            }
+
+            // 3. Sequence / rest added value
+            let sequenceBonus = 0;
+            if (context.adjacentToPaidOrHoliday) sequenceBonus += 15;
+            if (context.bridgesRestGap) sequenceBonus += 10;
+            if (sequenceBonus > 0) {
+                score += sequenceBonus;
+                reasons.push(`בונוס רצף ומנוחה (${sequenceBonus}+)`);
+            }
+
+            const efficiency = score / value;
+            return {
+                finalScore: score,
+                score,
+                efficiency,
+                reasons,
+                isRecommended: score > 20
+            };
+        }
+        function buildDayCandidates() {
+            const items = [];
+            for (let monthIdx = 0; monthIdx < MONTHS_HE.length; monthIdx++) {
+                const daysInMonth = getDaysInMonth(monthIdx);
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const context = getDayContext(monthIdx, day);
+                    if (context.isWeekend || context.hasPaidHoliday) continue;
+
+                    const userDay = state[monthIdx].userDays[day];
+                    const value = (userDay && (userDay.type === 'work' || userDay.type === 'unpaid')) ? userDay.value : 1;
+                    const scored = scoreWorkVacationDay(context, value);
+                    if (!scored.isRecommended) continue;
+
+                    items.push({
+                        kind: 'day',
+                        id: `d-${monthIdx}-${day}`,
+                        monthIdx,
+                        day,
+                        startOrdinal: context.ordinal,
+                        endOrdinal: context.ordinal,
+                        cost: value,
+                        score: scored.score,
+                        efficiency: scored.efficiency,
+                        reasons: scored.reasons,
+                        label: formatDateLabel(monthIdx, day)
+                    });
+                }
+            }
+            return items;
+        }
+        function calculateRefactoredROI(vacationBlock) {
+            let rawDailyPoints = 0;
+            let actualDaysCost = 0;
+
+            vacationBlock.days.forEach(day => {
+                let dayScore = 0;
+            if (day.hasSchoolBreak) dayScore += 50;
+            else if (day.isCampDay) dayScore += 25;
+            if (day.userMarkedSchoolBreak) dayScore += 12;
+
+                if (day.isRegularSchoolDay) dayScore -= 30;
+
+                rawDailyPoints += dayScore;
+
+                if (day.isWorkDay && day.type === 'paid') actualDaysCost += 1;
+                if (day.isWorkDay && day.type === 'unpaid') actualDaysCost += 0.4;
+            });
+
+            let sequenceBonus = 0;
+            if (vacationBlock.totalDays >= 5) sequenceBonus += 40;
+            if (vacationBlock.touchesHoliday) sequenceBonus += 25;
+
+            const finalScore = rawDailyPoints + sequenceBonus;
+            const roi = finalScore / (actualDaysCost || 1);
+
+            return {
+                score: finalScore,
+                cost: actualDaysCost,
+                roi: roi.toFixed(2)
+            };
+        }
+        function scoreVacationWindow(days) {
+            let continuityBonus = 0;
+            let weakCount = 0;
+            let hasSchoolOverlap = false;
+            let hasCampOverlap = false;
+            let hasBridge = false;
+
+            for (const item of days) {
+                const requiresVacation = !item.context.isWeekend && !item.context.hasPaidHoliday;
+                if (!requiresVacation) {
+                    continuityBonus += 2;
+                    continue;
+                }
+
+                const scored = scoreWorkVacationDay(item.context, item.value);
+                if (scored.score < 35) weakCount += 1;
+                if (item.context.hasSchoolBreak) hasSchoolOverlap = true;
+                if (item.context.isCampDay) hasCampOverlap = true;
+                if (item.context.bridgesRestGap) hasBridge = true;
+            }
+
+            const vacationBlock = {
+                days: days.map(item => ({
+                    hasSchoolBreak: item.context.hasSchoolBreak,
+                    isCampDay: item.context.isCampDay,
+                    isRegularSchoolDay: item.context.isRegularSchoolDay,
+                    isWorkDay: !item.context.isWeekend && !item.context.hasPaidHoliday,
+                    userMarkedSchoolBreak: item.context.userPlannedType === 'school',
+                    type: item.context.userPlannedType === 'unpaid' ? 'unpaid' : 'paid'
+                })),
+                totalDays: days.length,
+                touchesHoliday: days.some(item => item.context.hasPaidHoliday || item.context.adjacentToPaidOrHoliday)
+            };
+            const roiResult = calculateRefactoredROI(vacationBlock);
+            const redundancyPenalty = weakCount * 8;
+            const windowScore = clamp(roiResult.score + continuityBonus - redundancyPenalty, 0, 500);
+            const efficiency = Number(roiResult.roi);
+            const reasons = [];
+            if (hasSchoolOverlap) reasons.push('חפיפה למסגרות');
+            if (hasCampOverlap) reasons.push('שילוב ימי קייטנה');
+            if (hasBridge) reasons.push('רצף מנוחה רציף');
+            if (continuityBonus > 0) reasons.push('כולל ימי מנוחה חינמיים');
+            if (redundancyPenalty > 0) reasons.push('כולל ימים חלשים יחסית');
+            reasons.push(`ROI: ${roiResult.roi}`);
+
+            return { windowScore, cost: roiResult.cost, efficiency, reasons, roiResult };
+        }
+        function buildWindowCandidates(minLen = 2, maxLen = 5) {
+            const candidates = [];
+            for (let startOrdinal = 0; startOrdinal <= 364; startOrdinal++) {
+                for (let len = minLen; len <= maxLen; len++) {
+                    const endOrdinal = startOrdinal + len - 1;
+                    if (endOrdinal > 364) continue;
+
+                    const days = [];
+                    for (let ordinal = startOrdinal; ordinal <= endOrdinal; ordinal++) {
+                        const date = fromOrdinal(ordinal);
+                        const userDay = state[date.monthIdx]?.userDays?.[date.day];
+                        const value = (userDay && (userDay.type === 'work' || userDay.type === 'unpaid')) ? userDay.value : 1;
+                        days.push({
+                            ordinal,
+                            date,
+                            value,
+                            context: getDayContext(date.monthIdx, date.day)
+                        });
+                    }
+
+                    const scored = scoreVacationWindow(days);
+                    if (scored.cost <= 0 || scored.windowScore <= 0) continue;
+
+                    const startDate = fromOrdinal(startOrdinal);
+                    const endDate = fromOrdinal(endOrdinal);
+                    candidates.push({
+                        kind: 'window',
+                        id: `w-${startOrdinal}-${endOrdinal}`,
+                        startOrdinal,
+                        endOrdinal,
+                        cost: scored.roiResult.cost,
+                        score: scored.windowScore,
+                        efficiency: scored.efficiency,
+                        reasons: scored.reasons,
+                        roi: scored.roiResult.roi,
+                        label: formatRangeLabel(startDate, endDate)
+                    });
+                }
+            }
+            return candidates;
+        }
+        function optimizePortfolio(candidates, annualBudget = 20) {
+            if (!candidates.length) return [];
+
+            const sorted = [...candidates].sort((a, b) => {
+                if (a.endOrdinal !== b.endOrdinal) return a.endOrdinal - b.endOrdinal;
+                return a.startOrdinal - b.startOrdinal;
+            });
+
+            const ends = sorted.map(c => c.endOrdinal);
+            const prevCompatible = sorted.map(candidate => {
+                let low = 0;
+                let high = ends.length - 1;
+                let ans = -1;
+                while (low <= high) {
+                    const mid = Math.floor((low + high) / 2);
+                    if (ends[mid] < candidate.startOrdinal) {
+                        ans = mid;
+                        low = mid + 1;
+                    } else {
+                        high = mid - 1;
+                    }
+                }
+                return ans;
+            });
+
+            const budgetUnits = Math.round(annualBudget * 2);
+            const n = sorted.length;
+            const dp = Array.from({ length: n + 1 }, () => Array(budgetUnits + 1).fill(0));
+            const keep = Array.from({ length: n + 1 }, () => Array(budgetUnits + 1).fill(false));
+
+            for (let i = 1; i <= n; i++) {
+                const candidate = sorted[i - 1];
+                const costUnits = Math.round(candidate.cost * 2);
+                for (let b = 0; b <= budgetUnits; b++) {
+                    const skip = dp[i - 1][b];
+                    let take = -1;
+                    if (costUnits <= b) {
+                        take = candidate.score + dp[prevCompatible[i - 1] + 1][b - costUnits];
+                    }
+
+                    if (take > skip) {
+                        dp[i][b] = take;
+                        keep[i][b] = true;
+                    } else {
+                        dp[i][b] = skip;
+                    }
+                }
+            }
+
+            const selected = [];
+            let i = n;
+            let b = budgetUnits;
+            while (i > 0) {
+                if (!keep[i][b]) {
+                    i -= 1;
+                    continue;
+                }
+
+                const candidate = sorted[i - 1];
+                selected.push(candidate);
+                b -= Math.round(candidate.cost * 2);
+                i = prevCompatible[i - 1] + 1;
+            }
+
+            selected.sort((a, b) => a.startOrdinal - b.startOrdinal);
+            return selected;
+        }
+        function buildPortfolioDayMap(portfolio) {
+            const map = new Map();
+            for (const windowItem of portfolio) {
+                for (let ordinal = windowItem.startOrdinal; ordinal <= windowItem.endOrdinal; ordinal++) {
+                    const date = fromOrdinal(ordinal);
+                    const context = getDayContext(date.monthIdx, date.day);
+                    const dayScore = scoreWorkVacationDay(context, 1).score;
+                    const stars = dayScore >= 80 ? 2 : 1;
+                    const key = `${date.monthIdx}-${date.day}`;
+                    const prev = map.get(key);
+                    if (!prev || stars > prev.stars || dayScore > prev.dayScore) {
+                        map.set(key, { stars, dayScore });
+                    }
+                }
+            }
+            return map;
+        }
+        function buildOptimizationResult() {
+            const allWindows = buildWindowCandidates(7, 10)
+                .sort((a, b) => (b.efficiency - a.efficiency) || (b.score - a.score));
+            const topWindows = allWindows.slice(0, 10);
+
+            const portfolio = optimizePortfolio(allWindows, optimizerConfig.annualBudget);
+            const usedBudget = portfolio.reduce((sum, item) => sum + item.cost, 0);
+            const totalScore = portfolio.reduce((sum, item) => sum + item.score, 0);
+            const scorePerDay = usedBudget > 0 ? totalScore / usedBudget : 0;
+            const overallScore = clamp(Math.round(scorePerDay), 0, 100);
+            const portfolioDayMap = buildPortfolioDayMap(portfolio);
+
+            return { topWindows, portfolio, portfolioDayMap, summary: { usedBudget, totalScore, scorePerDay, overallScore } };
+        }
+        function calcStats(monthData, idx) {
+            let net = 0, gross = 0, school = 0, camp = 0;
+            const days = getDaysInMonth(idx);
+            for (let d = 1; d <= days; d++) {
+                const we = isWeekend(idx, d);
+                const user = monthData.userDays[d];
+                const paid = getPaidHoliday(idx, d);
+                if (user && user.type !== 'none') {
+                    if (user.type === 'work') { gross += user.value; if (!we) net += user.value; }
+                    if (user.type === 'school' && !we) school += user.value;
+                    if (user.type === 'camp' && !we) camp += user.value;
+                } else if (paid) {
+                    gross += paid.value;
+                    if (!we) { net += paid.value; school += paid.value; }
+                }
+            }
+            return { net, gross, school, camp };
+        }
+        function render() {
+            latestOptimizationResult = buildOptimizationResult();
+            renderStats();
+            renderOptimizationPanel(latestOptimizationResult);
+            renderMonths();
+            renderHolidaysCenter();
+            if (currentMonth !== null) renderCalendar();
+        }
+        function renderRecommendationList(items, emptyText) {
+            if (!items.length) return `<div class="optimizer-empty">${escapeHtml(emptyText)}</div>`;
+            return items.map(item => `
+          <div class="optimizer-item">
+            <div class="optimizer-item-title">
+              <span>${escapeHtml(item.label)}</span>
+              <span>${Math.round(item.score)} נק'</span>
+            </div>
+            <div class="optimizer-item-meta">עלות: ${formatDays(item.cost)} ימים | יעילות: ${item.efficiency.toFixed(1)} נק'/יום</div>
+            <div class="optimizer-item-reasons">${escapeHtml(item.reasons.join(' • ') || 'ללא סיבות מיוחדות')}</div>
+          </div>
+        `).join('');
+        }
+        function renderOptimizationPanel(result) {
+            const panel = document.getElementById('optimizerPanel');
+            const budgetInput = document.getElementById('optimizerBudget');
+            budgetInput.value = String(optimizerConfig.annualBudget);
+
+            panel.innerHTML = `
+        <div class="optimizer-cards">
+          <div class="optimizer-card">
+            <div class="optimizer-card-label">ציון אופטימליות כללי</div>
+            <div class="optimizer-card-value">${result.summary.overallScore}</div>
+          </div>
+          <div class="optimizer-card">
+            <div class="optimizer-card-label">יעילות</div>
+            <div class="optimizer-card-value">${result.summary.scorePerDay.toFixed(1)}</div>
+          </div>
+          <div class="optimizer-card">
+            <div class="optimizer-card-label">ניצול מכסה</div>
+            <div class="optimizer-card-value">${formatDays(result.summary.usedBudget)} / ${formatDays(optimizerConfig.annualBudget)}</div>
+          </div>
+        </div>
+        <div class="optimizer-grid">
+          <section class="optimizer-box">
+            <h3>Top חלונות (7-10 ימים)</h3>
+            ${renderRecommendationList(result.topWindows, 'אין כרגע חלונות מומלצים.')}
+          </section>
+          <section class="optimizer-box">
+            <h3>פורטפוליו מומלץ (7-10 ימים, תחת מכסה)</h3>
+            ${renderRecommendationList(result.portfolio, 'לא נמצאה קומבינציה מתאימה במסגרת המכסה.')}
+          </section>
+        </div>
+      `;
+        }
+        function buildMonthEvents(monthIdx) {
+            const monthData = state[monthIdx];
+            const daysInMonth = getDaysInMonth(monthIdx);
+            const events = [];
+            const userLabels = { school: 'חופשת מסגרת', work: 'חופשת עבודה', camp: 'יום קייטנה', unpaid: 'חופשה ללא תשלום' };
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const userDay = monthData.userDays[day];
+                const paid = getPaidHoliday(monthIdx, day);
+                const holiday = getHoliday(monthIdx, day);
+
+                if (userDay && ALLOWED_DAY_TYPES.has(userDay.type)) {
+                    events.push({
+                        day,
+                        title: `${userLabels[userDay.type]} (${userDay.value})`,
+                        kind: userDay.type
+                    });
+                    continue;
+                }
+
+                if (paid) {
+                    events.push({
+                        day,
+                        title: `חופשה בתשלום: ${paid.title} (${paid.value})`,
+                        kind: 'paid'
+                    });
+                    continue;
+                }
+
+                if (holiday) {
+                    events.push({
+                        day,
+                        title: holiday,
+                        kind: 'holiday'
+                    });
+                }
+            }
+            return events;
+        }
+        function renderHolidaysCenter() {
+            const container = document.getElementById('holidaysCenterList');
+            let html = '';
+
+            for (let monthIdx = 0; monthIdx < MONTHS_HE.length; monthIdx++) {
+                const monthEvents = buildMonthEvents(monthIdx);
+                if (monthEvents.length === 0) continue;
+
+                html += `
+          <section class="holidays-month">
+            <h3 class="holidays-month-header">${escapeHtml(MONTHS_HE[monthIdx])}</h3>
+            ${monthEvents.map(event => `
+              <div class="holiday-event day-${event.kind}">
+                <span>${escapeHtml(event.title)}</span>
+                <span>${event.day} ב${escapeHtml(MONTHS_HE[monthIdx])}</span>
+              </div>
+            `).join('')}
+          </section>
+        `;
+            }
+
+            if (!html) {
+                container.innerHTML = '<div class="holiday-empty">עדיין לא הוגדרו חופשות או אירועים לשנת 2026.</div>';
+                return;
+            }
+
+            container.innerHTML = html;
+        }
+        function renderStats() {
+            const totals = state.reduce((acc, m, i) => {
+                const s = calcStats(m, i);
+                return { net: acc.net + s.net, gross: acc.gross + s.gross, school: acc.school + s.school, camp: acc.camp + s.camp, completed: acc.completed + (m.done ? 1 : 0) };
+            }, { net: 0, gross: 0, school: 0, camp: 0, completed: 0 });
+            const next = state.find(m => !m.done && m.goal);
+            const nextText = escapeHtml(next ? `${next.month}: ${next.goal}` : 'אין חופשה קרובה');
+            document.getElementById('statsGrid').innerHTML = `
+        <div class="stat-card work-net">
+          <div class="stat-label">חופשה מהעבודה (נטו)</div>
+          <div><span class="stat-value">${totals.net}</span><span class="stat-suffix">ימים</span></div>
+          <div class="stat-sublabel">ימי עבודה בפועל שנחסכו</div>
+        </div>
+        <div class="stat-card work-gross">
+          <div class="stat-label">חופשה מהעבודה (ברוטו)</div>
+          <div><span class="stat-value">${totals.gross}</span><span class="stat-suffix">ימים</span></div>
+          <div class="stat-sublabel">כולל חגים וסופי שבוע</div>
+        </div>
+        <div class="stat-card school">
+          <div class="stat-label">חופש מהמסגרות</div>
+          <div><span class="stat-value">${totals.school}</span><span class="stat-suffix">ימים</span></div>
+        </div>
+        <div class="stat-card camp">
+          <div class="stat-label">ימי קייטנה</div>
+          <div><span class="stat-value">${totals.camp}</span><span class="stat-suffix">ימים</span></div>
+        </div>
+        <div class="stat-card next">
+          <div class="stat-label">החופשה הבאה</div>
+          <div class="stat-value" style="font-size: 0.9rem; margin-top: 0.5rem;">${nextText}</div>
+          <div class="stat-extra">${totals.completed} / 12 חודשים</div>
+        </div>
+      `;
+        }
+        function renderMonths() {
+            document.getElementById('monthsGrid').innerHTML = state.map((m, i) => {
+                const s = calcStats(m, i);
+                const safeMonth = escapeHtml(m.month);
+                const safeGoal = escapeHtml(m.goal || '');
+                return `
+          <div class="month-card ${m.done ? 'done' : ''}" data-idx="${i}">
+            <div class="month-header">
+              <span class="month-name">${safeMonth}</span>
+              <div class="month-actions">
+                <button onclick="openModal(${i})">↗</button>
+                <input type="checkbox" class="month-checkbox" ${m.done ? 'checked' : ''} onchange="toggleDone(${i}, this.checked)">
+              </div>
+            </div>
+            <input type="text" class="goal-input" placeholder="מה המטרה?" value="${safeGoal}" onchange="updateGoal(${i}, this.value)">
+            <div class="month-stats">
+              <div class="mini-stat work">
+                <div class="mini-stat-label">עבודה (נטו/ברוטו)</div>
+                <div class="mini-stat-value">${s.net} / ${s.gross}</div>
+              </div>
+              <div class="mini-stat school">
+                <div class="mini-stat-label">מסגרות</div>
+                <div class="mini-stat-value">${s.school}</div>
+              </div>
+              <div class="mini-stat camp">
+                <div class="mini-stat-label">קייטנה</div>
+                <div class="mini-stat-value">${s.camp}</div>
+              </div>
+            </div>
+          </div>
+        `;
+            }).join('');
+        }
+        function updateGoal(idx, goal) { state[idx].goal = goal; saveState(); render(); }
+        function toggleDone(idx, done) { state[idx].done = done; saveState(); render(); }
+        function openModal(idx) {
+            currentMonth = idx;
+            selectedDays.clear();
+            document.getElementById('modalTitle').textContent = `${state[idx].month} 2026`;
+            renderCalendar();
+            document.getElementById('modalOverlay').classList.add('open');
+        }
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.remove('open');
+            currentMonth = null;
+            selectedDays.clear();
+        }
+        function renderCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            const days = getDaysInMonth(currentMonth);
+            const first = getFirstDay(currentMonth);
+            const m = state[currentMonth];
+            const portfolioDayMap = latestOptimizationResult?.portfolioDayMap || new Map();
+            let html = '';
+            for (let i = 0; i < first; i++) html += '<div></div>';
+
+            for (let d = 1; d <= days; d++) {
+                const user = m.userDays[d];
+                const paid = getPaidHoliday(currentMonth, d);
+                const holiday = getHoliday(currentMonth, d);
+                const we = isWeekend(currentMonth, d);
+                const sel = selectedDays.has(d);
+                let classes = ['day-cell'];
+                if (we) classes.push('weekend');
+                if (sel) classes.push('selected');
+                if (user && user.type !== 'none') classes.push(`user-${user.type}`);
+                else if (paid) classes.push('paid');
+                let label = '';
+                if (user && user.type !== 'none') {
+                    const labels = { work: 'עבודה', school: 'מסגרת', camp: 'קייטנה', unpaid: 'ללא תשלום' };
+                    label = `<span class="day-label ${user.type}">${labels[user.type]} (${escapeHtml(user.value)})</span>`;
+                } else if (paid) {
+                    label = `<span class="day-label paid">חופשה בתשלום</span><span class="day-label paid" style="font-size:0.5rem;opacity:0.7">${escapeHtml(paid.title)}</span>`;
+                } else if (holiday) {
+                    label = `<span class="day-label holiday">${escapeHtml(holiday)}</span>`;
+                }
+                const recommendation = portfolioDayMap.get(`${currentMonth}-${d}`);
+                const star = recommendation
+                    ? `<span class="recommended-star ${recommendation.stars === 2 ? 'two' : ''}" title="יום מומלץ בפורטפוליו">${recommendation.stars === 2 ? '⭐⭐' : '⭐'}</span>`
+                    : '';
+                html += `<div class="${classes.join(' ')}" data-day="${d}" onmousedown="startSelect(${d})" onmouseenter="dragSelect(${d})">
+          <span class="day-number">${d}</span>
+          ${star}
+          ${label}
+        </div>`;
+            }
+            grid.innerHTML = html;
+            updateBatchEditor();
+        }
+        function startSelect(d) {
+            isSelecting = true;
+            selectionStart = d;
+            selectedDays.clear();
+            selectedDays.add(d);
+            renderCalendar();
+        }
+        function dragSelect(d) {
+            if (!isSelecting) return;
+            const start = Math.min(selectionStart, d);
+            const end = Math.max(selectionStart, d);
+            selectedDays.clear();
+            for (let i = start; i <= end; i++) selectedDays.add(i);
+            renderCalendar();
+        }
+        document.addEventListener('mouseup', () => { isSelecting = false; });
+        function updateBatchEditor() {
+            const editor = document.getElementById('batchEditor');
+            const count = document.getElementById('selectedCount');
+            if (selectedDays.size > 0) {
+                editor.classList.add('show');
+                count.textContent = selectedDays.size;
+            } else {
+                editor.classList.remove('show');
+            }
+        }
+        function applyBatch() {
+            if (currentMonth === null) return;
+
+            const type = document.getElementById('batchType').value;
+            const value = parseFloat(document.getElementById('batchValue').value);
+            if (type !== 'none' && (!ALLOWED_DAY_TYPES.has(type) || !ALLOWED_DAY_VALUES.has(value))) return;
+
+            selectedDays.forEach(d => {
+                if (type === 'none') {
+                    delete state[currentMonth].userDays[d];
+                } else {
+                    state[currentMonth].userDays[d] = { type, value };
+                }
+            });
+            selectedDays.clear();
+            saveState();
+            renderCalendar();
+            render();
+        }
+        function exportData() {
+            const blob = new Blob([JSON.stringify(state)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'vacation_2026.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        function importData(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                try {
+                    state = normalizeState(JSON.parse(ev.target.result));
+                    saveState();
+                    render();
+                } catch {
+                    alert('קובץ לא תקין');
+                }
+            };
+            reader.readAsText(file);
+            e.target.value = '';
+        }
+        function resetData() {
+            if (!confirm('לאפס הכל?')) return;
+            localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem(OPTIMIZER_STORAGE_KEY);
+            initState();
+            initOptimizerConfig();
+            render();
+        }
+        function bindOptimizerControls() {
+            const budgetInput = document.getElementById('optimizerBudget');
+            budgetInput.addEventListener('change', () => {
+                const next = Number(budgetInput.value);
+                if (!Number.isFinite(next) || next < 1 || next > 60) {
+                    budgetInput.value = String(optimizerConfig.annualBudget);
+                    return;
+                }
+                optimizerConfig.annualBudget = Math.round(next * 2) / 2;
+                saveOptimizerConfig();
+                render();
+            });
+        }
+        // Init
+        initState();
+        initOptimizerConfig();
+        bindOptimizerControls();
+        render();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,1653 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>מתכנן יום חופש משפחתי</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f4f9f6;
+      --bg-soft: #e9f4ed;
+      --card: #ffffff;
+      --ink: #14303b;
+      --muted: #56727e;
+      --line: #d6e6dc;
+      --accent: #1d7f66;
+      --accent-soft: #dff4eb;
+      --child: #f3a11a;
+      --child-soft: #fff2dd;
+      --parent: #3b82f6;
+      --parent-soft: #e7f1ff;
+      --danger: #c24141;
+      --ok: #166534;
+      --warn: #9a6700;
+      --status-info-bg: #eef6ff;
+      --status-info-ink: #1e4d7f;
+      --status-ok-bg: #e9f8ef;
+      --status-ok-ink: #1d6b3d;
+      --status-error-bg: #fdeaea;
+      --status-error-ink: #8d2a2a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Assistant', sans-serif;
+      color: var(--ink);
+      background: radial-gradient(circle at 15% 0%, var(--bg-soft), var(--bg));
+    }
+
+    .wrap {
+      max-width: 1150px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: 0 10px 30px rgba(25, 70, 50, 0.08);
+    }
+
+    .header {
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.5rem, 3vw, 2.2rem);
+      font-weight: 800;
+    }
+
+    .sub {
+      margin: 0;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .top-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .grow {
+      flex: 1;
+      min-width: 190px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+      gap: 8px;
+    }
+
+    .stat {
+      background: #f9fcfa;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 8px 10px;
+    }
+
+    .stat .label {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .stat .value {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #1a5a4c;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 310px 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .panel,
+    .timeline {
+      padding: 12px;
+    }
+
+    .panel h2,
+    .timeline h2 {
+      margin: 4px 0 10px;
+      font-size: 1.05rem;
+    }
+
+    .toolbar,
+    .input-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    input,
+    select,
+    button {
+      font-family: inherit;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      padding: 9px 11px;
+      font-size: 0.95rem;
+    }
+
+    input,
+    select {
+      background: #fff;
+      color: var(--ink);
+    }
+
+    input[type='date'] {
+      min-width: 160px;
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 700;
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    button.secondary {
+      background: #fff;
+      color: var(--ink);
+      border-color: var(--line);
+    }
+
+    button.ghost {
+      background: transparent;
+      color: var(--muted);
+      border-color: transparent;
+      padding: 6px 8px;
+    }
+
+    .status {
+      border-radius: 10px;
+      border: 1px solid transparent;
+      padding: 8px 11px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      width: 100%;
+    }
+
+    .status.info {
+      background: var(--status-info-bg);
+      color: var(--status-info-ink);
+      border-color: #cddff4;
+    }
+
+    .status.success {
+      background: var(--status-ok-bg);
+      color: var(--status-ok-ink);
+      border-color: #b9e7ca;
+    }
+
+    .status.error {
+      background: var(--status-error-bg);
+      color: var(--status-error-ink);
+      border-color: #f0b4b4;
+    }
+
+    .connect-strip {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 8px;
+      background: #f8fcfa;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .drive-settings {
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+      padding: 8px;
+      background: #fbfefd;
+    }
+
+    .drive-settings summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-weight: 700;
+      list-style: none;
+    }
+
+    .drive-settings summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .drive-note {
+      margin: 8px 0 0;
+      color: var(--warn);
+      font-size: 0.83rem;
+      font-weight: 700;
+    }
+
+    .setup-grid {
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .setup-step {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #f9fcfa;
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .setup-step .label {
+      font-weight: 700;
+      color: var(--ink);
+      font-size: 0.9rem;
+    }
+
+    .setup-badge {
+      border-radius: 999px;
+      padding: 3px 8px;
+      border: 1px solid #d2dfd6;
+      background: #eef5f0;
+      color: #3b5962;
+      font-size: 0.78rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .setup-badge.ok {
+      background: #e7f7ee;
+      border-color: #b8e2c8;
+      color: #1b6b3a;
+    }
+
+    .setup-badge.warn {
+      background: #fff4df;
+      border-color: #f0d29a;
+      color: #8b6000;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      direction: ltr;
+      text-align: left;
+      font-size: 0.82rem;
+    }
+
+    .links-row {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .links-row a {
+      color: #1f4f8a;
+      font-weight: 700;
+      font-size: 0.85rem;
+      text-decoration: none;
+      border: 1px solid #cbd9eb;
+      border-radius: 8px;
+      padding: 5px 8px;
+      background: #eef5ff;
+    }
+
+    .links-row a:hover {
+      background: #e2efff;
+    }
+
+    .tasks,
+    .slot-tasks {
+      min-height: 58px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .tasks {
+      margin-top: 10px;
+    }
+
+    .dropzone.drag-over {
+      outline: 2px dashed var(--accent);
+      outline-offset: -2px;
+      background: #f1fbf6;
+    }
+
+    .task {
+      border-radius: 12px;
+      border: 1px solid #badfce;
+      background: var(--accent-soft);
+      padding: 8px;
+      user-select: none;
+      cursor: grab;
+      display: grid;
+      gap: 8px;
+    }
+
+    .task.type-child {
+      background: var(--child-soft);
+      border-color: #f8d294;
+    }
+
+    .task.type-parent {
+      background: var(--parent-soft);
+      border-color: #bed7ff;
+    }
+
+    .task.done {
+      opacity: 0.66;
+    }
+
+    .task.done .task-title {
+      text-decoration: line-through;
+      text-decoration-thickness: 2px;
+    }
+
+    .task-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .task-title {
+      flex: 1;
+      font-weight: 700;
+      word-break: break-word;
+    }
+
+    .pill {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--muted);
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid rgba(40, 110, 80, 0.16);
+    }
+
+    .task-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      justify-content: flex-end;
+    }
+
+    .task-btn {
+      background: #fff;
+      color: #254c57;
+      border: 1px solid rgba(60, 120, 110, 0.25);
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-size: 0.8rem;
+      line-height: 1;
+    }
+
+    .task-btn.delete {
+      color: var(--danger);
+      border-color: #e8bbbb;
+    }
+
+    .hour-row {
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      gap: 8px;
+      margin-bottom: 9px;
+      align-items: stretch;
+    }
+
+    .time {
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: #f2f7f4;
+      font-weight: 800;
+      color: #365460;
+      display: grid;
+      place-items: center;
+      font-size: 0.92rem;
+      padding: 7px;
+    }
+
+    .slot {
+      border: 2px dashed #c7ddd1;
+      border-radius: 12px;
+      min-height: 60px;
+      padding: 8px;
+      background: #fdfffe;
+    }
+
+    .hint {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .footer-note {
+      margin-top: 10px;
+      color: var(--ok);
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 920px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .hour-row {
+        grid-template-columns: 72px 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="header card">
+      <h1>מתכנן יום חופש משפחתי</h1>
+      <p class="sub">גוררים פעילויות לשעות היום, מסמנים מה בוצע, ועורכים או מוחקים בלחיצה.</p>
+
+      <div class="top-row">
+        <div class="grow toolbar">
+          <label for="dayPicker">תאריך:</label>
+          <input id="dayPicker" type="date" />
+        </div>
+        <button id="printBtn" class="secondary" type="button">הדפסה</button>
+        <button id="clearScheduleBtn" class="secondary" type="button">נקה שיבוץ שעות</button>
+        <button id="resetDayBtn" class="secondary" type="button">שחזר פעילויות ברירת מחדל</button>
+      </div>
+
+      <div class="top-row">
+        <button id="exportFileBtn" class="secondary" type="button">יצוא לקובץ</button>
+        <button id="importFileBtn" class="secondary" type="button">טעינה מקובץ</button>
+        <button id="saveDriveBtn" class="secondary" type="button">שמור ל-Google Drive</button>
+        <button id="loadDriveBtn" class="secondary" type="button">טען מ-Google Drive</button>
+        <input id="importFileInput" type="file" accept="application/json,.json" hidden />
+      </div>
+
+      <div class="connect-strip">
+        <button id="connectDriveBtn" type="button">התחבר ל-Google Drive</button>
+        <span id="driveConnectedBadge" class="setup-badge warn">לא מחובר</span>
+      </div>
+
+      <details class="drive-settings">
+        <summary>הגדרות מתקדמות (רק אם החיבור נכשל)</summary>
+        <div class="setup-grid">
+          <div class="setup-step">
+            <span class="label">1) Origin נוכחי לדפדפן</span>
+            <span id="setupOriginStatus" class="setup-badge warn">נדרש בדיקה</span>
+          </div>
+          <div class="toolbar">
+            <input id="currentOriginInput" class="grow mono" type="text" readonly />
+            <button id="copyOriginBtn" class="secondary" type="button">העתק Origin</button>
+          </div>
+          <div class="setup-step">
+            <span class="label">2) Google Client ID</span>
+            <span id="setupClientStatus" class="setup-badge warn">חסר</span>
+          </div>
+        </div>
+        <div class="toolbar" style="margin-top: 8px;">
+          <input id="googleClientIdInput" class="grow" type="text" placeholder="Google OAuth Client ID (....apps.googleusercontent.com)" />
+          <button id="saveClientIdBtn" class="secondary" type="button">שמור Client ID</button>
+          <button id="testDriveConnectionBtn" class="secondary" type="button">בדיקת חיבור</button>
+        </div>
+        <div class="setup-step" style="margin-top: 8px;">
+          <span class="label">3) הרשאה וחיבור ל-Drive</span>
+          <span id="setupAuthStatus" class="setup-badge warn">עדיין לא נבדק</span>
+        </div>
+        <div class="links-row">
+          <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank" rel="noopener noreferrer">Enable Drive API</a>
+          <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer">Credentials</a>
+          <a href="https://console.cloud.google.com/apis/credentials/consent" target="_blank" rel="noopener noreferrer">OAuth Consent</a>
+        </div>
+        <p class="drive-note">נדרש OAuth Client ID מסוג Web Application עם הרשאת origin מתאימה (localhost/HTTPS).</p>
+      </details>
+
+      <div id="statusMessage" class="status info" role="status">מוכן לעבודה.</div>
+
+      <div class="stats">
+        <div class="stat"><div class="label">פעילויות במאגר</div><div id="statPool" class="value">0</div></div>
+        <div class="stat"><div class="label">פעילויות משובצות</div><div id="statPlanned" class="value">0</div></div>
+        <div class="stat"><div class="label">בוצע</div><div id="statDone" class="value">0</div></div>
+        <div class="stat"><div class="label">שעות פנויות</div><div id="statFree" class="value">0</div></div>
+      </div>
+    </section>
+
+    <section class="layout">
+      <aside class="panel card">
+        <h2>מאגר פעילויות</h2>
+
+        <div class="input-row">
+          <input id="newTaskInput" type="text" placeholder="לדוגמה: הכנת עוגיות" class="grow" />
+          <select id="taskTypeSelect">
+            <option value="family">משותף</option>
+            <option value="child">לילד</option>
+            <option value="parent">להורה</option>
+          </select>
+          <button id="addTaskBtn" type="button">+ הוסף</button>
+        </div>
+
+        <div id="taskPool" class="tasks dropzone" aria-label="מאגר פעילויות"></div>
+        <p class="hint">אפשר לערוך, למחוק, לסמן בוצע, ולגרור בין כל השעות.</p>
+      </aside>
+
+      <main class="timeline card">
+        <h2>תצוגה יומית לפי שעות</h2>
+        <div id="dayTimeline"></div>
+        <div class="footer-note">נשמר אוטומטית לפי תאריך בדפדפן.</div>
+      </main>
+    </section>
+  </div>
+
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script>
+    const STORAGE_KEY = 'familyPlannerDailyV2';
+    const GOOGLE_CLIENT_ID_KEY = 'familyPlannerGoogleClientId';
+    const DRIVE_FILE_ID_KEY = 'familyPlannerDriveFileId';
+    const EXPORT_VERSION = 1;
+    const EXPORT_APP = 'family-planner';
+    const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+    const DRIVE_FILE_NAME = 'family-planner-data.json';
+    const EMBEDDED_GOOGLE_CLIENT_ID = '';
+    const ALLOWED_ORIGINS = [
+      'https://<your-github-username>.github.io',
+      'http://localhost:5500'
+    ];
+
+    const START_HOUR = 8;
+    const END_HOUR = 20;
+
+    const defaultPool = [
+      { id: uid(), title: 'לעשות ספורט', type: 'family', done: false },
+      { id: uid(), title: 'תרגילי חשבון על המחשב', type: 'child', done: false },
+      { id: uid(), title: 'ניסויים מדעיים', type: 'family', done: false },
+      { id: uid(), title: 'זמן יצירה / ציור', type: 'child', done: false },
+      { id: uid(), title: 'קריאה משותפת', type: 'family', done: false }
+    ];
+
+    const timeline = document.getElementById('dayTimeline');
+    const taskPool = document.getElementById('taskPool');
+    const dayPicker = document.getElementById('dayPicker');
+    const newTaskInput = document.getElementById('newTaskInput');
+    const taskTypeSelect = document.getElementById('taskTypeSelect');
+    const addTaskBtn = document.getElementById('addTaskBtn');
+    const clearScheduleBtn = document.getElementById('clearScheduleBtn');
+    const resetDayBtn = document.getElementById('resetDayBtn');
+    const printBtn = document.getElementById('printBtn');
+
+    const exportFileBtn = document.getElementById('exportFileBtn');
+    const importFileBtn = document.getElementById('importFileBtn');
+    const saveDriveBtn = document.getElementById('saveDriveBtn');
+    const loadDriveBtn = document.getElementById('loadDriveBtn');
+    const importFileInput = document.getElementById('importFileInput');
+    const connectDriveBtn = document.getElementById('connectDriveBtn');
+    const driveConnectedBadge = document.getElementById('driveConnectedBadge');
+
+    const currentOriginInput = document.getElementById('currentOriginInput');
+    const copyOriginBtn = document.getElementById('copyOriginBtn');
+    const googleClientIdInput = document.getElementById('googleClientIdInput');
+    const saveClientIdBtn = document.getElementById('saveClientIdBtn');
+    const testDriveConnectionBtn = document.getElementById('testDriveConnectionBtn');
+    const setupOriginStatus = document.getElementById('setupOriginStatus');
+    const setupClientStatus = document.getElementById('setupClientStatus');
+    const setupAuthStatus = document.getElementById('setupAuthStatus');
+    const statusMessage = document.getElementById('statusMessage');
+
+    const statPool = document.getElementById('statPool');
+    const statPlanned = document.getElementById('statPlanned');
+    const statDone = document.getElementById('statDone');
+    const statFree = document.getElementById('statFree');
+
+    let draggedTask = null;
+    let stateByDate = normalizeAllState(loadAppState());
+    let googleClientId = loadGoogleClientId() || EMBEDDED_GOOGLE_CLIENT_ID;
+    let driveFileId = loadDriveFileId();
+    let googleTokenClient = null;
+    let googleAccessToken = '';
+    let googleTokenExpiryMs = 0;
+
+    function uid() {
+      return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    function todayIso() {
+      const now = new Date();
+      const tz = now.getTimezoneOffset() * 60000;
+      return new Date(now.getTime() - tz).toISOString().slice(0, 10);
+    }
+
+    function isDateKey(value) {
+      return /^\d{4}-\d{2}-\d{2}$/.test(value);
+    }
+
+    function taskTypeLabel(type) {
+      if (type === 'child') return 'לילד';
+      if (type === 'parent') return 'להורה';
+      return 'משותף';
+    }
+
+    function setStatus(message, type = 'info') {
+      statusMessage.textContent = message;
+      statusMessage.className = `status ${type}`;
+    }
+
+    function withBusy(button, action) {
+      return async (...args) => {
+        button.disabled = true;
+        try {
+          await action(...args);
+        } finally {
+          button.disabled = false;
+        }
+      };
+    }
+
+    function getCurrentOriginLabel() {
+      if (window.location.protocol === 'file:') {
+        return 'file:// (לא נתמך ל-Google OAuth)';
+      }
+      return window.location.origin || '(origin לא זמין)';
+    }
+
+    function isSupportedOrigin() {
+      if (window.location.protocol === 'file:') return false;
+      if (window.location.protocol === 'https:') return true;
+      const host = window.location.hostname;
+      return host === 'localhost' || host === '127.0.0.1';
+    }
+
+    function getAllowedOriginsText() {
+      return ALLOWED_ORIGINS.join(', ');
+    }
+
+    function setSetupBadge(element, text, kind = 'warn') {
+      element.textContent = text;
+      element.className = `setup-badge ${kind}`;
+    }
+
+    function refreshDriveConnectionChip() {
+      const connected = isTokenValid();
+      setSetupBadge(driveConnectedBadge, connected ? 'מחובר' : 'לא מחובר', connected ? 'ok' : 'warn');
+      connectDriveBtn.textContent = connected ? 'מחובר ל-Google Drive' : 'התחבר ל-Google Drive';
+    }
+
+    function refreshDriveSetupStatus(authState = 'unknown', authMessage = '') {
+      const originLabel = getCurrentOriginLabel();
+      currentOriginInput.value = originLabel;
+
+      if (isSupportedOrigin()) {
+        setSetupBadge(setupOriginStatus, 'תקין', 'ok');
+      } else {
+        setSetupBadge(setupOriginStatus, 'לא נתמך', 'warn');
+      }
+
+      if (googleClientId && googleClientId.endsWith('.apps.googleusercontent.com')) {
+        setSetupBadge(setupClientStatus, 'נשמר', 'ok');
+      } else {
+        setSetupBadge(setupClientStatus, 'חסר/לא תקין', 'warn');
+      }
+
+      if (authState === 'ok') {
+        setSetupBadge(setupAuthStatus, authMessage || 'חיבור תקין', 'ok');
+        return;
+      }
+      if (authState === 'error') {
+        setSetupBadge(setupAuthStatus, authMessage || 'נכשל', 'warn');
+        return;
+      }
+
+      if (isTokenValid()) {
+        setSetupBadge(setupAuthStatus, 'מחובר', 'ok');
+      } else {
+        setSetupBadge(setupAuthStatus, 'עדיין לא נבדק', 'warn');
+      }
+
+      refreshDriveConnectionChip();
+    }
+
+    async function copyCurrentOrigin() {
+      const text = getCurrentOriginLabel();
+      try {
+        if (!navigator.clipboard || !window.isSecureContext) {
+          throw new Error('Clipboard API not available');
+        }
+        await navigator.clipboard.writeText(text);
+      } catch (_) {
+        currentOriginInput.focus();
+        currentOriginInput.select();
+        const copied = document.execCommand('copy');
+        if (!copied) {
+          throw new Error('לא ניתן להעתיק אוטומטית. אפשר לסמן ולהעתיק ידנית.');
+        }
+      }
+      setStatus('ה-Origin הועתק. יש להוסיף אותו ב-Authorized JavaScript origins.', 'success');
+    }
+
+    function loadAppState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : {};
+      } catch (_) {
+        return {};
+      }
+    }
+
+    function saveAppState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(stateByDate));
+      } catch (_) {
+        // If storage is blocked/full, app still works in-memory.
+      }
+    }
+
+    function loadGoogleClientId() {
+      try {
+        return localStorage.getItem(GOOGLE_CLIENT_ID_KEY) || '';
+      } catch (_) {
+        return '';
+      }
+    }
+
+    function saveGoogleClientId(value) {
+      try {
+        localStorage.setItem(GOOGLE_CLIENT_ID_KEY, value);
+      } catch (_) {
+        // Keep value in memory if storage is blocked.
+      }
+    }
+
+    function loadDriveFileId() {
+      try {
+        return localStorage.getItem(DRIVE_FILE_ID_KEY) || '';
+      } catch (_) {
+        return '';
+      }
+    }
+
+    function saveDriveFileId(value) {
+      driveFileId = value || '';
+      try {
+        if (driveFileId) {
+          localStorage.setItem(DRIVE_FILE_ID_KEY, driveFileId);
+        } else {
+          localStorage.removeItem(DRIVE_FILE_ID_KEY);
+        }
+      } catch (_) {
+        // Keep in memory if storage is blocked.
+      }
+    }
+
+    function makeEmptySlots() {
+      const slots = {};
+      for (let hour = START_HOUR; hour <= END_HOUR; hour += 1) {
+        slots[String(hour)] = [];
+      }
+      return slots;
+    }
+
+    function normalizeTask(raw) {
+      if (!raw || typeof raw !== 'object') return null;
+      const title = typeof raw.title === 'string' ? raw.title.trim() : '';
+      if (!title) return null;
+
+      return {
+        id: typeof raw.id === 'string' && raw.id.trim() ? raw.id.trim() : uid(),
+        title,
+        type: raw.type === 'child' || raw.type === 'parent' || raw.type === 'family' ? raw.type : 'family',
+        done: Boolean(raw.done)
+      };
+    }
+
+    function normalizeDayState(raw) {
+      const normalized = {
+        pool: [],
+        slots: makeEmptySlots()
+      };
+
+      if (!raw || typeof raw !== 'object') {
+        return normalized;
+      }
+
+      if (Array.isArray(raw.pool)) {
+        normalized.pool = raw.pool.map(normalizeTask).filter(Boolean);
+      }
+
+      if (raw.slots && typeof raw.slots === 'object') {
+        for (let hour = START_HOUR; hour <= END_HOUR; hour += 1) {
+          const key = String(hour);
+          const source = raw.slots[key];
+          normalized.slots[key] = Array.isArray(source) ? source.map(normalizeTask).filter(Boolean) : [];
+        }
+      }
+
+      return normalized;
+    }
+
+    function normalizeAllState(rawState) {
+      if (!rawState || typeof rawState !== 'object' || Array.isArray(rawState)) {
+        return {};
+      }
+
+      const normalized = {};
+      for (const [dateKey, rawDay] of Object.entries(rawState)) {
+        if (!isDateKey(dateKey)) continue;
+        normalized[dateKey] = normalizeDayState(rawDay);
+      }
+      return normalized;
+    }
+
+    function dayTemplate() {
+      return {
+        pool: defaultPool.map((task) => ({ ...task, id: uid(), done: false })),
+        slots: makeEmptySlots()
+      };
+    }
+
+    function getCurrentDateKey() {
+      return dayPicker.value || todayIso();
+    }
+
+    function getDayState(dateKey) {
+      if (!stateByDate[dateKey]) {
+        stateByDate[dateKey] = dayTemplate();
+      }
+      return stateByDate[dateKey];
+    }
+
+    function ensureDayStateShape(dayState) {
+      const normalized = normalizeDayState(dayState);
+      dayState.pool = normalized.pool;
+      dayState.slots = normalized.slots;
+    }
+
+    function createTaskElement(task) {
+      const el = document.createElement('article');
+      el.className = `task type-${task.type}${task.done ? ' done' : ''}`;
+      el.draggable = true;
+      el.dataset.id = task.id;
+      el.dataset.type = task.type;
+      el.dataset.done = String(Boolean(task.done));
+
+      el.innerHTML = `
+        <div class="task-top">
+          <input type="checkbox" class="task-done" aria-label="סמן בוצע" ${task.done ? 'checked' : ''}>
+          <div class="task-title">${escapeHtml(task.title)}</div>
+          <span class="pill">${taskTypeLabel(task.type)}</span>
+        </div>
+        <div class="task-actions">
+          <button type="button" class="task-btn edit" data-action="edit">ערוך</button>
+          <button type="button" class="task-btn delete" data-action="delete">מחק</button>
+        </div>
+      `;
+
+      return el;
+    }
+
+    function escapeHtml(text) {
+      return text
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    function taskFromElement(taskEl) {
+      return {
+        id: taskEl.dataset.id,
+        title: taskEl.querySelector('.task-title').textContent.trim(),
+        type: taskEl.dataset.type || 'family',
+        done: taskEl.dataset.done === 'true'
+      };
+    }
+
+    function buildTimelineOnce() {
+      timeline.innerHTML = '';
+      for (let hour = START_HOUR; hour <= END_HOUR; hour += 1) {
+        const row = document.createElement('div');
+        row.className = 'hour-row';
+
+        const time = document.createElement('div');
+        time.className = 'time';
+        time.textContent = `${String(hour).padStart(2, '0')}:00`;
+
+        const slot = document.createElement('div');
+        slot.className = 'slot dropzone';
+        slot.dataset.slot = String(hour);
+
+        const slotTasks = document.createElement('div');
+        slotTasks.className = 'slot-tasks';
+        slot.appendChild(slotTasks);
+
+        row.append(time, slot);
+        timeline.appendChild(row);
+      }
+    }
+
+    function renderCurrentDay() {
+      const dateKey = getCurrentDateKey();
+      const dayState = getDayState(dateKey);
+      ensureDayStateShape(dayState);
+
+      taskPool.innerHTML = '';
+      dayState.pool.forEach((task) => {
+        taskPool.appendChild(createTaskElement(task));
+      });
+
+      document.querySelectorAll('.slot').forEach((slotEl) => {
+        const slotKey = slotEl.dataset.slot;
+        const holder = slotEl.querySelector('.slot-tasks');
+        holder.innerHTML = '';
+        (dayState.slots[slotKey] || []).forEach((task) => {
+          holder.appendChild(createTaskElement(task));
+        });
+      });
+
+      refreshStats();
+    }
+
+    function collectCurrentDayToState() {
+      const dateKey = getCurrentDateKey();
+      const dayState = getDayState(dateKey);
+      dayState.pool = Array.from(taskPool.querySelectorAll(':scope > .task')).map(taskFromElement);
+
+      const slots = makeEmptySlots();
+      document.querySelectorAll('.slot').forEach((slotEl) => {
+        const key = slotEl.dataset.slot;
+        const items = Array.from(slotEl.querySelectorAll(':scope .slot-tasks > .task')).map(taskFromElement);
+        slots[key] = items;
+      });
+
+      dayState.slots = slots;
+      stateByDate[dateKey] = normalizeDayState(dayState);
+      saveAppState();
+      refreshStats();
+    }
+
+    function refreshStats() {
+      const poolCount = taskPool.querySelectorAll(':scope > .task').length;
+      const plannedCount = document.querySelectorAll('.slot .task').length;
+      const doneCount = document.querySelectorAll('.task[data-done="true"]').length;
+      const filledSlots = Array.from(document.querySelectorAll('.slot')).filter((slot) => slot.querySelector('.task')).length;
+      const totalSlots = END_HOUR - START_HOUR + 1;
+      const freeSlots = totalSlots - filledSlots;
+
+      statPool.textContent = String(poolCount);
+      statPlanned.textContent = String(plannedCount);
+      statDone.textContent = String(doneCount);
+      statFree.textContent = String(freeSlots);
+    }
+
+    function addTask() {
+      const title = newTaskInput.value.trim();
+      if (!title) return;
+
+      const task = {
+        id: uid(),
+        title,
+        type: taskTypeSelect.value,
+        done: false
+      };
+
+      taskPool.appendChild(createTaskElement(task));
+      newTaskInput.value = '';
+      newTaskInput.focus();
+      collectCurrentDayToState();
+    }
+
+    function clearSchedule() {
+      document.querySelectorAll('.slot .task').forEach((task) => {
+        taskPool.appendChild(task);
+      });
+      collectCurrentDayToState();
+    }
+
+    function resetDay() {
+      const dateKey = getCurrentDateKey();
+      stateByDate[dateKey] = dayTemplate();
+      saveAppState();
+      renderCurrentDay();
+      setStatus('ברירת המחדל ליום הנוכחי שוחזרה.', 'success');
+    }
+
+    function setupDnD() {
+      document.addEventListener('dragstart', (event) => {
+        const taskEl = event.target.closest('.task');
+        if (!taskEl) return;
+
+        if (event.target.closest('button') || event.target.matches('input[type="checkbox"]')) {
+          event.preventDefault();
+          return;
+        }
+
+        draggedTask = taskEl;
+      });
+
+      document.addEventListener('dragover', (event) => {
+        const zone = event.target.closest('.dropzone');
+        if (!zone) return;
+        event.preventDefault();
+      });
+
+      document.addEventListener('dragenter', (event) => {
+        const zone = event.target.closest('.dropzone');
+        if (!zone) return;
+        zone.classList.add('drag-over');
+      });
+
+      document.addEventListener('dragleave', (event) => {
+        const zone = event.target.closest('.dropzone');
+        if (!zone) return;
+        zone.classList.remove('drag-over');
+      });
+
+      document.addEventListener('drop', (event) => {
+        const zone = event.target.closest('.dropzone');
+        if (!zone || !draggedTask) return;
+        event.preventDefault();
+
+        if (zone.classList.contains('slot')) {
+          zone.querySelector('.slot-tasks').appendChild(draggedTask);
+        } else {
+          zone.appendChild(draggedTask);
+        }
+
+        zone.classList.remove('drag-over');
+        draggedTask = null;
+        collectCurrentDayToState();
+      });
+    }
+
+    function setupTaskActions() {
+      document.addEventListener('click', (event) => {
+        const actionBtn = event.target.closest('[data-action]');
+        if (!actionBtn) return;
+
+        const taskEl = actionBtn.closest('.task');
+        if (!taskEl) return;
+
+        const action = actionBtn.dataset.action;
+
+        if (action === 'delete') {
+          taskEl.remove();
+          collectCurrentDayToState();
+          return;
+        }
+
+        if (action === 'edit') {
+          const titleEl = taskEl.querySelector('.task-title');
+          const current = titleEl.textContent.trim();
+          const next = prompt('עריכת פעילות', current);
+          if (next === null) return;
+          const clean = next.trim();
+          if (!clean) return;
+          titleEl.textContent = clean;
+          collectCurrentDayToState();
+        }
+      });
+
+      document.addEventListener('change', (event) => {
+        if (!event.target.classList.contains('task-done')) return;
+        const taskEl = event.target.closest('.task');
+        if (!taskEl) return;
+        const done = event.target.checked;
+        taskEl.dataset.done = String(done);
+        taskEl.classList.toggle('done', done);
+        collectCurrentDayToState();
+      });
+    }
+
+    function buildExportPayload() {
+      collectCurrentDayToState();
+
+      const cleanData = {};
+      for (const [dateKey, dayState] of Object.entries(stateByDate)) {
+        if (!isDateKey(dateKey)) continue;
+        cleanData[dateKey] = normalizeDayState(dayState);
+      }
+
+      return {
+        version: EXPORT_VERSION,
+        app: EXPORT_APP,
+        exportedAt: new Date().toISOString(),
+        data: cleanData
+      };
+    }
+
+    function validateImportPayload(payload) {
+      if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+        return { ok: false, error: 'פורמט קובץ לא תקין.' };
+      }
+
+      if (payload.version !== EXPORT_VERSION) {
+        return { ok: false, error: `גרסת קובץ לא נתמכת (${payload.version ?? 'לא ידוע'}).` };
+      }
+
+      if (payload.app !== EXPORT_APP) {
+        return { ok: false, error: 'הקובץ לא שייך למתכנן זה.' };
+      }
+
+      if (!payload.data || typeof payload.data !== 'object' || Array.isArray(payload.data)) {
+        return { ok: false, error: 'חסר שדה data תקין בקובץ.' };
+      }
+
+      const normalizedData = normalizeAllState(payload.data);
+      return { ok: true, data: normalizedData };
+    }
+
+    function applyImportedState(payload) {
+      const validation = validateImportPayload(payload);
+      if (!validation.ok) {
+        throw new Error(validation.error);
+      }
+
+      stateByDate = validation.data;
+      saveAppState();
+      renderCurrentDay();
+    }
+
+    function triggerLocalDownload(filename, content) {
+      const blob = new Blob([content], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function exportToLocalFile() {
+      const payload = buildExportPayload();
+      const date = new Date().toISOString().slice(0, 10);
+      const fileName = `family-planner-export-${date}.json`;
+      triggerLocalDownload(fileName, JSON.stringify(payload, null, 2));
+      setStatus('הקובץ יוצא בהצלחה.', 'success');
+    }
+
+    async function importFromLocalFile(file) {
+      const text = await file.text();
+      let payload;
+
+      try {
+        payload = JSON.parse(text);
+      } catch (_) {
+        throw new Error('JSON לא תקין בקובץ הטעינה.');
+      }
+
+      applyImportedState(payload);
+      setStatus('הטעינה מהקובץ הסתיימה בהצלחה.', 'success');
+    }
+
+    function prepareGoogleClientId() {
+      if (!isSupportedOrigin()) {
+        throw new Error(`יש לפתוח מ-HTTPS או localhost. יש להוסיף ב-Google Cloud את origin הנוכחי (${window.location.origin}).`);
+      }
+
+      const fromInput = googleClientIdInput.value.trim();
+      if (fromInput && fromInput !== googleClientId) {
+        googleClientId = fromInput;
+        saveGoogleClientId(googleClientId);
+        resetGoogleAuthState();
+        refreshDriveSetupStatus();
+      }
+
+      if (!googleClientId) {
+        throw new Error('נדרש להזין Google Client ID בהגדרות Google Drive.');
+      }
+
+      return googleClientId;
+    }
+
+    function resetGoogleAuthState() {
+      googleTokenClient = null;
+      googleAccessToken = '';
+      googleTokenExpiryMs = 0;
+      refreshDriveSetupStatus();
+    }
+
+    function isTokenValid() {
+      return Boolean(googleAccessToken) && Date.now() < googleTokenExpiryMs - 15000;
+    }
+
+    function initGoogleTokenClient(clientId) {
+      if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
+        throw new Error('Google Identity Services לא נטען. נסה/י שוב בעוד כמה שניות.');
+      }
+
+      googleTokenClient = window.google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: DRIVE_SCOPE,
+        callback: () => {}
+      });
+    }
+
+    function requestGoogleToken() {
+      return new Promise((resolve, reject) => {
+        googleTokenClient.callback = (response) => {
+          if (response && response.error) {
+            reject(new Error('התחברות לגוגל נכשלה.'));
+            return;
+          }
+
+          if (!response || !response.access_token) {
+            reject(new Error('לא התקבל Access Token מגוגל.'));
+            return;
+          }
+
+          googleAccessToken = response.access_token;
+          const expiresIn = Number(response.expires_in || 3600);
+          googleTokenExpiryMs = Date.now() + (expiresIn * 1000);
+          resolve(googleAccessToken);
+        };
+
+        googleTokenClient.error_callback = () => {
+          reject(new Error('חלון ההתחברות נסגר או נכשל.'));
+        };
+
+        googleTokenClient.requestAccessToken({ prompt: 'consent' });
+      });
+    }
+
+    async function ensureGoogleAuth() {
+      const clientId = prepareGoogleClientId();
+
+      if (!googleTokenClient) {
+        initGoogleTokenClient(clientId);
+      }
+
+      if (isTokenValid()) {
+        return googleAccessToken;
+      }
+
+      setStatus('מתבצעת התחברות ל-Google...', 'info');
+      await requestGoogleToken();
+      setStatus('התחברות ל-Google הצליחה.', 'success');
+      refreshDriveSetupStatus('ok', 'התחברות הצליחה');
+      return googleAccessToken;
+    }
+
+    function mapDriveError(error) {
+      const raw = String(error && error.message ? error.message : error || '');
+
+      if (raw.includes('Client ID')) {
+        return 'נדרש Google Client ID. אם רוצים חיבור בלחיצה אחת, יש להטמיע EMBEDDED_GOOGLE_CLIENT_ID בקוד.';
+      }
+      if (raw.includes('origin') || raw.includes('Origin')) {
+        return `ה-Origin לא מאושר. הוסף ב-Authorized JavaScript origins את ${window.location.origin}. לדוגמה: ${getAllowedOriginsText()}.`;
+      }
+      if (raw.includes('popup') || raw.includes('נסגר') || raw.includes('cancel')) {
+        return 'חלון ההתחברות נסגר. יש לפתוח שוב את בדיקת החיבור ולאשר הרשאה.';
+      }
+      if (raw.includes('401') || raw.includes('403')) {
+        return 'ההרשאה ל-Drive נכשלה. יש לבדוק OAuth Consent, משתמש בדיקה, ו-Drive API פעיל.';
+      }
+      if (raw.includes('Drive API error 404')) {
+        return 'קובץ Drive לא נמצא יותר. שמירה מחדש תיצור קובץ חדש.';
+      }
+      if (raw.includes('Drive API') || raw.includes('Google')) {
+        return `שגיאת Google Drive: ${raw}`;
+      }
+
+      return raw || 'שגיאה לא מזוהה בחיבור ל-Google Drive.';
+    }
+
+    async function testDriveConnection() {
+      setStatus('מבצע בדיקת חיבור ל-Google Drive...', 'info');
+      try {
+        await ensureGoogleAuth();
+        await authorizedFetch('https://www.googleapis.com/drive/v3/about?fields=user(displayName,emailAddress)', { method: 'GET' });
+        refreshDriveSetupStatus('ok', 'בדיקה עברה');
+        setStatus('בדיקת החיבור עברה בהצלחה. אפשר לשמור/לטעון מ-Drive.', 'success');
+      } catch (error) {
+        const message = mapDriveError(error);
+        refreshDriveSetupStatus('error', 'נכשל');
+        setStatus(message, 'error');
+        throw new Error(message);
+      }
+    }
+
+    async function connectDriveSimple() {
+      setStatus('מתחבר ל-Google Drive...', 'info');
+      try {
+        await ensureGoogleAuth();
+        refreshDriveSetupStatus('ok', 'מחובר');
+        setStatus('החיבור ל-Google Drive פעיל. אפשר לשמור ולטעון.', 'success');
+      } catch (error) {
+        const message = mapDriveError(error);
+        refreshDriveSetupStatus('error', 'נכשל');
+        setStatus(message, 'error');
+        throw new Error(message);
+      }
+    }
+
+    async function authorizedFetch(url, options = {}, allowRetry = true) {
+      const token = await ensureGoogleAuth();
+      const headers = new Headers(options.headers || {});
+      headers.set('Authorization', `Bearer ${token}`);
+
+      let response = await fetch(url, { ...options, headers });
+
+      if (response.status === 401 && allowRetry) {
+        resetGoogleAuthState();
+        const refreshedToken = await ensureGoogleAuth();
+        const retryHeaders = new Headers(options.headers || {});
+        retryHeaders.set('Authorization', `Bearer ${refreshedToken}`);
+        response = await fetch(url, { ...options, headers: retryHeaders });
+      }
+
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(`Drive API error ${response.status}: ${message.slice(0, 180)}`);
+      }
+
+      return response;
+    }
+
+    function buildMultipartBody(metadata, content) {
+      const boundary = `planner_boundary_${Date.now()}`;
+      const body = [
+        `--${boundary}`,
+        'Content-Type: application/json; charset=UTF-8',
+        '',
+        JSON.stringify(metadata),
+        `--${boundary}`,
+        'Content-Type: application/json; charset=UTF-8',
+        '',
+        content,
+        `--${boundary}--`
+      ].join('\r\n');
+
+      return { boundary, body };
+    }
+
+    async function createDriveFile(payloadString) {
+      const metadata = {
+        name: DRIVE_FILE_NAME,
+        mimeType: 'application/json'
+      };
+
+      const { boundary, body } = buildMultipartBody(metadata, payloadString);
+      const url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,modifiedTime';
+
+      const response = await authorizedFetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
+        body
+      });
+
+      const file = await response.json();
+      saveDriveFileId(file.id || '');
+      return file;
+    }
+
+    async function updateDriveFile(fileId, payloadString) {
+      const url = `https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(fileId)}?uploadType=media&fields=id,name,modifiedTime`;
+      const response = await authorizedFetch(url, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+        body: payloadString
+      }, false);
+      return response.json();
+    }
+
+    async function saveToDriveManual() {
+      setStatus('שומר ל-Google Drive...', 'info');
+      const payloadString = JSON.stringify(buildExportPayload(), null, 2);
+
+      if (driveFileId) {
+        try {
+          await updateDriveFile(driveFileId, payloadString);
+          setStatus('נשמר בהצלחה ל-Google Drive.', 'success');
+          return;
+        } catch (error) {
+          if (!String(error.message || '').includes('404')) {
+            throw error;
+          }
+          saveDriveFileId('');
+        }
+      }
+
+      await createDriveFile(payloadString);
+      setStatus('נוצר קובץ חדש ונשמר בהצלחה ב-Google Drive.', 'success');
+    }
+
+    async function listPlannerFilesFromDrive() {
+      const query = `name='${DRIVE_FILE_NAME}' and trashed=false and mimeType='application/json'`;
+      const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,modifiedTime)&orderBy=modifiedTime desc&pageSize=20`;
+      const response = await authorizedFetch(url, { method: 'GET' });
+      const payload = await response.json();
+      return Array.isArray(payload.files) ? payload.files : [];
+    }
+
+    function reorderFilesByKnownId(files) {
+      if (!driveFileId) return files;
+      const index = files.findIndex((file) => file.id === driveFileId);
+      if (index <= 0) return files;
+      const reordered = [...files];
+      const [known] = reordered.splice(index, 1);
+      reordered.unshift(known);
+      return reordered;
+    }
+
+    async function chooseDriveFile(files) {
+      if (files.length === 1) return files[0];
+
+      const numbered = files
+        .map((file, idx) => `${idx + 1}. ${file.name} (${new Date(file.modifiedTime).toLocaleString('he-IL')})`)
+        .join('\n');
+
+      const defaultChoice = '1';
+      const answer = prompt(`נמצאו ${files.length} קבצים. בחר/י מספר לטעינה:\n${numbered}`, defaultChoice);
+      if (answer === null) {
+        throw new Error('טעינה מגוגל בוטלה על ידי המשתמש.');
+      }
+
+      const index = Number(answer) - 1;
+      if (!Number.isInteger(index) || index < 0 || index >= files.length) {
+        throw new Error('בחירת קובץ לא תקינה.');
+      }
+
+      return files[index];
+    }
+
+    async function downloadDriveFile(fileId) {
+      const url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`;
+      const response = await authorizedFetch(url, { method: 'GET' });
+      return response.json();
+    }
+
+    async function loadFromDriveManual() {
+      setStatus('טוען מ-Google Drive...', 'info');
+      const listedFiles = await listPlannerFilesFromDrive();
+      const files = reorderFilesByKnownId(listedFiles);
+
+      if (!files.length) {
+        throw new Error('לא נמצא קובץ planner ב-Google Drive.');
+      }
+
+      const selected = await chooseDriveFile(files);
+      const payload = await downloadDriveFile(selected.id);
+      const validation = validateImportPayload(payload);
+
+      if (!validation.ok) {
+        throw new Error(validation.error);
+      }
+
+      applyImportedState(payload);
+      saveDriveFileId(selected.id);
+      setStatus(`הטעינה הושלמה מהקובץ: ${selected.name}`, 'success');
+    }
+
+    function saveClientIdFromUi() {
+      const value = googleClientIdInput.value.trim();
+      if (!value) {
+        setStatus('יש להזין Google Client ID תקין.', 'error');
+        refreshDriveSetupStatus('error', 'חסר Client ID');
+        return;
+      }
+
+      if (!value.endsWith('.apps.googleusercontent.com')) {
+        setStatus('נראה שה-Client ID לא בפורמט של Google OAuth Web Client.', 'error');
+        refreshDriveSetupStatus('error', 'פורמט לא תקין');
+        return;
+      }
+
+      googleClientId = value;
+      saveGoogleClientId(googleClientId);
+      resetGoogleAuthState();
+      refreshDriveSetupStatus();
+      setStatus('Google Client ID נשמר בהצלחה.', 'success');
+    }
+
+    function bindUi() {
+      addTaskBtn.addEventListener('click', addTask);
+
+      newTaskInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') addTask();
+      });
+
+      clearScheduleBtn.addEventListener('click', () => {
+        clearSchedule();
+        setStatus('שיבוץ השעות נוקה והוחזר למאגר.', 'success');
+      });
+
+      resetDayBtn.addEventListener('click', () => {
+        const answer = confirm('לשחזר את ברירת המחדל ליום הנוכחי?');
+        if (answer) resetDay();
+      });
+
+      dayPicker.addEventListener('change', () => {
+        renderCurrentDay();
+      });
+
+      printBtn.addEventListener('click', () => {
+        window.print();
+      });
+
+      exportFileBtn.addEventListener('click', () => {
+        try {
+          exportToLocalFile();
+        } catch (error) {
+          setStatus(error.message || 'יצוא נכשל.', 'error');
+        }
+      });
+
+      importFileBtn.addEventListener('click', () => {
+        importFileInput.click();
+      });
+
+      importFileInput.addEventListener('change', async () => {
+        const file = importFileInput.files && importFileInput.files[0];
+        if (!file) {
+          setStatus('לא נבחר קובץ לטעינה.', 'info');
+          return;
+        }
+
+        try {
+          setStatus('טוען קובץ...', 'info');
+          await importFromLocalFile(file);
+        } catch (error) {
+          setStatus(error.message || 'טעינה מקובץ נכשלה.', 'error');
+        } finally {
+          importFileInput.value = '';
+        }
+      });
+
+      saveDriveBtn.addEventListener('click', withBusy(saveDriveBtn, async () => {
+        try {
+          await saveToDriveManual();
+        } catch (error) {
+          setStatus(mapDriveError(error), 'error');
+          refreshDriveSetupStatus('error', 'נכשל');
+        }
+      }));
+
+      loadDriveBtn.addEventListener('click', withBusy(loadDriveBtn, async () => {
+        try {
+          await loadFromDriveManual();
+        } catch (error) {
+          setStatus(mapDriveError(error), 'error');
+          refreshDriveSetupStatus('error', 'נכשל');
+        }
+      }));
+
+      connectDriveBtn.addEventListener('click', withBusy(connectDriveBtn, async () => {
+        try {
+          await connectDriveSimple();
+        } catch (_) {
+          // Status is already set inside connectDriveSimple.
+        }
+      }));
+
+      copyOriginBtn.addEventListener('click', withBusy(copyOriginBtn, async () => {
+        try {
+          await copyCurrentOrigin();
+        } catch (error) {
+          setStatus(mapDriveError(error), 'error');
+        }
+      }));
+
+      testDriveConnectionBtn.addEventListener('click', withBusy(testDriveConnectionBtn, async () => {
+        try {
+          await testDriveConnection();
+        } catch (_) {
+          // Status is already set inside testDriveConnection.
+        }
+      }));
+
+      saveClientIdBtn.addEventListener('click', saveClientIdFromUi);
+
+      googleClientIdInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          saveClientIdFromUi();
+        }
+      });
+    }
+
+    function init() {
+      dayPicker.value = todayIso();
+      googleClientIdInput.value = googleClientId;
+      refreshDriveSetupStatus();
+      if (!isSupportedOrigin()) {
+        setStatus('יש לפתוח את הדף דרך HTTPS או localhost, לא דרך file://.', 'error');
+      }
+      saveAppState();
+      buildTimelineOnce();
+      setupDnD();
+      setupTaskActions();
+      bindUi();
+      renderCurrentDay();
+    }
+
+    init();
+  </script>
+</body>
+</html>
