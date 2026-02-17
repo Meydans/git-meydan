@@ -445,13 +445,31 @@
             return;
           }
           accessToken = resp.access_token;
-          authCard.classList.add("hidden");
-          authProfile.classList.remove("hidden");
-          appCard.classList.remove("hidden");
-          setAuthStatus("");
+          const expiryTime = Date.now() + (resp.expires_in * 1000);
+          localStorage.setItem('grocery_token', accessToken);
+          localStorage.setItem('grocery_token_expiry', expiryTime);
+
+          showApp();
           await loadMasterItems();
         }
       });
+
+      // Check for remembered session
+      const cachedToken = localStorage.getItem('grocery_token');
+      const cachedExpiry = localStorage.getItem('grocery_token_expiry');
+      const cachedItems = localStorage.getItem('grocery_master_items');
+      const cachedOrder = localStorage.getItem('grocery_category_order');
+
+      if (cachedToken && cachedExpiry && Date.now() < Number(cachedExpiry)) {
+        accessToken = cachedToken;
+        if (cachedItems) {
+          masterItems = JSON.parse(cachedItems);
+          if (cachedOrder) categoryOrder = JSON.parse(cachedOrder);
+          renderMasterList();
+        }
+        showApp();
+        loadMasterItems(); // Refresh in background
+      }
 
       signInBtn.addEventListener("click", () => tokenClient.requestAccessToken({ prompt: "consent" }));
       signOutBtnSmall.addEventListener("click", signOut);
@@ -472,11 +490,22 @@
       });
     };
 
+    function showApp() {
+      authCard.classList.add("hidden");
+      authProfile.classList.remove("hidden");
+      appCard.classList.remove("hidden");
+      setAuthStatus("");
+    }
+
     function signOut() {
       if (accessToken) google.accounts.oauth2.revoke(accessToken, () => { });
       accessToken = null;
       masterItems = [];
       sourceDirty = false;
+      localStorage.removeItem('grocery_token');
+      localStorage.removeItem('grocery_token_expiry');
+      localStorage.removeItem('grocery_master_items');
+      localStorage.removeItem('grocery_category_order');
       masterList.innerHTML = "";
       updateSyncButton();
       appCard.classList.add("hidden");
@@ -496,6 +525,10 @@
           ...(options.headers || {})
         }
       });
+      if (res.status === 401) {
+        signOut();
+        throw new Error("Session expired. Please sign in again.");
+      }
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error?.message || "Sheets API error.");
       return data;
@@ -536,6 +569,7 @@
         }
 
         masterItems = nextItems;
+        localStorage.setItem('grocery_master_items', JSON.stringify(masterItems));
         renderMasterList();
 
         setAppStatus(`Loaded ${masterItems.length} items. ${missingCats.length > 0 ? 'AI filled missing categories. Sync to save!' : ''}`);
@@ -759,6 +793,7 @@ The "order" array MUST contain all categories provided.
         if (parsed.order && Array.isArray(parsed.order)) {
           categoryOrder = parsed.order.map(c => c.trim().toUpperCase());
           renderMasterList();
+          localStorage.setItem('grocery_category_order', JSON.stringify(categoryOrder));
           setAppStatus("Shopping path optimized with AI!");
         } else {
           throw new Error("Invalid AI response.");
