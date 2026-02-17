@@ -1,298 +1,566 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Mandatory Grocery Manager</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-  </head>
-  <body class="bg-slate-950 text-slate-100 min-h-screen">
-    <main class="max-w-2xl mx-auto p-4 sm:p-6">
-      <header class="mb-6">
-        <h1 class="text-2xl sm:text-3xl font-bold">Mandatory Grocery Manager</h1>
-        <p class="text-slate-400 mt-1">Check what you already have, then generate and sync your shopping list.</p>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mandatory Grocery Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap"
+    rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Outfit', 'sans-serif'],
+          },
+          colors: {
+            slate: {
+              950: '#020617',
+              900: '#0f172a',
+              800: '#1e293b',
+            },
+            emerald: {
+              500: '#10b981',
+              600: '#059669',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: radial-gradient(circle at top right, #1e293b, #020617);
+      min-height: 100vh;
+    }
+
+    .font-display {
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .glass {
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .sidebar-item {
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .sidebar-item.active {
+      background: rgba(16, 185, 129, 0.1);
+      border-color: rgba(16, 185, 129, 0.4);
+      color: #10b981;
+    }
+
+    .sidebar-item:not(.active):hover {
+      background: rgba(255, 255, 255, 0.05);
+      transform: translateX(4px);
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+  </style>
+</head>
+
+<body class="bg-slate-950 text-slate-100 flex min-h-screen overflow-hidden">
+  <!-- Mobile Header -->
+  <div class="lg:hidden fixed top-0 left-0 right-0 h-16 glass z-30 flex items-center justify-between px-6">
+    <div class="flex items-center gap-3">
+      <div
+        class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z" />
+          <path d="m3 9 2.45-4.91A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.8 1.1L21 9" />
+          <path d="M12 3v6" />
+        </svg>
+      </div>
+      <span class="font-display font-bold">Family Apps</span>
+    </div>
+    <button id="mobileMenuToggle" class="p-2 rounded-lg bg-slate-800 border border-slate-700">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="3" x2="21" y1="12" y2="12" />
+        <line x1="3" x2="21" y1="6" y2="6" />
+        <line x1="3" x2="21" y1="18" y2="18" />
+      </svg>
+    </button>
+  </div>
+
+  <!-- Sidebar -->
+  <aside id="sidebar"
+    class="fixed inset-y-0 left-0 w-72 glass border-r border-slate-800 flex flex-col h-screen shrink-0 z-40 transition-transform duration-300 -translate-x-full lg:translate-x-0 lg:static">
+    <div class="p-6">
+      <div class="flex items-center justify-between mb-8">
+        <div class="flex items-center gap-3">
+          <div
+            class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z" />
+              <path d="m3 9 2.45-4.91A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.8 1.1L21 9" />
+              <path d="M12 3v6" />
+            </svg>
+          </div>
+          <h1
+            class="font-display text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+            Family Apps
+          </h1>
+        </div>
+        <button id="mobileMenuClose" class="lg:hidden p-2 text-slate-500 hover:text-white">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" x2="6" y1="6" y2="18" />
+            <line x1="6" x2="18" y1="6" y2="18" />
+          </svg>
+        </button>
+      </div>
+
+      <nav class="space-y-2">
+        <p class="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">My Apps</p>
+
+        <a href="./index.html"
+          class="sidebar-item active flex items-center gap-3 px-3 py-2.5 rounded-xl border border-transparent">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+            <path d="M3 6h18" />
+            <path d="M16 10a4 4 0 0 1-8 0" />
+          </svg>
+          <span class="font-medium">Grocery Manager</span>
+        </a>
+
+        <a href="./daily-family-planner.html"
+          class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl border border-transparent text-slate-400">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+            <line x1="16" x2="16" y1="2" y2="6" />
+            <line x1="8" x2="8" y1="2" y2="6" />
+            <line x1="3" x2="21" y1="10" y2="10" />
+            <path d="m9 16 2 2 4-4" />
+          </svg>
+          <span class="font-medium">Family Planner</span>
+        </a>
+
+        <a href="./vaction-planner-2026.html"
+          class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl border border-transparent text-slate-400">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 7V3s.5-1 2.5-1 2.5 1 2.5 1v4" />
+            <path d="M18 10a6 6 0 0 0-12 0v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10Z" />
+            <path d="m14.5 14.5-2.5-2.5" />
+            <path d="M10 16a2 2 0 1 0 4 0" />
+          </svg>
+          <span class="font-medium">Vacation Planner</span>
+        </a>
+
+        <a href="https://daily-kids-routine.lovable.app" target="_blank"
+          class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl border border-transparent text-slate-400">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path
+              d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.51 4.05 3 5.5l7 7Z" />
+          </svg>
+          <span class="font-medium">Kids Routine</span>
+        </a>
+      </nav>
+    </div>
+
+    <div class="mt-auto p-6 border-t border-slate-800">
+      <div id="authProfile" class="hidden flex items-center gap-3">
+        <div
+          class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300">U
+        </div>
+        <div class="overflow-hidden">
+          <p class="text-xs font-medium text-slate-300 truncate" id="profileName">User</p>
+          <button id="signOutBtnSmall"
+            class="text-[10px] text-slate-500 hover:text-rose-400 uppercase tracking-tighter">Sign Out</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="flex-1 overflow-y-auto p-4 sm:p-10 relative mt-16 lg:mt-0">
+    <!-- Background Bloom -->
+    <div class="absolute top-0 right-0 -z-10 w-[500px] h-[500px] bg-emerald-500/10 blur-[120px] rounded-full"></div>
+
+    <div class="max-w-4xl mx-auto">
+      <header class="mb-10">
+        <h2 class="font-display text-3xl sm:text-4xl font-bold text-white mb-2">Mandatory Grocery Manager</h2>
+        <p class="text-slate-400 max-w-xl">Check your inventory, generate your shopping list with AI, and keep
+          everything in sync with Google Sheets.</p>
       </header>
 
-      <section class="mb-6 bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5">
-        <h2 class="text-lg font-semibold mb-3">Apps Menu</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <a href="./index.html" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700">Mandatory Grocery Manager</a>
-          <a href="./daily-family-planner.html" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700">Daily Family Planner</a>
-          <a href="./vaction-planner-2026.html" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700">Vacation Planner 2026</a>
+      <!-- Auth View -->
+      <section id="authCard"
+        class="bg-slate-900/50 border border-slate-800 rounded-2xl p-8 text-center max-w-md mx-auto">
+        <div class="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 text-blue-400">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+          </svg>
         </div>
+        <h3 class="font-display text-xl font-semibold mb-2">Google Sheets Access</h3>
+        <p class="text-slate-400 mb-8">Sign in to load your master grocery list and sync your weekly shopping plans.</p>
+        <button id="signInBtn"
+          class="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 font-semibold text-white shadow-lg shadow-blue-500/20 transition-all active:scale-[0.98]">
+          Sign in with Google
+        </button>
+        <p id="authStatus" class="mt-4 text-sm text-slate-500"></p>
       </section>
 
-      <section id="authCard" class="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5">
-        <p class="mb-4 text-slate-300">Sign in to load master items from Google Sheets.</p>
-        <div class="flex gap-3">
-          <button id="signInBtn" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500">Sign in with Google</button>
-          <button id="signOutBtn" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 hidden">Sign out</button>
+      <!-- Main App Interface -->
+      <section id="appCard" class="hidden space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <!-- Item Entry -->
+        <div class="glass rounded-2xl p-6 sm:p-8">
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="font-display text-xl font-semibold">Inventory Check</h3>
+            <button id="reloadBtn"
+              class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                <path d="M21 3v5h-5" />
+                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                <path d="M3 21v-5h5" />
+              </svg>
+              Reload Master
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-8">
+            <div class="sm:col-span-2">
+              <input id="newItemInput" type="text" placeholder="What's missing? (e.g., Milk)"
+                class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all" />
+            </div>
+            <div>
+              <select id="newItemType"
+                class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all appearance-none cursor-pointer">
+                <option value="mandatory">Mandatory</option>
+                <option value="optional">Optional</option>
+              </select>
+            </div>
+            <button id="addItemBtn"
+              class="w-full py-3 px-6 rounded-xl bg-amber-600 hover:bg-amber-500 font-semibold text-white transition-all shadow-lg shadow-amber-600/10">
+              Add Item
+            </button>
+          </div>
+
+          <p class="text-sm font-medium text-slate-400 mb-4 inline-flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+              class="text-emerald-500">
+              <path d="M20 6 9 17l-5-5" />
+            </svg>
+            Check items you already have:
+          </p>
+          <div id="masterList" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-2"></div>
         </div>
-        <p id="authStatus" class="mt-3 text-sm text-slate-400"></p>
+
+        <!-- Actions & Results -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div class="glass rounded-2xl p-6 sm:p-8 flex flex-col">
+            <h3 class="font-display text-xl font-semibold mb-4">Actions</h3>
+            <p class="text-slate-400 text-sm mb-6">Generate an optimized, categorized list and sync it back to your
+              shared Google Sheet.</p>
+
+            <div class="space-y-3 mt-auto">
+              <button id="generateBtn"
+                class="w-full flex items-center justify-center gap-3 py-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-bold text-white shadow-lg shadow-emerald-500/20 transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path
+                    d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+                  <path d="M5 3v4" />
+                  <path d="M19 17v4" />
+                  <path d="M3 5h4" />
+                  <path d="M17 19h4" />
+                </svg>
+                Generate List (AI)
+              </button>
+              <button id="syncBtn"
+                class="w-full py-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-lg shadow-indigo-600/20"
+                disabled>
+                Sync to Sheets
+              </button>
+            </div>
+            <p id="appStatus" class="mt-4 text-xs text-slate-500 text-center"></p>
+          </div>
+
+          <div class="glass rounded-2xl p-6 sm:p-8">
+            <h3 class="font-display text-xl font-semibold mb-4 text-emerald-400">Categorized List</h3>
+            <div id="resultView"
+              class="font-mono text-sm text-slate-300 min-h-[200px] whitespace-pre-wrap leading-relaxed"></div>
+          </div>
+        </div>
       </section>
+    </div>
+  </main>
 
-      <section id="appCard" class="hidden mt-6 bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-lg font-semibold">Inventory Check</h2>
-          <button id="reloadBtn" class="px-3 py-1.5 text-sm rounded-lg bg-slate-700 hover:bg-slate-600">Reload Master</button>
-        </div>
+  <script>
+    const CLIENT_ID = "427247172628-tqle335su4809um35beovkdedm26lhf6.apps.googleusercontent.com";
+    const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
+    const SPREADSHEET_ID = "1EZ3XjCTLHOnt-d3hQpCJ67Mfg0DYwKCN3xEyAgCY_ws";
+    const GEMINI_MODEL = "gemini-2.0-flash";
 
-        <div class="mb-4 flex flex-col sm:flex-row gap-2">
-          <input
-            id="newItemInput"
-            type="text"
-            placeholder="Add grocery item (e.g., milk)"
-            class="flex-1 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-          <select
-            id="newItemType"
-            class="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          >
-            <option value="mandatory">Mandatory</option>
-            <option value="optional">Optional</option>
-          </select>
-          <button id="addItemBtn" class="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500">Add Item</button>
-        </div>
+    let tokenClient;
+    let accessToken = null;
+    let masterItems = [];
+    let lastCategorizedRows = [];
+    let sourceDirty = false;
 
-        <p class="text-sm text-slate-400 mb-3">Check items you <strong>already have</strong>.</p>
-        <div id="masterList" class="space-y-2 max-h-80 overflow-auto pr-1"></div>
+    const appCard = document.getElementById("appCard");
+    const authCard = document.getElementById("authCard");
+    const authProfile = document.getElementById("authProfile");
+    const signInBtn = document.getElementById("signInBtn");
+    const signOutBtnSmall = document.getElementById("signOutBtnSmall");
+    const reloadBtn = document.getElementById("reloadBtn");
+    const newItemInput = document.getElementById("newItemInput");
+    const newItemType = document.getElementById("newItemType");
+    const addItemBtn = document.getElementById("addItemBtn");
+    const generateBtn = document.getElementById("generateBtn");
+    const syncBtn = document.getElementById("syncBtn");
+    const masterList = document.getElementById("masterList");
+    const resultView = document.getElementById("resultView");
+    const authStatus = document.getElementById("authStatus");
+    const appStatus = document.getElementById("appStatus");
 
-        <div class="mt-5 flex flex-wrap gap-3">
-          <button id="generateBtn" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500">Generate List (AI)</button>
-          <button id="syncBtn" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-            Sync to Sheets
-          </button>
-        </div>
+    function setAuthStatus(msg) {
+      authStatus.textContent = msg;
+    }
 
-        <div class="mt-5">
-          <h3 class="font-semibold mb-2">Categorized Shopping List</h3>
-          <pre id="resultView" class="bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm whitespace-pre-wrap min-h-24"></pre>
-        </div>
+    function setAppStatus(msg) {
+      appStatus.textContent = msg;
+    }
 
-        <p id="appStatus" class="mt-3 text-sm text-slate-400"></p>
-      </section>
-    </main>
+    function normalizeType(rawType) {
+      return String(rawType || "").trim().toLowerCase() === "mandatory" ? "mandatory" : "optional";
+    }
 
-    <script>
-      const CLIENT_ID = "427247172628-tqle335su4809um35beovkdedm26lhf6.apps.googleusercontent.com";
-      const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
-      const SPREADSHEET_ID = "1EZ3XjCTLHOnt-d3hQpCJ67Mfg0DYwKCN3xEyAgCY_ws";
-      const GEMINI_MODEL = "gemini-2.0-flash";
+    function itemKey(name, type) {
+      return `${name.toLowerCase()}::${type}`;
+    }
 
-      let tokenClient;
-      let accessToken = null;
-      let masterItems = [];
-      let lastCategorizedRows = [];
-      let sourceDirty = false;
+    function updateSyncButton() {
+      syncBtn.disabled = !(sourceDirty || lastCategorizedRows.length > 0);
+    }
 
-      const appCard = document.getElementById("appCard");
-      const signInBtn = document.getElementById("signInBtn");
-      const signOutBtn = document.getElementById("signOutBtn");
-      const reloadBtn = document.getElementById("reloadBtn");
-      const newItemInput = document.getElementById("newItemInput");
-      const newItemType = document.getElementById("newItemType");
-      const addItemBtn = document.getElementById("addItemBtn");
-      const generateBtn = document.getElementById("generateBtn");
-      const syncBtn = document.getElementById("syncBtn");
-      const masterList = document.getElementById("masterList");
-      const resultView = document.getElementById("resultView");
-      const authStatus = document.getElementById("authStatus");
-      const appStatus = document.getElementById("appStatus");
+    const mobileMenuToggle = document.getElementById("mobileMenuToggle");
+    const mobileMenuClose = document.getElementById("mobileMenuClose");
+    const sidebar = document.getElementById("sidebar");
 
-      function setAuthStatus(msg) {
-        authStatus.textContent = msg;
-      }
+    mobileMenuToggle.addEventListener("click", () => {
+      sidebar.classList.remove("-translate-x-full");
+    });
 
-      function setAppStatus(msg) {
-        appStatus.textContent = msg;
-      }
+    mobileMenuClose.addEventListener("click", () => {
+      sidebar.classList.add("-translate-x-full");
+    });
 
-      function normalizeType(rawType) {
-        return String(rawType || "").trim().toLowerCase() === "mandatory" ? "mandatory" : "optional";
-      }
-
-      function itemKey(name, type) {
-        return `${name.toLowerCase()}::${type}`;
-      }
-
-      function updateSyncButton() {
-        syncBtn.disabled = !(sourceDirty || lastCategorizedRows.length > 0);
-      }
-
-      window.onload = () => {
-        tokenClient = google.accounts.oauth2.initTokenClient({
-          client_id: CLIENT_ID,
-          scope: SCOPES,
-          callback: async (resp) => {
-            if (resp.error) {
-              setAuthStatus(`Sign-in failed: ${resp.error}`);
-              return;
-            }
-            accessToken = resp.access_token;
-            signInBtn.classList.add("hidden");
-            signOutBtn.classList.remove("hidden");
-            appCard.classList.remove("hidden");
-            setAuthStatus("Signed in.");
-            await loadMasterItems();
+    window.onload = () => {
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: async (resp) => {
+          if (resp.error) {
+            setAuthStatus(`Sign-in failed: ${resp.error}`);
+            return;
           }
-        });
+          accessToken = resp.access_token;
+          authCard.classList.add("hidden");
+          authProfile.classList.remove("hidden");
+          appCard.classList.remove("hidden");
+          setAuthStatus("");
+          await loadMasterItems();
+        }
+      });
 
-        signInBtn.addEventListener("click", () => tokenClient.requestAccessToken({ prompt: "consent" }));
-        signOutBtn.addEventListener("click", signOut);
-        reloadBtn.addEventListener("click", loadMasterItems);
-        addItemBtn.addEventListener("click", addItem);
-        newItemInput.addEventListener("keydown", (e) => {
-          if (e.key === "Enter") addItem();
-        });
-        generateBtn.addEventListener("click", generateListWithGemini);
-        syncBtn.addEventListener("click", syncSheets);
+      signInBtn.addEventListener("click", () => tokenClient.requestAccessToken({ prompt: "consent" }));
+      signOutBtnSmall.addEventListener("click", signOut);
+      reloadBtn.addEventListener("click", loadMasterItems);
+      addItemBtn.addEventListener("click", addItem);
+      newItemInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") addItem();
+      });
+      generateBtn.addEventListener("click", generateListWithGemini);
+      syncBtn.addEventListener("click", syncSheets);
+    };
 
-      };
+    function signOut() {
+      if (accessToken) google.accounts.oauth2.revoke(accessToken, () => { });
+      accessToken = null;
+      masterItems = [];
+      lastCategorizedRows = [];
+      sourceDirty = false;
+      masterList.innerHTML = "";
+      resultView.textContent = "";
+      updateSyncButton();
+      appCard.classList.add("hidden");
+      authProfile.classList.add("hidden");
+      authCard.classList.remove("hidden");
+      setAuthStatus("Signed out.");
+      setAppStatus("");
+    }
 
-      function signOut() {
-        if (accessToken) google.accounts.oauth2.revoke(accessToken, () => {});
-        accessToken = null;
-        masterItems = [];
-        lastCategorizedRows = [];
-        sourceDirty = false;
-        masterList.innerHTML = "";
-        resultView.textContent = "";
-        updateSyncButton();
-        appCard.classList.add("hidden");
-        signInBtn.classList.remove("hidden");
-        signOutBtn.classList.add("hidden");
-        setAuthStatus("Signed out.");
-        setAppStatus("");
-      }
+    async function sheetsFetch(path, options = {}) {
+      if (!accessToken) throw new Error("Not authenticated.");
+      const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/${path}`, {
+        ...options,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          ...(options.headers || {})
+        }
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error?.message || "Sheets API error.");
+      return data;
+    }
 
-      async function sheetsFetch(path, options = {}) {
-        if (!accessToken) throw new Error("Not authenticated.");
-        const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/${path}`, {
-          ...options,
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-            ...(options.headers || {})
-          }
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error?.message || "Sheets API error.");
-        return data;
-      }
+    async function loadMasterItems() {
+      try {
+        setAppStatus("Loading master items...");
+        const existing = new Map(masterItems.map((item) => [itemKey(item.name, item.type), item.has]));
+        const data = await sheetsFetch("values/Master!A2:B");
+        const rows = data.values || [];
+        const nextItems = [];
 
-      async function loadMasterItems() {
-        try {
-          setAppStatus("Loading master items...");
-          const existing = new Map(masterItems.map((item) => [itemKey(item.name, item.type), item.has]));
-          const data = await sheetsFetch("values/Master!A2:B");
-          const rows = data.values || [];
-          const nextItems = [];
-
-          rows.forEach((row, idx) => {
-            const name = String(row[0] || "").trim();
-            if (!name) return;
-            const type = normalizeType(row[1]);
-            const key = itemKey(name, type);
-            nextItems.push({
-              id: `${name.toLowerCase().replace(/\s+/g, "-")}-${idx}`,
-              name,
-              type,
-              has: existing.get(key) || false
-            });
+        rows.forEach((row, idx) => {
+          const name = String(row[0] || "").trim();
+          if (!name) return;
+          const type = normalizeType(row[1]);
+          const key = itemKey(name, type);
+          nextItems.push({
+            id: `${name.toLowerCase().replace(/\s+/g, "-")}-${idx}`,
+            name,
+            type,
+            has: existing.get(key) || false
           });
+        });
 
-          masterItems = nextItems;
-          sourceDirty = false;
-          renderMasterList();
+        masterItems = nextItems;
+        sourceDirty = false;
+        renderMasterList();
 
-          const mandatoryCount = masterItems.filter((item) => item.type === "mandatory").length;
-          const optionalCount = masterItems.length - mandatoryCount;
-          setAppStatus(`Loaded ${masterItems.length} master item(s) (${mandatoryCount} mandatory, ${optionalCount} optional).`);
-          updateSyncButton();
-        } catch (err) {
-          setAppStatus(`Load failed: ${err.message}`);
-        }
+        const mandatoryCount = masterItems.filter((item) => item.type === "mandatory").length;
+        const optionalCount = masterItems.length - mandatoryCount;
+        setAppStatus(`Loaded ${masterItems.length} master item(s).`);
+        updateSyncButton();
+      } catch (err) {
+        setAppStatus(`Load failed: ${err.message}`);
+      }
+    }
+
+    function renderMasterList() {
+      if (!masterItems.length) {
+        masterList.innerHTML = '<p class="text-slate-400 text-sm italic col-span-2">No items found in your list.</p>';
+        return;
       }
 
-      function renderMasterList() {
-        if (!masterItems.length) {
-          masterList.innerHTML = '<p class="text-slate-400 text-sm">No items found in Master!A2:B</p>';
-          return;
-        }
-
-        masterList.innerHTML = masterItems
-          .map(
-            (item, idx) => `
-          <label class="flex items-center gap-3 p-2 rounded-lg bg-slate-800/60">
-            <input type="checkbox" data-idx="${idx}" ${item.has ? "checked" : ""} class="h-4 w-4 accent-emerald-500" />
-            <span class="flex-1">${escapeHtml(item.name)}</span>
-            ${
-              item.type === "mandatory"
-                ? '<span class="text-xs px-2 py-1 rounded-full bg-rose-900/50 border border-rose-700 text-rose-200">★ Mandatory</span>'
-                : '<span class="text-xs px-2 py-1 rounded-full bg-slate-700 border border-slate-600 text-slate-200">Optional</span>'
+      masterList.innerHTML = masterItems
+        .map(
+          (item, idx) => `
+          <label class="group flex items-center justify-between p-3 rounded-xl bg-slate-800/40 border border-slate-700/50 hover:bg-slate-800/80 hover:border-emerald-500/30 transition-all cursor-pointer">
+            <div class="flex items-center gap-3">
+              <div class="relative flex items-center justify-center">
+                <input type="checkbox" data-idx="${idx}" ${item.has ? "checked" : ""} class="peer appearance-none h-5 w-5 rounded-md border border-slate-600 bg-slate-900 checked:bg-emerald-500 checked:border-emerald-500 transition-all cursor-pointer" />
+                <svg xmlns="http://www.w3.org/2000/svg" class="absolute pointer-events-none w-3.5 h-3.5 text-white opacity-0 peer-checked:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              </div>
+              <span class="text-sm font-medium text-slate-200 peer-checked:text-slate-500 transition-colors">${escapeHtml(item.name)}</span>
+            </div>
+            ${item.type === "mandatory"
+              ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 uppercase tracking-tighter">★ Essential</span>'
+              : '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-700/50 text-slate-500 border border-slate-600/50 uppercase tracking-tighter">Optional</span>'
             }
           </label>
         `
-          )
-          .join("");
+        )
+        .join("");
 
-        masterList.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
-          checkbox.addEventListener("change", (e) => {
-            const idx = Number(e.target.dataset.idx);
-            if (Number.isInteger(idx) && masterItems[idx]) {
-              masterItems[idx].has = e.target.checked;
-            }
-          });
-        });
-      }
-
-      function addItem() {
-        const name = newItemInput.value.trim();
-        const type = normalizeType(newItemType.value);
-
-        if (!name) {
-          setAppStatus("Enter an item name first.");
-          return;
-        }
-
-        const exists = masterItems.some((item) => item.name.toLowerCase() === name.toLowerCase());
-        if (exists) {
-          setAppStatus("That item already exists in Master.");
-          return;
-        }
-
-        masterItems.push({
-          id: `${name.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}`,
-          name,
-          type,
-          has: false
-        });
-
-        sourceDirty = true;
-        newItemInput.value = "";
-        renderMasterList();
-        updateSyncButton();
-        setAppStatus(`Added "${name}" as ${type}. Click Sync to save to Master.`);
-      }
-
-      function getMissingItems() {
-        return masterItems.filter((item) => !item.has);
-      }
-
-      async function generateListWithGemini() {
-        try {
-          const missing = getMissingItems();
-          if (!missing.length) {
-            resultView.textContent = "Nothing missing. You already have everything.";
-            lastCategorizedRows = [];
-            updateSyncButton();
-            setAppStatus("No missing items.");
-            return;
+      masterList.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
+        checkbox.addEventListener("change", (e) => {
+          const idx = Number(e.target.dataset.idx);
+          if (Number.isInteger(idx) && masterItems[idx]) {
+            masterItems[idx].has = e.target.checked;
           }
+        });
+      });
+    }
 
-          setAppStatus("Generating categorized list with Gemini...");
-          const prompt = `
+    function addItem() {
+      const name = newItemInput.value.trim();
+      const type = normalizeType(newItemType.value);
+
+      if (!name) {
+        setAppStatus("Enter an item name first.");
+        return;
+      }
+
+      const exists = masterItems.some((item) => item.name.toLowerCase() === name.toLowerCase());
+      if (exists) {
+        setAppStatus("That item already exists.");
+        return;
+      }
+
+      masterItems.push({
+        id: `${name.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}`,
+        name,
+        type,
+        has: false
+      });
+
+      sourceDirty = true;
+      newItemInput.value = "";
+      renderMasterList();
+      updateSyncButton();
+      setAppStatus(`Added "${name}". Remember to sync!`);
+    }
+
+    function getMissingItems() {
+      return masterItems.filter((item) => !item.has);
+    }
+
+    async function generateListWithGemini() {
+      try {
+        const missing = getMissingItems();
+        if (!missing.length) {
+          resultView.textContent = "✓ Everything is in stock!";
+          lastCategorizedRows = [];
+          updateSyncButton();
+          setAppStatus("No missing items.");
+          return;
+        }
+
+        setAppStatus("AI is organizing your list...");
+        const prompt = `
 You are a grocery assistant.
 Task:
 1) Take the missing grocery items below, including their type (mandatory or optional).
@@ -307,92 +575,93 @@ Missing items:
 ${JSON.stringify(missing.map((item) => ({ item: item.name, type: item.type })))}
           `.trim();
 
-          const res = await fetch("/api/gemini", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              model: GEMINI_MODEL,
-              prompt
-            })
-          });
+        const res = await fetch("/api/gemini", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: GEMINI_MODEL,
+            prompt
+          })
+        });
 
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error?.message || "Gemini API error.");
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error?.message || "Gemini API error.");
 
-          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-          const parsed = parseGeminiJson(text);
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        const parsed = parseGeminiJson(text);
 
-          const rows = [];
-          let pretty = "";
-          for (const cat of parsed.categories || []) {
-            const name = String(cat.name || "Other").trim();
-            const items = Array.isArray(cat.items) ? cat.items.map((v) => String(v).trim()).filter(Boolean) : [];
-            if (!items.length) continue;
-            pretty += `${name}\n`;
-            for (const item of items) {
-              pretty += `  - ${item}\n`;
-              rows.push([name, item]);
-            }
-            pretty += "\n";
+        const rows = [];
+        let pretty = "";
+        for (const cat of parsed.categories || []) {
+          const name = String(cat.name || "Other").trim().toUpperCase();
+          const items = Array.isArray(cat.items) ? cat.items.map((v) => String(v).trim()).filter(Boolean) : [];
+          if (!items.length) continue;
+          pretty += `<span class="text-emerald-500 font-bold">${name}</span>\n`;
+          for (const item of items) {
+            pretty += `• ${item}\n`;
+            rows.push([name, item]);
           }
-
-          if (!rows.length) throw new Error("Gemini returned no usable items.");
-
-          lastCategorizedRows = rows;
-          resultView.textContent = pretty.trim();
-          updateSyncButton();
-          setAppStatus("Generated. Click Sync to update Master and Current sheets.");
-        } catch (err) {
-          setAppStatus(`Generate failed: ${err.message}`);
+          pretty += "\n";
         }
-      }
 
-      function parseGeminiJson(text) {
-        const cleaned = text.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/i, "").trim();
-        return JSON.parse(cleaned);
-      }
+        if (!rows.length) throw new Error("Gemini returned no usable items.");
 
-      async function syncSheets() {
+        lastCategorizedRows = rows;
+        resultView.innerHTML = pretty.trim();
+        updateSyncButton();
+        setAppStatus("List generated successfully.");
+      } catch (err) {
+        setAppStatus(`Generate failed: ${err.message}`);
+      }
+    }
+
+    function parseGeminiJson(text) {
+      const cleaned = text.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/i, "").trim();
+      return JSON.parse(cleaned);
+    }
+
+    async function syncSheets() {
+      try {
+        setAppStatus("Syncing with Google Sheets...");
+
+        await sheetsFetch("values/Master!A:B:clear", { method: "POST", body: JSON.stringify({}) });
+        const masterValues = [["Item", "Type"], ...masterItems.map((item) => [item.name, item.type])];
+        await sheetsFetch("values/Master!A1?valueInputOption=RAW", {
+          method: "PUT",
+          body: JSON.stringify({ values: masterValues })
+        });
+
         try {
-          setAppStatus("Syncing Master and Current sheets...");
-
-          await sheetsFetch("values/Master!A:B:clear", { method: "POST", body: JSON.stringify({}) });
-          const masterValues = [["Item", "Type"], ...masterItems.map((item) => [item.name, item.type])];
-          await sheetsFetch("values/Master!A1?valueInputOption=RAW", {
+          await sheetsFetch("values/Current!A:B:clear", { method: "POST", body: JSON.stringify({}) });
+          const currentValues = [["Category", "Item"], ...lastCategorizedRows];
+          await sheetsFetch("values/Current!A1?valueInputOption=RAW", {
             method: "PUT",
-            body: JSON.stringify({ values: masterValues })
+            body: JSON.stringify({ values: currentValues })
           });
-
-          try {
-            await sheetsFetch("values/Current!A:B:clear", { method: "POST", body: JSON.stringify({}) });
-            const currentValues = [["Category", "Item"], ...lastCategorizedRows];
-            await sheetsFetch("values/Current!A1?valueInputOption=RAW", {
-              method: "PUT",
-              body: JSON.stringify({ values: currentValues })
-            });
-          } catch (currentErr) {
-            sourceDirty = false;
-            updateSyncButton();
-            setAppStatus(`Master synced, but Current failed: ${currentErr.message}`);
-            return;
-          }
-
+        } catch (currentErr) {
           sourceDirty = false;
           updateSyncButton();
-          setAppStatus(`Synced Master (${masterItems.length} items) and Current (${lastCategorizedRows.length} rows).`);
-        } catch (err) {
-          setAppStatus(`Sync failed before Current update: ${err.message}`);
+          setAppStatus(`Master synced, but Current failed.`);
+          return;
         }
-      }
 
-      function escapeHtml(str) {
-        return str
-          .replaceAll("&", "&amp;")
-          .replaceAll("<", "&lt;")
-          .replaceAll(">", "&gt;")
-          .replaceAll('"', "&quot;")
-          .replaceAll("'", "&#039;");
+        sourceDirty = false;
+        updateSyncButton();
+        setAppStatus(`Sync complete: ${masterItems.length} items safe.`);
+      } catch (err) {
+        setAppStatus(`Sync failed.`);
       }
-    </script>
-  </body>
+    }
+
+    function escapeHtml(str) {
+      return str
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+  </script>
+</body>
+
 </html>
