@@ -463,11 +463,20 @@
           });
         });
 
+        // AI Categorization for missing categories
+        const missingCats = nextItems.filter(i => i.category === "OTHER" || i.category === "");
+        if (missingCats.length > 0) {
+          setAppStatus(`Categorizing ${missingCats.length} items with AI...`);
+          await categorizeItemsInBatch(missingCats);
+          sourceDirty = true;
+        } else {
+          sourceDirty = false;
+        }
+
         masterItems = nextItems;
-        sourceDirty = false;
         renderMasterList();
 
-        setAppStatus(`Loaded ${masterItems.length} items from Sheets.`);
+        setAppStatus(`Loaded ${masterItems.length} items. ${missingCats.length > 0 ? 'AI filled missing categories. Sync to save!' : ''}`);
         updateSyncButton();
       } catch (err) {
         setAppStatus(`Load failed: ${err.message}`);
@@ -702,6 +711,43 @@ The "order" array MUST contain all categories provided.
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
+    }
+
+    async function categorizeItemsInBatch(items) {
+      try {
+        const names = items.map(a => a.name).join(", ");
+        const prompt = `
+You are a grocery assistant. Categorize these items: ${names}.
+Pick the best category for each from: PRODUCE, DAIRY, MEAT, SEAFOOD, FROZEN, BAKERY, PANTRY, BEVERAGES, HOUSEHOLD, PERSONAL CARE, OTHER.
+Return ONLY valid JSON in this exact format:
+{
+  "results": [
+    { "item": "item name", "category": "CATEGORY" }
+  ]
+}
+        `.trim();
+
+        const res = await fetch("/api/gemini", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model: GEMINI_MODEL, prompt })
+        });
+
+        const data = await res.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        const parsed = parseGeminiJson(text);
+
+        if (parsed.results && Array.isArray(parsed.results)) {
+          parsed.results.forEach(result => {
+            const item = items.find(i => i.name.toLowerCase() === result.item.toLowerCase());
+            if (item) {
+              item.category = String(result.category || "OTHER").trim().toUpperCase().replace(/[*_]/g, "");
+            }
+          });
+        }
+      } catch (e) {
+        console.error("Batch categorization failed", e);
+      }
     }
   </script>
 </body>
