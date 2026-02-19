@@ -490,6 +490,14 @@
       generateBtn.addEventListener("click", generateListWithGemini);
       syncBtn.addEventListener("click", syncSheets);
 
+      // Auto-sync every 20 seconds if there are changes
+      setInterval(async () => {
+        if (sourceDirty && accessToken) {
+          console.log("Auto-syncing changes...");
+          await syncSheets();
+        }
+      }, 20000);
+
       // Modal Listeners
       closeModalBtn.addEventListener("click", () => editModal.classList.add("hidden"));
       saveEditBtn.addEventListener("click", saveEdit);
