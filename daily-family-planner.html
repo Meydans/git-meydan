@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -466,6 +467,7 @@
     }
   </style>
 </head>
+
 <body>
   <div class="wrap">
     <section class="header card">
@@ -512,7 +514,8 @@
           </div>
         </div>
         <div class="toolbar" style="margin-top: 8px;">
-          <input id="googleClientIdInput" class="grow" type="text" placeholder="Google OAuth Client ID (....apps.googleusercontent.com)" />
+          <input id="googleClientIdInput" class="grow" type="text"
+            placeholder="Google OAuth Client ID (....apps.googleusercontent.com)" />
           <button id="saveClientIdBtn" class="secondary" type="button">שמור Client ID</button>
           <button id="testDriveConnectionBtn" class="secondary" type="button">בדיקת חיבור</button>
         </div>
@@ -521,9 +524,12 @@
           <span id="setupAuthStatus" class="setup-badge warn">עדיין לא נבדק</span>
         </div>
         <div class="links-row">
-          <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank" rel="noopener noreferrer">Enable Drive API</a>
-          <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer">Credentials</a>
-          <a href="https://console.cloud.google.com/apis/credentials/consent" target="_blank" rel="noopener noreferrer">OAuth Consent</a>
+          <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank"
+            rel="noopener noreferrer">Enable Drive API</a>
+          <a href="https://console.cloud.google.com/apis/credentials" target="_blank"
+            rel="noopener noreferrer">Credentials</a>
+          <a href="https://console.cloud.google.com/apis/credentials/consent" target="_blank"
+            rel="noopener noreferrer">OAuth Consent</a>
         </div>
         <p class="drive-note">נדרש OAuth Client ID מסוג Web Application עם הרשאת origin מתאימה (localhost/HTTPS).</p>
       </details>
@@ -531,10 +537,22 @@
       <div id="statusMessage" class="status info" role="status">מוכן לעבודה.</div>
 
       <div class="stats">
-        <div class="stat"><div class="label">פעילויות במאגר</div><div id="statPool" class="value">0</div></div>
-        <div class="stat"><div class="label">פעילויות משובצות</div><div id="statPlanned" class="value">0</div></div>
-        <div class="stat"><div class="label">בוצע</div><div id="statDone" class="value">0</div></div>
-        <div class="stat"><div class="label">שעות פנויות</div><div id="statFree" class="value">0</div></div>
+        <div class="stat">
+          <div class="label">פעילויות במאגר</div>
+          <div id="statPool" class="value">0</div>
+        </div>
+        <div class="stat">
+          <div class="label">פעילויות משובצות</div>
+          <div id="statPlanned" class="value">0</div>
+        </div>
+        <div class="stat">
+          <div class="label">בוצע</div>
+          <div id="statDone" class="value">0</div>
+        </div>
+        <div class="stat">
+          <div class="label">שעות פנויות</div>
+          <div id="statFree" class="value">0</div>
+        </div>
       </div>
     </section>
 
@@ -575,7 +593,7 @@
     const DRIVE_FILE_NAME = 'family-planner-data.json';
     const EMBEDDED_GOOGLE_CLIENT_ID = '427247172628-tqle335su4809um35beovkdedm26lhf6.apps.googleusercontent.com';
     const ALLOWED_ORIGINS = [
-    'https://Meydans.github.io',      'http://localhost:5500'
+      'https://Meydans.github.io', 'http://localhost:5500'
     ];
 
     const START_HOUR = 8;
@@ -1243,7 +1261,7 @@
       googleTokenClient = window.google.accounts.oauth2.initTokenClient({
         client_id: clientId,
         scope: DRIVE_SCOPE,
-        callback: () => {}
+        callback: () => { }
       });
     }
 
@@ -1648,5 +1666,15 @@
 
     init();
   </script>
+  <footer
+    style="margin-top: 4rem; padding-bottom: 2rem; display: flex; justify-content: center; gap: 2rem; border-top: 1px solid var(--line); padding-top: 2rem; font-family: 'Assistant', sans-serif;">
+    <a href="./terms.html"
+      style="font-size: 0.8rem; color: var(--muted); text-decoration: none; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Terms
+      of Service</a>
+    <a href="./privacy.html"
+      style="font-size: 0.8rem; color: var(--muted); text-decoration: none; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Privacy
+      Policy</a>
+  </footer>
 </body>
+
 </html>

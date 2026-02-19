@@ -1288,9 +1288,9 @@
 
             vacationBlock.days.forEach(day => {
                 let dayScore = 0;
-            if (day.hasSchoolBreak) dayScore += 50;
-            else if (day.isCampDay) dayScore += 25;
-            if (day.userMarkedSchoolBreak) dayScore += 12;
+                if (day.hasSchoolBreak) dayScore += 50;
+                else if (day.isCampDay) dayScore += 25;
+                if (day.userMarkedSchoolBreak) dayScore += 12;
 
                 if (day.isRegularSchoolDay) dayScore -= 30;
 
@@ -1856,6 +1856,15 @@
         bindOptimizerControls();
         render();
     </script>
+    <footer
+        style="margin-top: 4rem; padding-bottom: 2rem; display: flex; justify-content: center; gap: 2rem; border-top: 1px solid var(--border); padding-top: 2rem; font-family: var(--font-hebrew);">
+        <a href="./terms.html"
+            style="font-size: 0.8rem; color: var(--muted-foreground); text-decoration: none; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Terms
+            of Service</a>
+        <a href="./privacy.html"
+            style="font-size: 0.8rem; color: var(--muted-foreground); text-decoration: none; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Privacy
+            Policy</a>
+    </footer>
 </body>
 
 </html>
