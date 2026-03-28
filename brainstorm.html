@@ -141,22 +141,50 @@
       'theme-pink', 'theme-blue', 'theme-amber'
     ];
 
+    const PHASES = [
+      { id: 'explore',   label: 'Explore',       minStep: 0, maxStep: 1, color: 'theme-blue'   },
+      { id: 'rootcause', label: 'Root Cause',     minStep: 2, maxStep: 3, color: 'theme-amber'  },
+      { id: 'deepen',    label: 'Going Deeper',   minStep: 4, maxStep: Infinity, color: 'theme-teal' },
+    ];
+
+    function getPhase(step) {
+      return PHASES.find(p => step >= p.minStep && step <= p.maxStep) || PHASES[PHASES.length - 1];
+    }
+
     const FALLBACK_QUESTIONS = [
+      // Phase 0 – Explore
       {
-        question: "What's the main feeling arising for you right now?",
-        options: ["Overwhelmed", "Excited", "Anxious", "Curious", "Stuck", "Peaceful"],
-        insight: "Taking time to identify your core feeling is the first step toward clarity."
+        question: "What's the situation or challenge you want to think through?",
+        options: ["A decision I'm stuck on", "A relationship tension", "Something feels off", "A goal I'm not reaching", "A big life change", "I'm not sure yet"],
+        insight: "Just naming what's on your mind is a meaningful first step."
       },
       {
-        question: "What might be the root cause of this feeling?",
-        options: ["Work stress", "A relationship", "Future uncertainty", "Health worries", "A specific event", "Not sure"],
-        insight: "Our emotions are often signals pointing us toward what needs our attention."
+        question: "How is this showing up in your day-to-day life right now?",
+        options: ["Draining my energy", "Causing avoidance", "Creating conflict", "Keeping me up at night", "Slowing me down", "Hard to describe"],
+        insight: "Understanding how it's affecting you helps separate the surface noise from what really matters."
+      },
+      // Phase 2 – Root Cause
+      {
+        question: "If you had to guess the real reason this is happening — not the obvious one — what would it be?",
+        options: ["Fear of something", "Unmet need", "Unclear values", "Old habit or pattern", "Someone else's influence", "External pressure"],
+        insight: "The first answer is usually the symptom. The real cause tends to sit one layer deeper."
       },
       {
-        question: "What do you think is the best way to handle this?",
-        options: ["Take a break", "Talk to someone", "Make a plan", "Let it go", "Explore more", "Wait and see"],
-        insight: "Trusting your intuition on the next steps can be very empowering."
-      }
+        question: "Has something like this come up before in your life? What does the pattern look like?",
+        options: ["Yes, repeatedly", "Similar but different", "New territory", "Feels familiar", "Tied to one person", "Tied to a life stage"],
+        insight: "Patterns often point to root causes that follow us across different situations."
+      },
+      // Phase 4 – Solutions
+      {
+        question: "What have you already tried, or considered trying?",
+        options: ["Talked to someone", "Ignored it", "Changed my routine", "Set a boundary", "Made a plan", "Nothing yet"],
+        insight: "Knowing what's been tried — and what hasn't — opens up new angles to explore."
+      },
+      {
+        question: "What would 'better' actually look like for you? What's the outcome you're hoping for?",
+        options: ["More clarity", "Less stress", "A decision made", "A repaired relationship", "More energy", "A fresh start"],
+        insight: "Defining what success feels like makes it possible to find the right path toward it."
+      },
     ];
 
     function LoadingDots() {
@@ -169,69 +197,168 @@
       );
     }
 
-    function App() {
-      const [path, setPath] = useState([]);
-      const [currentStep, setCurrentStep] = useState(0);
-      const [question, setQuestion] = useState("How are you feeling right now?");
-      const [options, setOptions] = useState([
-        "Overwhelmed", "Inspired", "Anxious", "Curious", "Stuck", "Content"
-      ]);
-      const [insight, setInsight] = useState("Welcome to your reflective journey. Take a deep breath.");
-      const [isLoading, setIsLoading] = useState(false);
-      const [selectedOption, setSelectedOption] = useState(null);
-      const [customAnswer, setCustomAnswer] = useState("");
-      
-      const themeClass = COLORS[currentStep % COLORS.length];
+    // Phase-aware prompt builder
+    function buildPrompt(userAnswer, history, nextStep) {
+      const historyText = history.map((item, i) => `Step ${i+1}: Q: "${item.q}" A: "${item.a}"`).join("\n");
 
-      const fetchNextQuestion = async (userAnswer, currentHistory) => {
-        setIsLoading(true);
-        setSelectedOption(userAnswer);
-        
-        const historyText = currentHistory.map((item, i) => `Step ${i+1}: Q: "${item.q}" A: "${item.a}"`).join("\n");
-        
-        const prompt = `You are an empathetic, reflective guide leading a user through an interactive brainstorming and self-reflection journey.
-The user is answering a series of branching questions.
-Here is the conversation history so far:
+      let phaseInstruction = "";
+      if (nextStep <= 1) {
+        phaseInstruction = `PHASE: Problem Exploration.
+Goal: Understand the problem space. Ask a question that clarifies scope, context, or impact. Do NOT ask about causes yet.`;
+      } else if (nextStep <= 3) {
+        phaseInstruction = `PHASE: Root Cause Analysis.
+Goal: Identify the underlying cause, NOT the symptom. Ask "why" type questions. Use 5-Whys style reasoning. Reference what the user already shared to dig one layer deeper.`;
+      } else {
+        phaseInstruction = `PHASE: Going Deeper.
+Goal: Keep the conversation moving forward. Alternate between deepening the understanding of root causes and exploring possible paths forward. Each question should open a new angle — don't repeat or restate what's already been covered. Follow the energy of the conversation; if something important came up, lean into it.`;
+      }
+
+      return `You are a thoughtful brainstorming guide helping someone think through a situation — it could be personal, professional, creative, or anything in between. You follow the person's lead on the topic.
+
+${phaseInstruction}
+
+Conversation so far:
 ${historyText}
 
 The user just answered: "${userAnswer}"
 
-Please generate the next logical reflective question to ask the user to dig deeper or explore a parallel thought. Also, generate 6 short, distinct possible answers (1-3 words max) that cover a wide range of emotions or choices. Finally, provide a 1-2 sentence warm, encouraging insight reflecting on what they've shared so far.
+Your job:
+1. Ask ONE focused follow-up question that advances the current phase goal. Reference prior answers to show continuity and make the person feel heard. Do not repeat themes from earlier questions.
+2. Provide 6 answer options (2-5 words each) that feel natural and cover a range of realistic responses — mix concrete and emotional where appropriate.
+3. Write a 1-2 sentence "insight" that reflects back what you've heard so far and explains why you're asking this next question.
 
-Return exactly and ONLY valid JSON matching this schema, with no markdown formatting or extra text:
+Return ONLY valid JSON, no markdown:
 {
-  "question": "The next question text",
-  "options": ["Option 1", "Option 2", "Option 3", "Option 4", "Option 5", "Option 6"],
-  "insight": "A supportive 1-2 sentence insight."
-}
-`;
+  "question": "...",
+  "options": ["...", "...", "...", "...", "...", "..."],
+  "insight": "..."
+}`;
+    }
 
+    // Summary generator prompt
+    function buildSummaryPrompt(history) {
+      const historyText = history.map((item, i) => `Q: "${item.q}" → A: "${item.a}"`).join("\n");
+      return `You are a problem-solving coach. Based on this brainstorming session, synthesize a clear summary.
+
+Session transcript:
+${historyText}
+
+Return ONLY valid JSON, no markdown:
+{
+  "problem": "1-2 sentence summary of the core problem",
+  "rootCauses": ["Root cause 1", "Root cause 2", "Root cause 3"],
+  "solutions": ["Concrete solution 1", "Concrete solution 2", "Concrete solution 3"],
+  "nextAction": "The single most important next step"
+}`;
+    }
+
+    function PhaseBar({ currentStep }) {
+      return (
+        <div className="flex items-center justify-center gap-2 mb-8 w-full animate-fade-in">
+          {PHASES.map((phase, idx) => {
+            const isActive = currentStep >= phase.minStep && currentStep <= phase.maxStep;
+            const isDone   = currentStep > phase.maxStep;
+            return (
+              <React.Fragment key={phase.id}>
+                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-500 ${
+                  isActive ? `${phase.color} dynamic-bg text-white shadow-md scale-105` :
+                  isDone   ? 'bg-slate-200 text-slate-500' :
+                             'bg-slate-100 text-slate-400'
+                }`}>
+                  {isDone && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/></svg>}
+                  {phase.label}
+                </div>
+                {idx < PHASES.length - 1 && (
+                  <svg className="w-3 h-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      );
+    }
+
+    function SummaryPanel({ summary, onReset }) {
+      return (
+        <div className="w-full max-w-2xl animate-fade-in flex flex-col gap-5">
+          <div className="bg-white/90 glass rounded-3xl p-8 shadow-xl border-t-4 theme-purple dynamic-card">
+            <h3 className="font-display text-xl font-bold text-slate-800 mb-3">Problem</h3>
+            <p className="text-slate-600 text-sm leading-relaxed">{summary.problem}</p>
+          </div>
+
+          <div className="bg-white/90 glass rounded-3xl p-8 shadow-xl border-t-4 theme-amber dynamic-card">
+            <h3 className="font-display text-xl font-bold text-slate-800 mb-3">Root Causes</h3>
+            <ul className="flex flex-col gap-2">
+              {summary.rootCauses.map((rc, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
+                  <span className="mt-1 w-2 h-2 rounded-full bg-amber-400 flex-shrink-0"></span>
+                  {rc}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="bg-white/90 glass rounded-3xl p-8 shadow-xl border-t-4 theme-teal dynamic-card">
+            <h3 className="font-display text-xl font-bold text-slate-800 mb-3">Suggested Solutions</h3>
+            <ul className="flex flex-col gap-2">
+              {summary.solutions.map((s, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
+                  <span className="mt-1 w-2 h-2 rounded-full bg-teal-400 flex-shrink-0"></span>
+                  {s}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="bg-slate-800 rounded-3xl p-8 shadow-xl text-center">
+            <p className="text-slate-400 text-xs uppercase font-semibold tracking-widest mb-2">Priority Next Action</p>
+            <p className="text-white font-display text-lg font-semibold">{summary.nextAction}</p>
+          </div>
+
+          <button onClick={onReset} className="mt-4 text-xs font-semibold uppercase tracking-widest text-slate-400 hover:text-slate-700 transition-colors flex items-center gap-2 justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            Start New Session
+          </button>
+        </div>
+      );
+    }
+
+    function App() {
+      const [path, setPath] = useState([]);
+      const [currentStep, setCurrentStep] = useState(0);
+      const [question, setQuestion] = useState("What's on your mind? What would you like to think through today?");
+      const [options, setOptions] = useState([
+        "A decision I'm stuck on", "Something in my personal life", "A work challenge", "A relationship", "A goal or dream", "Just feeling off"
+      ]);
+      const [insight, setInsight] = useState("This is your space to think — there's no wrong place to start.");
+      const [isLoading, setIsLoading] = useState(false);
+      const [selectedOption, setSelectedOption] = useState(null);
+      const [customAnswer, setCustomAnswer] = useState("");
+      const [summary, setSummary] = useState(null);
+
+      const phase = getPhase(currentStep);
+      const themeClass = phase.color;
+      const MIN_STEPS_FOR_SUMMARY = 3;
+
+      const fetchNextQuestion = async (userAnswer, newHistory, nextStep) => {
+        setIsLoading(true);
         try {
+          const prompt = buildPrompt(userAnswer, newHistory, nextStep);
           const res = await fetch("/api/gemini", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ prompt, model: "gemini-2.0-flash" })
           });
-          
           if (!res.ok) throw new Error("API failed");
-          
           const rawData = await res.json();
-          let parsed;
-          if (rawData.candidates?.[0]?.content?.parts?.[0]?.text) {
-             const text = rawData.candidates[0].content.parts[0].text.replace(/\\`\\`\\`(json)?/g, '').trim();
-             parsed = JSON.parse(text);
-          } else {
-             throw new Error("Invalid format");
-          }
-
+          const text = rawData.candidates?.[0]?.content?.parts?.[0]?.text?.replace(/```(json)?/g, '').trim();
+          const parsed = JSON.parse(text);
           setQuestion(parsed.question);
           setOptions(parsed.options || []);
           setInsight(parsed.insight);
-
         } catch (err) {
           console.error(err);
-          // Fallback
-          const fallback = FALLBACK_QUESTIONS[currentStep % FALLBACK_QUESTIONS.length];
+          const fallback = FALLBACK_QUESTIONS[Math.min(nextStep, FALLBACK_QUESTIONS.length - 1)];
           setQuestion(fallback.question);
           setOptions(fallback.options);
           setInsight(fallback.insight);
@@ -239,7 +366,7 @@ Return exactly and ONLY valid JSON matching this schema, with no markdown format
           setIsLoading(false);
           setSelectedOption(null);
           setCustomAnswer("");
-          setCurrentStep(s => s + 1);
+          setCurrentStep(nextStep);
         }
       };
 
@@ -247,122 +374,168 @@ Return exactly and ONLY valid JSON matching this schema, with no markdown format
         if (isLoading) return;
         const newHistory = [...path, { q: question, a: opt, color: themeClass }];
         setPath(newHistory);
-        fetchNextQuestion(opt, newHistory);
+        const nextStep = currentStep + 1;
+        fetchNextQuestion(opt, newHistory, nextStep);
       };
 
       const handleCustomSubmit = (e) => {
         e.preventDefault();
         const trimmed = customAnswer.trim();
-        if (trimmed && !isLoading) {
-          handleChoice(trimmed);
+        if (trimmed && !isLoading) handleChoice(trimmed);
+      };
+
+      const handleSummarize = async () => {
+        if (isLoading) return;
+        setIsLoading(true);
+        try {
+          const prompt = buildSummaryPrompt(path);
+          const res = await fetch("/api/gemini", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt, model: "gemini-2.0-flash" })
+          });
+          if (!res.ok) throw new Error("API failed");
+          const rawData = await res.json();
+          const text = rawData.candidates?.[0]?.content?.parts?.[0]?.text?.replace(/```(json)?/g, '').trim();
+          const parsed = JSON.parse(text);
+          setSummary(parsed);
+        } catch (err) {
+          console.error(err);
+          setSummary({
+            problem: "Based on what you've shared, you're navigating something that's been weighing on you and deserves more clarity.",
+            rootCauses: ["An unmet need or unspoken expectation", "A recurring pattern that keeps showing up", "Tension between what you want and your current situation"],
+            solutions: ["Name the one thing you most need right now and ask for it", "Take one small concrete step this week toward the change you want", "Have an honest conversation — with yourself or someone else — about what's really going on"],
+            nextAction: "Pick the insight that resonated most and do one thing about it in the next 24 hours."
+          });
+        } finally {
+          setIsLoading(false);
         }
       };
 
       const resetSession = () => {
         setPath([]);
         setCurrentStep(0);
-        setQuestion("How are you feeling right now?");
-        setOptions(["Overwhelmed", "Inspired", "Anxious", "Curious", "Stuck", "Content"]);
-        setInsight("Every journey begins with a single reflection. Let's see where this takes you.");
+        setQuestion("What's on your mind? What would you like to think through today?");
+        setOptions(["A decision I'm stuck on", "Something in my personal life", "A work challenge", "A relationship", "A goal or dream", "Just feeling off"]);
+        setInsight("This is your space to think — there's no wrong place to start.");
         setSelectedOption(null);
         setCustomAnswer("");
+        setSummary(null);
       };
 
       return (
         <div className={`w-full max-w-4xl mx-auto flex flex-col items-center h-full transition-colors duration-700 ${themeClass}`}>
-          
-          {/* Background Bloom matched to theme */}
+
+          {/* Background bloom */}
           <div className="absolute top-1/4 right-1/4 -z-10 w-[400px] h-[400px] blur-[150px] rounded-full dynamic-bg opacity-20 pointer-events-none transition-colors duration-1000"></div>
 
-          <header className="mb-8 w-full text-center">
-            <h2 className="font-display text-3xl sm:text-4xl font-bold text-slate-800 mb-2">Reflective Journey</h2>
-            <p className="text-slate-500">Follow your thoughts where they lead.</p>
+          <header className="mb-6 w-full text-center">
+            <h2 className="font-display text-3xl sm:text-4xl font-bold text-slate-800 mb-2">Brainstorm</h2>
+            <p className="text-slate-500">Explore what's on your mind → understand why → find a path forward.</p>
           </header>
 
-          {/* Breadcrumbs */}
-          {path.length > 0 && (
-            <div className="flex flex-wrap items-center justify-center gap-2 mb-10 w-full animate-fade-in">
-              {path.map((item, idx) => (
-                 <React.Fragment key={idx}>
-                   <div className={`px-3 py-1.5 rounded-full text-xs font-semibold ${item.color} dynamic-card border bg-opacity-20 flex items-center gap-2`}>
-                     <span className="opacity-50 text-[10px]">Q{idx+1}</span>
-                     {item.a}
-                   </div>
-                   {idx < path.length - 1 && (
-                     <svg className="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
-                   )}
-                 </React.Fragment>
-              ))}
-            </div>
-          )}
+          {/* Phase progress bar */}
+          <PhaseBar currentStep={currentStep} />
 
-          {/* Question Card */}
-          <div className="w-full max-w-2xl bg-white/80 glass rounded-3xl p-8 sm:p-12 mb-8 text-center shadow-xl animate-fade-in border-t-4 dynamic-card">
-            <h3 className="font-display text-2xl sm:text-3xl font-medium leading-relaxed mb-8 text-slate-800">
-              {question}
-            </h3>
-            
-            {isLoading ? (
-              <div className="h-48 flex items-center justify-center">
-                <LoadingDots />
-              </div>
-            ) : (
-              <div className="flex flex-col gap-6">
-                <div className="flex flex-wrap justify-center gap-3">
-                  {options.map((opt, i) => (
-                    <button
-                      key={i}
-                      onClick={() => handleChoice(opt)}
-                      disabled={isLoading}
-                      className={`px-6 py-3 rounded-full border border-slate-200 bg-white text-sm font-medium hover:-translate-y-1 transition-all duration-300 dynamic-hover text-slate-700 shadow-sm ${selectedOption === opt ? 'dynamic-bg text-white scale-105' : selectedOption ? 'animate-shrink-out' : ''}`}
-                    >
-                      {opt}
-                    </button>
+          {/* Summary view */}
+          {summary ? (
+            <SummaryPanel summary={summary} onReset={resetSession} />
+          ) : (
+            <>
+              {/* Breadcrumbs */}
+              {path.length > 0 && (
+                <div className="flex flex-wrap items-center justify-center gap-2 mb-8 w-full animate-fade-in">
+                  {path.map((item, idx) => (
+                    <React.Fragment key={idx}>
+                      <div className={`px-3 py-1.5 rounded-full text-xs font-semibold ${item.color} dynamic-card border flex items-center gap-2`}>
+                        <span className="opacity-50 text-[10px]">Q{idx+1}</span>
+                        {item.a}
+                      </div>
+                      {idx < path.length - 1 && (
+                        <svg className="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7"/></svg>
+                      )}
+                    </React.Fragment>
                   ))}
                 </div>
+              )}
 
-                <div className="relative mt-2 w-full max-w-sm mx-auto">
-                    <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                      <div className="w-full border-t border-slate-200"></div>
-                    </div>
-                    <div className="relative flex justify-center">
-                      <span className="px-3 bg-white text-xs text-slate-400 uppercase font-semibold rounded-full">or</span>
-                    </div>
-                </div>
+              {/* Question Card */}
+              <div className="w-full max-w-2xl bg-white/80 glass rounded-3xl p-8 sm:p-12 mb-8 text-center shadow-xl animate-fade-in border-t-4 dynamic-card">
+                <h3 className="font-display text-2xl sm:text-3xl font-medium leading-relaxed mb-8 text-slate-800">
+                  {question}
+                </h3>
 
-                <form onSubmit={handleCustomSubmit} className={`w-full max-w-sm mx-auto flex gap-2 ${selectedOption ? 'animate-shrink-out' : ''}`}>
-                  <input 
-                    type="text" 
-                    value={customAnswer}
-                    onChange={e => setCustomAnswer(e.target.value)}
-                    placeholder="Type your own answer..." 
-                    className="flex-1 bg-white border border-slate-200 shadow-inner rounded-full px-5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all dynamic-border dynamic-ring text-slate-800"
-                    style={{ '--tw-ring-color': 'var(--theme-color)' }}
-                  />
-                  <button type="submit" disabled={!customAnswer.trim() || isLoading} className="p-2.5 rounded-full bg-slate-800 border border-slate-800 hover:bg-slate-700 transition-all text-white disabled:opacity-50 shadow-md">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                  </button>
-                </form>
+                {isLoading ? (
+                  <div className="h-48 flex items-center justify-center">
+                    <LoadingDots />
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-6">
+                    <div className="flex flex-wrap justify-center gap-3">
+                      {options.map((opt, i) => (
+                        <button
+                          key={i}
+                          onClick={() => handleChoice(opt)}
+                          disabled={isLoading}
+                          className={`px-6 py-3 rounded-full border border-slate-200 bg-white text-sm font-medium hover:-translate-y-1 transition-all duration-300 dynamic-hover text-slate-700 shadow-sm ${selectedOption === opt ? 'dynamic-bg text-white scale-105' : selectedOption ? 'animate-shrink-out' : ''}`}
+                        >
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="relative mt-2 w-full max-w-sm mx-auto">
+                      <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                        <div className="w-full border-t border-slate-200"></div>
+                      </div>
+                      <div className="relative flex justify-center">
+                        <span className="px-3 bg-white text-xs text-slate-400 uppercase font-semibold rounded-full">or type your own</span>
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleCustomSubmit} className={`w-full max-w-sm mx-auto flex gap-2 ${selectedOption ? 'animate-shrink-out' : ''}`}>
+                      <input
+                        type="text"
+                        value={customAnswer}
+                        onChange={e => setCustomAnswer(e.target.value)}
+                        placeholder="Describe in your own words..."
+                        className="flex-1 bg-white border border-slate-200 shadow-inner rounded-full px-5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all dynamic-ring text-slate-800"
+                        style={{ '--tw-ring-color': 'var(--theme-color)' }}
+                      />
+                      <button type="submit" disabled={!customAnswer.trim() || isLoading} className="p-2.5 rounded-full bg-slate-800 hover:bg-slate-700 transition-all text-white disabled:opacity-50 shadow-md">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                      </button>
+                    </form>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          {/* Insight Panel */}
-          <div className="w-full max-w-2xl px-6 py-5 rounded-2xl bg-white/60 border border-slate-200 shadow-sm text-center animate-fade-in backdrop-blur-md">
-            <p className="text-slate-600 font-medium text-sm leading-relaxed whitespace-pre-line italic">
-              ✨ {insight}
-            </p>
-          </div>
+              {/* Insight Panel */}
+              <div className="w-full max-w-2xl px-6 py-5 rounded-2xl bg-white/60 border border-slate-200 shadow-sm text-center animate-fade-in backdrop-blur-md">
+                <p className="text-slate-600 font-medium text-sm leading-relaxed italic">
+                  💡 {insight}
+                </p>
+              </div>
 
-          {/* Start Over Action */}
-          {currentStep >= 4 && !isLoading && (
-            <button 
-              onClick={resetSession}
-              className="mt-12 text-xs font-semibold uppercase tracking-widest text-slate-400 hover:text-slate-700 transition-colors flex items-center gap-2 animate-fade-in"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-              Start Over Session
-            </button>
+              {/* Make sense of things button — appears after enough context */}
+              {path.length >= MIN_STEPS_FOR_SUMMARY && !isLoading && (
+                <button
+                  onClick={handleSummarize}
+                  className="mt-10 group flex items-center gap-3 px-7 py-4 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-sm shadow-lg transition-all duration-300 hover:-translate-y-1 animate-fade-in"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70 group-hover:opacity-100 transition-opacity"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                  Let AI make sense of things
+                </button>
+              )}
+
+              {/* Loading state for summarize */}
+              {path.length >= MIN_STEPS_FOR_SUMMARY && isLoading && !question && (
+                <div className="mt-10 animate-fade-in">
+                  <LoadingDots />
+                  <p className="text-slate-500 text-sm mt-2">Pulling it all together…</p>
+                </div>
+              )}
+            </>
           )}
         </div>
       );
