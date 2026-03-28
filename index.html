@@ -223,8 +223,8 @@
 
     <div class="max-w-4xl mx-auto">
       <header class="mb-10">
-        <h2 class="font-display text-3xl sm:text-4xl font-bold text-white mb-2">Mandatory Grocery Manager</h2>
-        <p class="text-slate-400 max-w-xl">Check your inventory, generate your shopping list with AI, and keep
+        <h2 id="pageTitle" class="font-display text-3xl sm:text-4xl font-bold text-white mb-2">Mandatory Grocery Manager</h2>
+        <p id="pageSubtitle" class="text-slate-400 max-w-xl">Check your inventory, generate your shopping list with AI, and keep
           everything in sync with Google Sheets.</p>
       </header>
 
@@ -247,7 +247,12 @@
       </section>
 
       <!-- Main App Interface -->
-      <section id="appCard" class="hidden space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <section id="appCard" class="hidden space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <!-- List Switcher -->
+        <div class="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none" id="listSwitcher">
+          <!-- Populated by JS -->
+        </div>
+
         <!-- Dashboard -->
         <div class="glass rounded-2xl p-6 sm:p-8">
           <div class="flex items-center justify-between mb-8">
@@ -292,8 +297,14 @@
             </div>
           </div>
 
-          <div class="flex items-center justify-between mb-6">
-            <h4 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Categorized List</h4>
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <h4 class="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-3">
+              Categorized List
+              <button id="filterToggleBtn" class="flex items-center gap-1.5 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md transition-colors font-medium normal-case text-xs border border-slate-700">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                <span id="filterToggleText">Need to Buy</span>
+              </button>
+            </h4>
             <div class="flex items-center gap-4 text-xs font-bold">
               <button id="generateBtn"
                 class="flex items-center gap-2 text-emerald-400 hover:text-emerald-300 transition-colors uppercase tracking-widest">
@@ -384,9 +395,52 @@
 
     let tokenClient;
     let accessToken = null;
-    let masterItems = [];
-    let sourceDirty = false;
-    let categoryOrder = ["PRODUCE", "DAIRY", "MEAT", "SEAFOOD", "FROZEN", "BAKERY", "PANTRY", "BEVERAGES", "HOUSEHOLD", "PERSONAL CARE", "OTHER"];
+
+    const LISTS = {
+      grocery: {
+        id: 'grocery',
+        title: 'Mandatory Grocery Manager',
+        subtitle: 'Check your inventory, generate your shopping list with AI, and keep everything in sync with Google Sheets.',
+        sheetName: 'Master',
+        icon: '🛒',
+        label: 'Grocery',
+        cacheKey: 'grocery_master_items',
+        categories: ["PRODUCE", "DAIRY", "MEAT", "SEAFOOD", "FROZEN", "BAKERY", "PANTRY", "BEVERAGES", "HOUSEHOLD", "PERSONAL CARE", "OTHER"],
+        defaultCategoryOrder: ["PRODUCE", "DAIRY", "MEAT", "SEAFOOD", "FROZEN", "BAKERY", "PANTRY", "BEVERAGES", "HOUSEHOLD", "PERSONAL CARE", "OTHER"],
+        categoryOrderCacheKey: 'grocery_category_order'
+      },
+      superpharm: {
+        id: 'superpharm',
+        title: 'Super-Pharm List',
+        subtitle: 'Manage your pharmacy and personal care shopping list, synced to the SuperPharm sheet.',
+        sheetName: 'SuperPharm',
+        icon: '💊',
+        label: 'Super-Pharm',
+        cacheKey: 'grocery_superpharm_items',
+        categories: ["SKIN CARE", "HAIR CARE", "VITAMINS", "MAKEUP", "ORAL CARE", "BABY CARE", "FIRST AID", "FRAGRANCES", "OTHER"],
+        defaultCategoryOrder: ["VITAMINS", "FIRST AID", "SKIN CARE", "HAIR CARE", "ORAL CARE", "MAKEUP", "BABY CARE", "FRAGRANCES", "OTHER"],
+        categoryOrderCacheKey: 'grocery_superpharm_order'
+      },
+      maxstock: {
+        id: 'maxstock',
+        title: 'MaxStock List',
+        subtitle: 'Manage your bulk and home goods shopping list, synced to the MaxStock sheet.',
+        sheetName: 'MaxStock',
+        icon: '📦',
+        label: 'MaxStock',
+        cacheKey: 'grocery_maxstock_items',
+        categories: ["PAPER GOODS", "CLEANING", "SNACKS", "BEVERAGES", "HOUSEHOLD", "FOOD", "PERSONAL CARE", "OTHER"],
+        defaultCategoryOrder: ["PAPER GOODS", "CLEANING", "HOUSEHOLD", "PERSONAL CARE", "BEVERAGES", "SNACKS", "FOOD", "OTHER"],
+        categoryOrderCacheKey: 'grocery_maxstock_order'
+      }
+    };
+
+    let currentListId = 'grocery';
+    let listsData = {
+      grocery: { items: [], categoryOrder: [...LISTS.grocery.defaultCategoryOrder], sourceDirty: false, filterUnchecked: true },
+      superpharm: { items: [], categoryOrder: [...LISTS.superpharm.defaultCategoryOrder], sourceDirty: false, filterUnchecked: true },
+      maxstock: { items: [], categoryOrder: [...LISTS.maxstock.defaultCategoryOrder], sourceDirty: false, filterUnchecked: true }
+    };
 
     const appCard = document.getElementById("appCard");
     const authCard = document.getElementById("authCard");
@@ -402,6 +456,17 @@
     const masterList = document.getElementById("masterList");
     const authStatus = document.getElementById("authStatus");
     const appStatus = document.getElementById("appStatus");
+    
+    // New UI Elements
+    const pageTitle = document.getElementById("pageTitle");
+    const pageSubtitle = document.getElementById("pageSubtitle");
+    const listSwitcher = document.getElementById("listSwitcher");
+    const filterToggleBtn = document.getElementById("filterToggleBtn");
+    const filterToggleText = document.getElementById("filterToggleText");
+
+    // Helper to get current list setup
+    function getCurrentList() { return LISTS[currentListId]; }
+    function getCurrentData() { return listsData[currentListId]; }
 
     // Edit Modal Elements
     const editModal = document.getElementById("editModal");
@@ -429,7 +494,67 @@
     }
 
     function updateSyncButton() {
-      syncBtn.disabled = !sourceDirty;
+      syncBtn.disabled = !getCurrentData().sourceDirty;
+    }
+
+    function renderListSwitcher() {
+      listSwitcher.innerHTML = "";
+      Object.keys(LISTS).forEach(key => {
+        const list = LISTS[key];
+        const data = listsData[key];
+        const unchCount = data.items.filter(i => !i.has).length;
+        const isActive = key === currentListId;
+        
+        const btn = document.createElement("button");
+        btn.className = `flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all shrink-0 border ${isActive ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400' : 'bg-slate-800/50 border-slate-700/50 text-slate-400 hover:bg-slate-800 hover:text-slate-300'}`;
+        btn.innerHTML = `${list.icon} <span class="hidden sm:inline">${list.label}</span><span class="sm:hidden">${list.label.split(' ')[0]}</span> ${unchCount > 0 ? `<span class="ml-1 px-1.5 py-0.5 rounded-md bg-slate-900 text-[10px]">${unchCount}</span>` : ''}`;
+        
+        btn.onclick = () => switchList(key);
+        listSwitcher.appendChild(btn);
+      });
+    }
+
+    function switchList(listId) {
+      currentListId = listId;
+      const list = getCurrentList();
+      const data = getCurrentData();
+      
+      // Update UI Header
+      pageTitle.textContent = list.title;
+      pageSubtitle.textContent = list.subtitle;
+      
+      // Update filter UI
+      updateFilterUI();
+      
+      renderListSwitcher();
+      renderMasterList();
+      updateSyncButton();
+      
+      if(data.items.length === 0 && accessToken) {
+        loadMasterItems();
+      }
+    }
+    
+    function toggleFilter() {
+      const data = getCurrentData();
+      data.filterUnchecked = !data.filterUnchecked;
+      localStorage.setItem(`filterUnchecked_${currentListId}`, JSON.stringify(data.filterUnchecked));
+      updateFilterUI();
+      renderMasterList();
+    }
+    
+    function updateFilterUI() {
+      const data = getCurrentData();
+      filterToggleText.textContent = data.filterUnchecked ? "Need to Buy" : "All Items";
+      if (data.filterUnchecked) {
+        filterToggleBtn.classList.replace("bg-slate-800", "bg-emerald-500/20");
+        filterToggleBtn.classList.replace("text-slate-300", "text-emerald-400");
+        filterToggleBtn.classList.replace("border-slate-700", "border-emerald-500/30");
+      } else {
+        filterToggleBtn.classList.replace("bg-emerald-500/20", "bg-slate-800");
+        filterToggleBtn.classList.replace("text-emerald-400", "text-slate-300");
+        filterToggleBtn.classList.replace("border-emerald-500/30", "border-slate-700");
+      }
     }
 
     const mobileMenuToggle = document.getElementById("mobileMenuToggle");
@@ -463,21 +588,32 @@
         }
       });
 
-      // Check for remembered session
-      const cachedToken = localStorage.getItem('grocery_token');
-      const cachedExpiry = localStorage.getItem('grocery_token_expiry');
-      const cachedItems = localStorage.getItem('grocery_master_items');
-      const cachedOrder = localStorage.getItem('grocery_category_order');
+      filterToggleBtn.addEventListener("click", toggleFilter);
 
-      if (cachedToken && cachedExpiry && Date.now() < Number(cachedExpiry)) {
-        accessToken = cachedToken;
-        if (cachedItems) {
-          masterItems = JSON.parse(cachedItems);
-          if (cachedOrder) categoryOrder = JSON.parse(cachedOrder);
-          renderMasterList();
+      Object.keys(LISTS).forEach(key => {
+        const cachedToken = localStorage.getItem('grocery_token');
+        const cachedExpiry = localStorage.getItem('grocery_token_expiry');
+        const cachedFilter = localStorage.getItem(`filterUnchecked_${key}`);
+        
+        if (cachedFilter !== null) {
+          listsData[key].filterUnchecked = JSON.parse(cachedFilter);
         }
+
+        if (cachedToken && cachedExpiry && Date.now() < Number(cachedExpiry)) {
+          accessToken = cachedToken;
+          const cachedItems = localStorage.getItem(LISTS[key].cacheKey);
+          const cachedOrder = localStorage.getItem(LISTS[key].categoryOrderCacheKey);
+
+          if (cachedItems) {
+            listsData[key].items = JSON.parse(cachedItems);
+            if (cachedOrder) listsData[key].categoryOrder = JSON.parse(cachedOrder);
+          }
+        }
+      });
+      
+      if (accessToken) {
         showApp();
-        loadMasterItems(); // Refresh in background
+        switchList('grocery');
       }
 
       signInBtn.addEventListener("click", () => tokenClient.requestAccessToken({ prompt: "consent" }));
@@ -492,7 +628,8 @@
 
       // Auto-sync every 20 seconds if there are changes
       setInterval(async () => {
-        if (sourceDirty && accessToken) {
+        const data = getCurrentData();
+        if (data && data.sourceDirty && accessToken) {
           console.log("Auto-syncing changes...");
           await syncSheets();
         }
@@ -517,12 +654,14 @@
     function signOut() {
       if (accessToken) google.accounts.oauth2.revoke(accessToken, () => { });
       accessToken = null;
-      masterItems = [];
-      sourceDirty = false;
+      Object.keys(listsData).forEach(key => {
+        listsData[key].items = [];
+        listsData[key].sourceDirty = false;
+        localStorage.removeItem(LISTS[key].cacheKey);
+        localStorage.removeItem(LISTS[key].categoryOrderCacheKey);
+      });
       localStorage.removeItem('grocery_token');
       localStorage.removeItem('grocery_token_expiry');
-      localStorage.removeItem('grocery_master_items');
-      localStorage.removeItem('grocery_category_order');
       masterList.innerHTML = "";
       updateSyncButton();
       appCard.classList.add("hidden");
@@ -553,10 +692,12 @@
 
     async function loadMasterItems() {
       try {
-        setAppStatus("Loading master items...");
+        const list = getCurrentList();
+        const data = getCurrentData();
+        setAppStatus(`Loading ${list.label} items...`);
         // Fetch 4 columns: Item, Type, status, category
-        const data = await sheetsFetch("values/Master!A2:D");
-        const rows = data.values || [];
+        const sheetData = await sheetsFetch(`values/${list.sheetName}!A2:D`);
+        const rows = sheetData.values || [];
         const nextItems = [];
 
         rows.forEach((row, idx) => {
@@ -580,16 +721,17 @@
         if (missingCats.length > 0) {
           setAppStatus(`Categorizing ${missingCats.length} items with AI...`);
           await categorizeItemsInBatch(missingCats);
-          sourceDirty = true;
+          data.sourceDirty = true;
         } else {
-          sourceDirty = false;
+          data.sourceDirty = false;
         }
 
-        masterItems = nextItems;
-        localStorage.setItem('grocery_master_items', JSON.stringify(masterItems));
+        data.items = nextItems;
+        localStorage.setItem(list.cacheKey, JSON.stringify(data.items));
+        renderListSwitcher();
         renderMasterList();
 
-        setAppStatus(`Loaded ${masterItems.length} items. ${missingCats.length > 0 ? 'AI filled missing categories. Sync to save!' : ''}`);
+        setAppStatus(`Loaded ${data.items.length} items. ${missingCats.length > 0 ? 'AI filled missing categories. Sync to save!' : ''}`);
         updateSyncButton();
       } catch (err) {
         setAppStatus(`Load failed: ${err.message}`);
@@ -597,22 +739,29 @@
     }
 
     function renderMasterList() {
-      if (!masterItems.length) {
-        masterList.innerHTML = '<p class="text-slate-400 text-sm italic py-8 text-center bg-slate-800/20 rounded-2xl border border-dashed border-slate-700">Your grocery list is empty. Add something above!</p>';
+      const data = getCurrentData();
+      let displayItems = data.items;
+      
+      if (data.filterUnchecked) {
+        displayItems = displayItems.filter(item => !item.has);
+      }
+      
+      if (!displayItems.length) {
+        masterList.innerHTML = '<p class="text-slate-400 text-sm italic py-8 text-center bg-slate-800/20 rounded-2xl border border-dashed border-slate-700">No items match your criteria.</p>';
         return;
       }
 
       // Group by category
       const groups = {};
-      masterItems.forEach(item => {
+      displayItems.forEach(item => {
         if (!groups[item.category]) groups[item.category] = [];
         groups[item.category].push(item);
       });
 
       // Sort categories based on categoryOrder
       const sortedCategories = Object.keys(groups).sort((a, b) => {
-        const idxA = categoryOrder.indexOf(a);
-        const idxB = categoryOrder.indexOf(b);
+        const idxA = data.categoryOrder.indexOf(a);
+        const idxB = data.categoryOrder.indexOf(b);
         if (idxA === -1 && idxB === -1) return a.localeCompare(b);
         if (idxA === -1) return 1;
         if (idxB === -1) return -1;
@@ -667,10 +816,11 @@
       masterList.querySelectorAll('.item-checkbox').forEach(cb => {
         cb.addEventListener('change', (e) => {
           const id = e.target.closest('[data-item-id]').dataset.itemId;
-          const item = masterItems.find(i => i.id === id);
+          const data = getCurrentData();
+          const item = data.items.find(i => i.id === id);
           if (item) {
             item.has = e.target.checked;
-            sourceDirty = true;
+            data.sourceDirty = true;
             updateSyncButton();
             // Re-render local list to reflect changes (strikethrough/position)
             renderMasterList();
@@ -681,7 +831,8 @@
       masterList.querySelectorAll('.edit-item-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
           const id = e.target.closest('[data-item-id]').dataset.itemId;
-          const item = masterItems.find(i => i.id === id);
+          const data = getCurrentData();
+          const item = data.items.find(i => i.id === id);
           if (item) {
             currentEditId = id;
             editItemName.value = item.name;
@@ -693,11 +844,12 @@
     }
 
     function saveEdit() {
-      const item = masterItems.find(i => i.id === currentEditId);
+      const data = getCurrentData();
+      const item = data.items.find(i => i.id === currentEditId);
       if (item) {
         item.name = editItemName.value.trim();
         item.type = editItemType.value;
-        sourceDirty = true;
+        data.sourceDirty = true;
         updateSyncButton();
         renderMasterList();
         editModal.classList.add("hidden");
@@ -706,11 +858,12 @@
     }
 
     function deleteItem() {
-      const index = masterItems.findIndex(i => i.id === currentEditId);
+      const data = getCurrentData();
+      const index = data.items.findIndex(i => i.id === currentEditId);
       if (index !== -1) {
-        const name = masterItems[index].name;
-        masterItems.splice(index, 1);
-        sourceDirty = true;
+        const name = data.items[index].name;
+        data.items.splice(index, 1);
+        data.sourceDirty = true;
         updateSyncButton();
         renderMasterList();
         editModal.classList.add("hidden");
@@ -722,23 +875,25 @@
     async function addItem() {
       const name = newItemInput.value.trim();
       const type = normalizeType(newItemType.value);
+      const data = getCurrentData();
 
       if (!name) {
         setAppStatus("Enter an item name first.");
         return;
       }
 
-      const exists = masterItems.some((item) => item.name.toLowerCase() === name.toLowerCase());
+      const exists = data.items.some((item) => item.name.toLowerCase() === name.toLowerCase());
       if (exists) {
         setAppStatus("That item already exists.");
         return;
       }
 
       try {
+        const list = getCurrentList();
         setAppStatus(`Categorizing "${name}" with AI...`);
         const catPrompt = `
 You are a grocery assistant. Categorize this item: "${name}".
-Pick the best category from: PRODUCE, DAIRY, MEAT, SEAFOOD, FROZEN, BAKERY, PANTRY, BEVERAGES, HOUSEHOLD, PERSONAL CARE, OTHER.
+Pick the best category from: ${list.categories.join(", ")}.
 Return ONLY the category name in plain text, nothing else.
         `.trim();
 
@@ -751,11 +906,11 @@ Return ONLY the category name in plain text, nothing else.
           })
         });
 
-        const data = await res.json();
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "OTHER";
+        const resData = await res.json();
+        const text = resData?.candidates?.[0]?.content?.parts?.[0]?.text || "OTHER";
         const category = text.trim().toUpperCase().replace(/[*_]/g, "");
 
-        masterItems.push({
+        data.items.push({
           id: `item-new-${Date.now()}`,
           name,
           type,
@@ -763,7 +918,7 @@ Return ONLY the category name in plain text, nothing else.
           category: category || "OTHER"
         });
 
-        sourceDirty = true;
+        data.sourceDirty = true;
         newItemInput.value = "";
         renderMasterList();
         updateSyncButton();
@@ -775,13 +930,15 @@ Return ONLY the category name in plain text, nothing else.
 
     async function generateListWithGemini() {
       try {
-        if (!masterItems.length) {
+        const data = getCurrentData();
+        const list = getCurrentList();
+        if (!data.items.length) {
           setAppStatus("No items to sort.");
           return;
         }
 
         setAppStatus("AI is optimizing your shopping path...");
-        const categories = Array.from(new Set(masterItems.map(i => i.category)));
+        const categories = Array.from(new Set(data.items.map(i => i.category)));
 
         const prompt = `
 You are a grocery shopping expert.
@@ -789,7 +946,7 @@ Given these supermarket categories: ${categories.join(", ")}.
 Determine the most efficient shopping path (e.g. entering through produce, ending with frozen/household).
 Return ONLY valid JSON in this exact format:
 {
-  "order": ["PRODUCE", "DAIRY", "MEAT", ...]
+  "order": ["${categories[0] || 'PRODUCE'}", "${categories[1] || 'DAIRY'}", ...]
 }
 The "order" array MUST contain all categories provided.
           `.trim();
@@ -803,14 +960,14 @@ The "order" array MUST contain all categories provided.
           })
         });
 
-        const data = await res.json();
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        const resData = await res.json();
+        const text = resData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
         const parsed = parseGeminiJson(text);
 
         if (parsed.order && Array.isArray(parsed.order)) {
-          categoryOrder = parsed.order.map(c => c.trim().toUpperCase());
+          data.categoryOrder = parsed.order.map(c => c.trim().toUpperCase());
           renderMasterList();
-          localStorage.setItem('grocery_category_order', JSON.stringify(categoryOrder));
+          localStorage.setItem(list.categoryOrderCacheKey, JSON.stringify(data.categoryOrder));
           setAppStatus("Shopping path optimized with AI!");
         } else {
           throw new Error("Invalid AI response.");
@@ -831,14 +988,16 @@ The "order" array MUST contain all categories provided.
 
     async function syncSheets() {
       try {
+        const data = getCurrentData();
+        const list = getCurrentList();
         setAppStatus("Syncing with Google Sheets...");
 
-        // Clear and rewrite Master!A:D
-        await sheetsFetch("values/Master!A:D:clear", { method: "POST", body: JSON.stringify({}) });
+        // Clear and rewrite List sheet
+        await sheetsFetch(`values/${list.sheetName}!A:D:clear`, { method: "POST", body: JSON.stringify({}) });
 
         const masterValues = [
           ["Item", "Type", "status", "category"],
-          ...masterItems.map((item) => [
+          ...data.items.map((item) => [
             item.name,
             item.type,
             item.has ? "checked" : "unchecked",
@@ -846,14 +1005,14 @@ The "order" array MUST contain all categories provided.
           ])
         ];
 
-        await sheetsFetch("values/Master!A1?valueInputOption=RAW", {
+        await sheetsFetch(`values/${list.sheetName}!A1?valueInputOption=RAW`, {
           method: "PUT",
           body: JSON.stringify({ values: masterValues })
         });
 
-        sourceDirty = false;
+        data.sourceDirty = false;
         updateSyncButton();
-        setAppStatus(`Sync complete! ${masterItems.length} items updated.`);
+        setAppStatus(`Sync complete! ${data.items.length} items updated.`);
       } catch (err) {
         setAppStatus(`Sync failed: ${err.message}`);
       }
@@ -870,10 +1029,11 @@ The "order" array MUST contain all categories provided.
 
     async function categorizeItemsInBatch(items) {
       try {
+        const list = getCurrentList();
         const names = items.map(a => a.name).join(", ");
         const prompt = `
 You are a grocery assistant. Categorize these items: ${names}.
-Pick the best category for each from: PRODUCE, DAIRY, MEAT, SEAFOOD, FROZEN, BAKERY, PANTRY, BEVERAGES, HOUSEHOLD, PERSONAL CARE, OTHER.
+Pick the best category for each from: ${list.categories.join(", ")}.
 Return ONLY valid JSON in this exact format:
 {
   "results": [
