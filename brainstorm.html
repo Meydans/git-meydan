@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="google-site-verification" content="GNF_Lj0PkGm7_dStHJGbn1ujJBfoM19grwJ4t_7gxy4" />
+  <title>Brainstorming Mind Map</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- React & ReactDOM -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  
+  <!-- Babel -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Outfit', 'sans-serif'],
+          },
+          colors: {
+            slate: { 950: '#020617', 900: '#0f172a', 800: '#1e293b' },
+            appPurple: '#a855f7',
+            appTeal: '#14b8a6',
+            appCoral: '#f43f5e',
+            appPink: '#ec4899',
+            appBlue: '#3b82f6',
+            appAmber: '#f59e0b',
+          },
+          keyframes: {
+            bounceDot: {
+              '0%, 100%': { transform: 'translateY(0)', opacity: '0.4' },
+              '50%': { transform: 'translateY(-6px)', opacity: '1' },
+            },
+            fadeIn: {
+              '0%': { opacity: '0', transform: 'translateY(10px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            },
+            shrinkOut: {
+              '0%': { opacity: '1', transform: 'scale(1)' },
+              '100%': { opacity: '0', transform: 'scale(0.8)' },
+            }
+          },
+          animation: {
+            'bounce-dot': 'bounceDot 1s infinite',
+            'fade-in': 'fadeIn 0.5s ease-out forwards',
+            'shrink-out': 'shrinkOut 0.4s ease-in forwards',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f8fafc;
+      min-height: 100vh;
+      color: #334155;
+      transition: background-color 0.5s ease;
+    }
+    .font-display { font-family: 'Outfit', sans-serif; }
+    .glass {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 10px 40px -10px rgba(0,0,0,0.05);
+    }
+    
+    .loading-dot {
+      width: 10px; height: 10px; border-radius: 50%; display: inline-block;
+    }
+    .loading-dot:nth-child(1) { animation-delay: 0s; }
+    .loading-dot:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dot:nth-child(3) { animation-delay: 0.4s; }
+    
+    .theme-purple { --theme-color: #a855f7; --theme-bg: rgba(168,85,247,0.06); --theme-border: rgba(168,85,247,0.2); }
+    .theme-teal { --theme-color: #0d9488; --theme-bg: rgba(20,184,166,0.06); --theme-border: rgba(20,184,166,0.2); }
+    .theme-coral { --theme-color: #e11d48; --theme-bg: rgba(244,63,94,0.06); --theme-border: rgba(244,63,94,0.2); }
+    .theme-pink { --theme-color: #db2777; --theme-bg: rgba(236,72,153,0.06); --theme-border: rgba(236,72,153,0.2); }
+    .theme-blue { --theme-color: #2563eb; --theme-bg: rgba(59,130,246,0.06); --theme-border: rgba(59,130,246,0.2); }
+    .theme-amber { --theme-color: #d97706; --theme-bg: rgba(245,158,11,0.06); --theme-border: rgba(245,158,11,0.2); }
+    
+    .dynamic-card { background: var(--theme-bg); border-color: var(--theme-border); }
+    .dynamic-text { color: var(--theme-color); }
+    .dynamic-bg { background-color: var(--theme-color); }
+    .dynamic-hover:hover { background-color: var(--theme-color); color: #fff; border-color: var(--theme-color); }
+    .dynamic-ring:focus { outline: none; box-shadow: 0 0 0 3px var(--theme-border); }
+    
+    input::placeholder { color: #94a3b8; }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen relative overflow-x-hidden">
+  
+  <!-- Mobile Header Minimal -->
+  <div class="lg:hidden w-full h-16 bg-white border-b border-slate-100 flex items-center justify-center relative z-30">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" className="text-slate-600"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 2.5 2.5 0 0 1-.3-4.11 2.5 2.5 0 0 1 1.76-4.59A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 2.5 2.5 0 0 0 .3-4.11 2.5 2.5 0 0 0-1.76-4.59A2.5 2.5 0 0 0 14.5 2Z"/></svg>
+      </div>
+      <span class="font-display font-bold text-slate-800">Brainstorm Map</span>
+    </div>
+    <a href="./index.html" class="absolute left-6 text-sm font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+      Back
+    </a>
+  </div>
+
+  <!-- Header Desktop Minimal -->
+  <header class="hidden lg:flex w-full h-20 items-center justify-between px-10 relative z-30">
+    <a href="./index.html" class="text-sm font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1 py-2 px-4 rounded-full hover:bg-slate-100 transition-colors">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+      All Apps
+    </a>
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" className="text-slate-600"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 2.5 2.5 0 0 1-.3-4.11 2.5 2.5 0 0 1 1.76-4.59A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 2.5 2.5 0 0 0 .3-4.11 2.5 2.5 0 0 0-1.76-4.59A2.5 2.5 0 0 0 14.5 2Z"/></svg>
+      </div>
+      <span class="font-display font-bold text-slate-800">Brainstorm Map</span>
+    </div>
+  </header>
+
+  <!-- Main Content (React Root) -->
+  <main class="flex-1 overflow-y-auto p-4 sm:p-10 relative mt-16 lg:mt-0 flex flex-col" id="root">
+    <!-- React will render here -->
+  </main>
+
+  <!-- React Application -->
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const COLORS = [
+      'theme-purple', 'theme-teal', 'theme-coral', 
+      'theme-pink', 'theme-blue', 'theme-amber'
+    ];
+
+    const FALLBACK_QUESTIONS = [
+      {
+        question: "What's the main feeling arising for you right now?",
+        options: ["Overwhelmed", "Excited", "Anxious", "Curious", "Stuck", "Peaceful"],
+        insight: "Taking time to identify your core feeling is the first step toward clarity."
+      },
+      {
+        question: "What might be the root cause of this feeling?",
+        options: ["Work stress", "A relationship", "Future uncertainty", "Health worries", "A specific event", "Not sure"],
+        insight: "Our emotions are often signals pointing us toward what needs our attention."
+      },
+      {
+        question: "What do you think is the best way to handle this?",
+        options: ["Take a break", "Talk to someone", "Make a plan", "Let it go", "Explore more", "Wait and see"],
+        insight: "Trusting your intuition on the next steps can be very empowering."
+      }
+    ];
+
+    function LoadingDots() {
+      return (
+        <div className="flex gap-1.5 justify-center items-center py-4">
+          <div className="loading-dot bg-white/60 animate-bounce-dot"></div>
+          <div className="loading-dot bg-white/60 animate-bounce-dot"></div>
+          <div className="loading-dot bg-white/60 animate-bounce-dot"></div>
+        </div>
+      );
+    }
+
+    function App() {
+      const [path, setPath] = useState([]);
+      const [currentStep, setCurrentStep] = useState(0);
+      const [question, setQuestion] = useState("How are you feeling right now?");
+      const [options, setOptions] = useState([
+        "Overwhelmed", "Inspired", "Anxious", "Curious", "Stuck", "Content"
+      ]);
+      const [insight, setInsight] = useState("Welcome to your reflective journey. Take a deep breath.");
+      const [isLoading, setIsLoading] = useState(false);
+      const [selectedOption, setSelectedOption] = useState(null);
+      const [customAnswer, setCustomAnswer] = useState("");
+      
+      const themeClass = COLORS[currentStep % COLORS.length];
+
+      const fetchNextQuestion = async (userAnswer, currentHistory) => {
+        setIsLoading(true);
+        setSelectedOption(userAnswer);
+        
+        const historyText = currentHistory.map((item, i) => `Step ${i+1}: Q: "${item.q}" A: "${item.a}"`).join("\n");
+        
+        const prompt = `You are an empathetic, reflective guide leading a user through an interactive brainstorming and self-reflection journey.
+The user is answering a series of branching questions.
+Here is the conversation history so far:
+${historyText}
+
+The user just answered: "${userAnswer}"
+
+Please generate the next logical reflective question to ask the user to dig deeper or explore a parallel thought. Also, generate 6 short, distinct possible answers (1-3 words max) that cover a wide range of emotions or choices. Finally, provide a 1-2 sentence warm, encouraging insight reflecting on what they've shared so far.
+
+Return exactly and ONLY valid JSON matching this schema, with no markdown formatting or extra text:
+{
+  "question": "The next question text",
+  "options": ["Option 1", "Option 2", "Option 3", "Option 4", "Option 5", "Option 6"],
+  "insight": "A supportive 1-2 sentence insight."
+}
+`;
+
+        try {
+          const res = await fetch("/api/gemini", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt, model: "gemini-2.0-flash" })
+          });
+          
+          if (!res.ok) throw new Error("API failed");
+          
+          const rawData = await res.json();
+          let parsed;
+          if (rawData.candidates?.[0]?.content?.parts?.[0]?.text) {
+             const text = rawData.candidates[0].content.parts[0].text.replace(/\\`\\`\\`(json)?/g, '').trim();
+             parsed = JSON.parse(text);
+          } else {
+             throw new Error("Invalid format");
+          }
+
+          setQuestion(parsed.question);
+          setOptions(parsed.options || []);
+          setInsight(parsed.insight);
+
+        } catch (err) {
+          console.error(err);
+          // Fallback
+          const fallback = FALLBACK_QUESTIONS[currentStep % FALLBACK_QUESTIONS.length];
+          setQuestion(fallback.question);
+          setOptions(fallback.options);
+          setInsight(fallback.insight);
+        } finally {
+          setIsLoading(false);
+          setSelectedOption(null);
+          setCustomAnswer("");
+          setCurrentStep(s => s + 1);
+        }
+      };
+
+      const handleChoice = (opt) => {
+        if (isLoading) return;
+        const newHistory = [...path, { q: question, a: opt, color: themeClass }];
+        setPath(newHistory);
+        fetchNextQuestion(opt, newHistory);
+      };
+
+      const handleCustomSubmit = (e) => {
+        e.preventDefault();
+        const trimmed = customAnswer.trim();
+        if (trimmed && !isLoading) {
+          handleChoice(trimmed);
+        }
+      };
+
+      const resetSession = () => {
+        setPath([]);
+        setCurrentStep(0);
+        setQuestion("How are you feeling right now?");
+        setOptions(["Overwhelmed", "Inspired", "Anxious", "Curious", "Stuck", "Content"]);
+        setInsight("Every journey begins with a single reflection. Let's see where this takes you.");
+        setSelectedOption(null);
+        setCustomAnswer("");
+      };
+
+      return (
+        <div className={`w-full max-w-4xl mx-auto flex flex-col items-center h-full transition-colors duration-700 ${themeClass}`}>
+          
+          {/* Background Bloom matched to theme */}
+          <div className="absolute top-1/4 right-1/4 -z-10 w-[400px] h-[400px] blur-[150px] rounded-full dynamic-bg opacity-20 pointer-events-none transition-colors duration-1000"></div>
+
+          <header className="mb-8 w-full text-center">
+            <h2 className="font-display text-3xl sm:text-4xl font-bold text-slate-800 mb-2">Reflective Journey</h2>
+            <p className="text-slate-500">Follow your thoughts where they lead.</p>
+          </header>
+
+          {/* Breadcrumbs */}
+          {path.length > 0 && (
+            <div className="flex flex-wrap items-center justify-center gap-2 mb-10 w-full animate-fade-in">
+              {path.map((item, idx) => (
+                 <React.Fragment key={idx}>
+                   <div className={`px-3 py-1.5 rounded-full text-xs font-semibold ${item.color} dynamic-card border bg-opacity-20 flex items-center gap-2`}>
+                     <span className="opacity-50 text-[10px]">Q{idx+1}</span>
+                     {item.a}
+                   </div>
+                   {idx < path.length - 1 && (
+                     <svg className="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
+                   )}
+                 </React.Fragment>
+              ))}
+            </div>
+          )}
+
+          {/* Question Card */}
+          <div className="w-full max-w-2xl bg-white/80 glass rounded-3xl p-8 sm:p-12 mb-8 text-center shadow-xl animate-fade-in border-t-4 dynamic-card">
+            <h3 className="font-display text-2xl sm:text-3xl font-medium leading-relaxed mb-8 text-slate-800">
+              {question}
+            </h3>
+            
+            {isLoading ? (
+              <div className="h-48 flex items-center justify-center">
+                <LoadingDots />
+              </div>
+            ) : (
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-wrap justify-center gap-3">
+                  {options.map((opt, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleChoice(opt)}
+                      disabled={isLoading}
+                      className={`px-6 py-3 rounded-full border border-slate-200 bg-white text-sm font-medium hover:-translate-y-1 transition-all duration-300 dynamic-hover text-slate-700 shadow-sm ${selectedOption === opt ? 'dynamic-bg text-white scale-105' : selectedOption ? 'animate-shrink-out' : ''}`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative mt-2 w-full max-w-sm mx-auto">
+                    <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                      <div className="w-full border-t border-slate-200"></div>
+                    </div>
+                    <div className="relative flex justify-center">
+                      <span className="px-3 bg-white text-xs text-slate-400 uppercase font-semibold rounded-full">or</span>
+                    </div>
+                </div>
+
+                <form onSubmit={handleCustomSubmit} className={`w-full max-w-sm mx-auto flex gap-2 ${selectedOption ? 'animate-shrink-out' : ''}`}>
+                  <input 
+                    type="text" 
+                    value={customAnswer}
+                    onChange={e => setCustomAnswer(e.target.value)}
+                    placeholder="Type your own answer..." 
+                    className="flex-1 bg-white border border-slate-200 shadow-inner rounded-full px-5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all dynamic-border dynamic-ring text-slate-800"
+                    style={{ '--tw-ring-color': 'var(--theme-color)' }}
+                  />
+                  <button type="submit" disabled={!customAnswer.trim() || isLoading} className="p-2.5 rounded-full bg-slate-800 border border-slate-800 hover:bg-slate-700 transition-all text-white disabled:opacity-50 shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                  </button>
+                </form>
+              </div>
+            )}
+          </div>
+
+          {/* Insight Panel */}
+          <div className="w-full max-w-2xl px-6 py-5 rounded-2xl bg-white/60 border border-slate-200 shadow-sm text-center animate-fade-in backdrop-blur-md">
+            <p className="text-slate-600 font-medium text-sm leading-relaxed whitespace-pre-line italic">
+              ✨ {insight}
+            </p>
+          </div>
+
+          {/* Start Over Action */}
+          {currentStep >= 4 && !isLoading && (
+            <button 
+              onClick={resetSession}
+              className="mt-12 text-xs font-semibold uppercase tracking-widest text-slate-400 hover:text-slate-700 transition-colors flex items-center gap-2 animate-fade-in"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+              Start Over Session
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
