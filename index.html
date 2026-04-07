@@ -447,9 +447,9 @@
 
     let currentListId = 'grocery';
     let listsData = {
-      grocery: { items: [], categoryOrder: [...LISTS.grocery.defaultCategoryOrder], sourceDirty: false, filterUnchecked: true },
-      superpharm: { items: [], categoryOrder: [...LISTS.superpharm.defaultCategoryOrder], sourceDirty: false, filterUnchecked: true },
-      maxstock: { items: [], categoryOrder: [...LISTS.maxstock.defaultCategoryOrder], sourceDirty: false, filterUnchecked: true }
+      grocery: { items: [], categoryOrder: [...LISTS.grocery.defaultCategoryOrder], sourceDirty: false, filterUnchecked: true, dirtyItemIds: new Set() },
+      superpharm: { items: [], categoryOrder: [...LISTS.superpharm.defaultCategoryOrder], sourceDirty: false, filterUnchecked: true, dirtyItemIds: new Set() },
+      maxstock: { items: [], categoryOrder: [...LISTS.maxstock.defaultCategoryOrder], sourceDirty: false, filterUnchecked: true, dirtyItemIds: new Set() }
     };
 
     const appCard = document.getElementById("appCard");
@@ -636,12 +636,18 @@
       generateBtn.addEventListener("click", generateListWithGemini);
       syncBtn.addEventListener("click", syncSheets);
 
-      // Auto-sync every 20 seconds if there are changes
+      // Auto-sync every 20 seconds if there are changes — check ALL lists, not just current
       setInterval(async () => {
-        const data = getCurrentData();
-        if (data && data.sourceDirty && accessToken) {
-          console.log("Auto-syncing changes...");
-          await syncSheets();
+        if (!accessToken) return;
+        for (const listId of Object.keys(LISTS)) {
+          const data = listsData[listId];
+          if (data && data.sourceDirty) {
+            console.log(`Auto-syncing changes for ${listId}...`);
+            const prevListId = currentListId;
+            currentListId = listId;
+            await syncSheets();
+            currentListId = prevListId;
+          }
         }
       }, 20000);
 
@@ -737,6 +743,7 @@
         }
 
         data.items = nextItems;
+        data.dirtyItemIds = new Set(); // fresh load = no local changes pending
         localStorage.setItem(list.cacheKey, JSON.stringify(data.items));
         renderListSwitcher();
         renderMasterList();
@@ -831,6 +838,9 @@
           if (item) {
             item.has = e.target.checked;
             data.sourceDirty = true;
+            data.dirtyItemIds.add(item.id);
+            // Persist checked state immediately so page close/refresh doesn't lose it
+            localStorage.setItem(getCurrentList().cacheKey, JSON.stringify(data.items));
             updateSyncButton();
             // Re-render local list to reflect changes (strikethrough/position)
             renderMasterList();
@@ -1002,25 +1012,52 @@ The "order" array MUST contain all categories provided.
         const list = getCurrentList();
         setAppStatus("Syncing with Google Sheets...");
 
-        // Clear and rewrite List sheet
-        await sheetsFetch(`values/${list.sheetName}!A:D:clear`, { method: "POST", body: JSON.stringify({}) });
+        // Fetch current sheet state so we can merge instead of blindly overwriting.
+        // This prevents one user's sync from erasing another user's changes.
+        let sheetCheckedMap = {};
+        try {
+          const sheetData = await sheetsFetch(`values/${list.sheetName}!A2:D`);
+          (sheetData.values || []).forEach(row => {
+            const name = String(row[0] || "").trim().toLowerCase();
+            if (name) sheetCheckedMap[name] = String(row[2] || "").trim().toLowerCase() === "checked";
+          });
+        } catch (e) {
+          // If the fetch fails, fall back to writing local state as-is
+          console.warn("Could not fetch sheet for merge, writing local state:", e);
+        }
 
+        // Merge strategy:
+        // - Items the user explicitly checked/unchecked this session → use local state
+        // - Items the user never touched → use whatever the sheet currently says
+        //   (preserves changes made by another user on another device)
+        const dirtyIds = data.dirtyItemIds;
         const masterValues = [
           ["Item", "Type", "status", "category"],
-          ...data.items.map((item) => [
-            item.name,
-            item.type,
-            item.has ? "checked" : "unchecked",
-            item.category
-          ])
+          ...data.items.map((item) => {
+            let isChecked;
+            if (dirtyIds.has(item.id)) {
+              // Explicitly changed locally — local wins
+              isChecked = item.has;
+            } else {
+              // Not touched locally — keep sheet value if it exists, else keep local
+              const sheetHas = sheetCheckedMap[item.name.toLowerCase()];
+              isChecked = sheetHas !== undefined ? sheetHas : item.has;
+            }
+            // Keep local item in sync with the merged result
+            item.has = isChecked;
+            return [item.name, item.type, isChecked ? "checked" : "unchecked", item.category];
+          })
         ];
 
+        await sheetsFetch(`values/${list.sheetName}!A:D:clear`, { method: "POST", body: JSON.stringify({}) });
         await sheetsFetch(`values/${list.sheetName}!A1?valueInputOption=RAW`, {
           method: "PUT",
           body: JSON.stringify({ values: masterValues })
         });
 
+        data.dirtyItemIds = new Set();
         data.sourceDirty = false;
+        localStorage.setItem(list.cacheKey, JSON.stringify(data.items));
         updateSyncButton();
         setAppStatus(`Sync complete! ${data.items.length} items updated.`);
       } catch (err) {
