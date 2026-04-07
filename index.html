@@ -626,7 +626,7 @@
         switchList('grocery');
       }
 
-      signInBtn.addEventListener("click", () => tokenClient.requestAccessToken({ prompt: "consent" }));
+      signInBtn.addEventListener("click", () => tokenClient.requestAccessToken({ prompt: "" }));
       signOutBtnSmall.addEventListener("click", signOut);
       reloadBtn.addEventListener("click", loadMasterItems);
       addItemBtn.addEventListener("click", addItem);
