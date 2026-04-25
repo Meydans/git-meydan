@@ -67,6 +67,9 @@
                 </div>
             </div>
             <div class="flex gap-2">
+                <button class="p-2.5 bg-white/20 rounded-full hover:bg-white/30 transition backdrop-blur-sm shadow-sm" onclick="renderView('about')">
+                    <i data-lucide="info" class="w-5 h-5"></i>
+                </button>
                 <button id="themeToggle" class="p-2.5 bg-white/20 rounded-full hover:bg-white/30 transition backdrop-blur-sm shadow-sm">
                     <i data-lucide="moon" id="themeIcon" class="w-5 h-5"></i>
                 </button>
@@ -374,6 +377,9 @@
                     break;
                 case 'task-detail':
                     renderTaskDetail(params.taskId, params.userId);
+                    break;
+                case 'about':
+                    renderAbout();
                     break;
             }
             
@@ -1164,6 +1170,84 @@
                 }, 300);
             };
         };
+
+        function renderAbout() {
+            headerTitle.textContent = "אודות האפליקציה";
+            headerSubtitle.textContent = "למה אנחנו כאן?";
+            bottomNav.classList.add('hidden');
+            backBtn.classList.remove('hidden');
+            backBtn.onclick = () => {
+                if (state.currentUser) {
+                    const user = state.users.find(u => u.id === state.currentUser);
+                    renderView(user && user.role === 'parent' ? 'parent-dashboard' : 'child-dashboard', {userId: state.currentUser});
+                } else {
+                    renderView('login');
+                }
+            };
+
+            const html = `
+                <div class="p-6 slide-up pb-20 space-y-6">
+                    <!-- Intro -->
+                    <div class="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+                        <div class="w-16 h-16 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mb-4 mx-auto">
+                            <i data-lucide="heart-handshake" class="w-8 h-8 text-primary"></i>
+                        </div>
+                        <h2 class="text-xl font-black text-center mb-4">שותפים, לא אורחים!</h2>
+                        <p class="text-gray-600 dark:text-gray-300 text-sm leading-relaxed mb-4">
+                            מטרת העל של "שותפים לבית" היא לשנות את הדיסקט: ילדים הם לא "עוזרים" שעושים טובה וצריכים תזכורות אינסופיות, אלא <strong>שותפים פעילים ויוזמים</strong> בניהול ותחזוקת הבית. 
+                        </p>
+                        <p class="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
+                            הגישה הזו מפחיתה עומס מנטלי מההורים, ומקנה לילדים כישורי חיים, ניהול זמן, עצמאות, והכי חשוב - תחושת שייכות אמיתית שבה כל אחד הוא בורג חשוב במשפחה.
+                        </p>
+                    </div>
+
+                    <!-- FAQ Accordion -->
+                    <h3 class="font-bold text-lg px-2">איך זה עובד?</h3>
+                    <div class="space-y-3">
+                        <details class="group bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden shadow-sm">
+                            <summary class="flex justify-between items-center font-bold cursor-pointer p-4 select-none">
+                                מסך הניהול (להורים)
+                                <i data-lucide="chevron-down" class="w-5 h-5 text-gray-400 group-open:rotate-180 transition-transform"></i>
+                            </summary>
+                            <div class="px-4 pb-4 text-sm text-gray-600 dark:text-gray-400 leading-relaxed border-t border-gray-50 dark:border-gray-700 pt-3">
+                                כאן תוכלו לראות במבט-על את מצב המטלות בבית. ההתקדמות היומית של כולם, מי עשה מה, ולוודא שהבית עובד כמו שעון.
+                            </div>
+                        </details>
+
+                        <details class="group bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden shadow-sm">
+                            <summary class="flex justify-between items-center font-bold cursor-pointer p-4 select-none">
+                                לוח המטלות (לילדים)
+                                <i data-lucide="chevron-down" class="w-5 h-5 text-gray-400 group-open:rotate-180 transition-transform"></i>
+                            </summary>
+                            <div class="px-4 pb-4 text-sm text-gray-600 dark:text-gray-400 leading-relaxed border-t border-gray-50 dark:border-gray-700 pt-3">
+                                הילדים מקבלים לוח ברור עם המשימות שלהם להיום. כל משימה מחולקת לתתי-משימות כדי שלא ירגישו אבודים. ברגע שמסיימים משימת "חובה" (כוכב צהוב) - משתחרר הזמן הפנוי למסכים!
+                            </div>
+                        </details>
+
+                        <details class="group bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden shadow-sm">
+                            <summary class="flex justify-between items-center font-bold cursor-pointer p-4 select-none">
+                                העוזר החכם (AI)
+                                <i data-lucide="chevron-down" class="w-5 h-5 text-gray-400 group-open:rotate-180 transition-transform"></i>
+                            </summary>
+                            <div class="px-4 pb-4 text-sm text-gray-600 dark:text-gray-400 leading-relaxed border-t border-gray-50 dark:border-gray-700 pt-3">
+                                נגמרו לכם הרעיונות למטלות? העוזר החכם שלנו מבוסס בינה מלאכותית יציע לכם מטלות מותאמות וראליות לפי גיל הילד. בנוסף, אם יש ויכוח של "מי יעשה את זה היום?", השופט הרובוטי יכריע! בכל סיום מטלה גם מתקבל פידבק אישי מהעוזר החכם.
+                            </div>
+                        </details>
+
+                        <details class="group bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden shadow-sm">
+                            <summary class="flex justify-between items-center font-bold cursor-pointer p-4 select-none">
+                                טירוף ניקיון (טיימר)
+                                <i data-lucide="chevron-down" class="w-5 h-5 text-gray-400 group-open:rotate-180 transition-transform"></i>
+                            </summary>
+                            <div class="px-4 pb-4 text-sm text-gray-600 dark:text-gray-400 leading-relaxed border-t border-gray-50 dark:border-gray-700 pt-3">
+                                כפתור הברק הצהוב בתחתית מפעיל טיימר של 20 דקות לכולם ביחד. שימו מוזיקה קצבית, כולם משתתפים ומתקתקים את הבית במינימום זמן ומקסימום פאן, עם ויזואליה שמכניסה לאווירה.
+                            </div>
+                        </details>
+                    </div>
+                </div>
+            `;
+            mainContent.innerHTML = html;
+        }
 
         // ==========================================
         // GAMIFICATION OVERLAYS
