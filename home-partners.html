@@ -318,17 +318,19 @@
         }
         
         async function decideRotationAI(childrenNames) {
-            const prompt = `יש ויכוח בין הילדים הבאים על מי תורו לעשות את המטלה: ${childrenNames.join(', ')}.
-תבחר באקראי לחלוטין אחד מהם.
-תחזיר אובייקט JSON תקין (ללא markdown) עם השם הנבחר ונימוק משעשע וניטרלי (כמו שופט רובוט) למה נבחר. בפורמט הבא:
-{"chosen": "שם", "reason": "הנימוק המשעשע"}`;
+            // Pick winner client-side so the choice is truly random, not biased by the LLM
+            const chosen = childrenNames[Math.floor(Math.random() * childrenNames.length)];
+            const prompt = `אתה שופט רובוט שהחליט שהפעם תור ${chosen} לעשות את המטלה.
+המתחרים היו: ${childrenNames.join(', ')}.
+המצא נימוק אחד קצר, משעשע ואבסורדי (עד 15 מילים) למה נבחר דווקא ${chosen}.
+תחזיר אובייקט JSON תקין (ללא markdown) בפורמט: {"chosen": "${chosen}", "reason": "הנימוק המשעשע"}`;
             try {
                 const res = await callGemini(prompt, true);
-                return JSON.parse(res);
+                const parsed = JSON.parse(res);
+                parsed.chosen = chosen; // enforce client-side winner regardless of what AI returns
+                return parsed;
             } catch(e) {
-                // fallback
-                const randomChild = childrenNames[Math.floor(Math.random() * childrenNames.length)];
-                return { chosen: randomChild, reason: "עשיתי אן-דן-דינו וזה מה שיצא!" };
+                return { chosen, reason: "עשיתי אן-דן-דינו וזה מה שיצא!" };
             }
         }
 
