@@ -557,7 +557,7 @@
                 
                 <!-- Add Task Modal -->
                 <div id="addTaskModal" class="fixed inset-0 bg-gray-900/60 z-50 hidden flex-col justify-end p-0 backdrop-blur-sm">
-                    <div class="bg-white dark:bg-gray-800 rounded-t-3xl p-6 w-full max-w-md mx-auto transform translate-y-full transition-transform duration-300 flex flex-col max-h-[90vh]">
+                    <div class="bg-white dark:bg-gray-800 rounded-t-3xl p-6 w-full max-w-md mx-auto transform translate-y-full transition-transform duration-300 flex flex-col max-h-[90dvh]">
                         <div class="w-12 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full mx-auto mb-6"></div>
                         <h3 class="text-xl font-bold mb-4">יצירת משימה</h3>
                         
@@ -908,17 +908,66 @@
         }
 
         window.addGeneratedTask = (taskObj) => {
-            state.tasks.push({
-                id: generateId(),
-                title: taskObj.title,
-                assignees: [],
-                frequency: 'daily',
-                subtasks: taskObj.subtasks.map(st => ({title: st.title, isDone: false})),
-                isMandatory: false,
-                requireProof: false
-            });
-            saveState();
-            showToast('המשימה נוספה בהצלחה לניהול משימות!');
+            const children = state.users.filter(u => u.role === 'child');
+
+            // Remove any existing assign modal
+            const existing = document.getElementById('assignTaskModal');
+            if (existing) existing.remove();
+
+            const modal = document.createElement('div');
+            modal.id = 'assignTaskModal';
+            modal.className = 'fixed inset-0 bg-gray-900/70 z-50 flex items-end justify-center backdrop-blur-sm';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 rounded-t-3xl p-6 w-full max-w-md transform transition-transform duration-300 translate-y-full" id="assignTaskModalContent">
+                    <div class="w-12 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full mx-auto mb-5"></div>
+                    <h3 class="text-lg font-bold mb-1">להוסיף: <span class="text-primary">${taskObj.title}</span></h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">לאיזה ילדים לשייך את המשימה?</p>
+                    <div class="space-y-2 mb-5">
+                        ${children.length === 0
+                            ? '<p class="text-sm text-gray-400 text-center py-2">אין ילדים מוגדרים במערכת</p>'
+                            : children.map(c => `
+                                <label class="flex items-center gap-3 p-3 border border-gray-200 dark:border-gray-600 rounded-xl cursor-pointer has-[:checked]:bg-indigo-50 has-[:checked]:border-primary dark:has-[:checked]:bg-indigo-900/30 transition">
+                                    <input type="checkbox" value="${c.id}" class="assign-child-cb w-4 h-4 accent-primary">
+                                    <span class="text-xl">${c.avatar}</span>
+                                    <span class="font-medium">${c.name}</span>
+                                </label>
+                            `).join('')}
+                    </div>
+                    <div class="flex gap-3">
+                        <button id="assignCancelBtn" class="flex-1 py-3 font-bold text-gray-500 bg-gray-100 dark:bg-gray-700 rounded-xl">ביטול</button>
+                        <button id="assignConfirmBtn" class="flex-1 py-3 font-bold text-white bg-primary rounded-xl shadow-md">הוסף משימה ✓</button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('app').appendChild(modal);
+            lucide.createIcons();
+
+            const content = document.getElementById('assignTaskModalContent');
+            setTimeout(() => content.classList.remove('translate-y-full'), 10);
+
+            const closeAssignModal = () => {
+                content.classList.add('translate-y-full');
+                setTimeout(() => modal.remove(), 300);
+            };
+
+            document.getElementById('assignCancelBtn').onclick = closeAssignModal;
+            modal.addEventListener('click', e => { if (e.target === modal) closeAssignModal(); });
+
+            document.getElementById('assignConfirmBtn').onclick = () => {
+                const assignees = Array.from(modal.querySelectorAll('.assign-child-cb:checked')).map(cb => cb.value);
+                state.tasks.push({
+                    id: generateId(),
+                    title: taskObj.title,
+                    assignees,
+                    frequency: 'daily',
+                    subtasks: taskObj.subtasks.map(st => ({title: st.title, isDone: false})),
+                    isMandatory: false,
+                    requireProof: false
+                });
+                saveState();
+                closeAssignModal();
+                showToast(assignees.length > 0 ? 'המשימה נוספה ושויכה בהצלחה!' : 'המשימה נוספה ללא שיוך');
+            };
         };
 
 
