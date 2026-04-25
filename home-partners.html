@@ -256,7 +256,21 @@
                 let text = rawData.candidates?.[0]?.content?.parts?.[0]?.text || '';
                 
                 if (isJson) {
-                    text = text.replace(/```(json)?/g, '').trim();
+                    text = text.replace(/```(?:json)?/gi, '').trim();
+                    
+                    const firstBracket = text.indexOf('[');
+                    const firstBrace = text.indexOf('{');
+                    let start = -1;
+                    if (firstBracket !== -1 && firstBrace !== -1) start = Math.min(firstBracket, firstBrace);
+                    else if (firstBracket !== -1) start = firstBracket;
+                    else start = firstBrace;
+                    
+                    if (start !== -1) {
+                        const endBracket = text.lastIndexOf(']');
+                        const endBrace = text.lastIndexOf('}');
+                        let end = Math.max(endBracket, endBrace);
+                        text = text.substring(start, end + 1);
+                    }
                 }
                 
                 return text;
@@ -845,7 +859,7 @@
                             <ul class="list-disc list-inside text-gray-600 dark:text-gray-400 mb-3 space-y-1">
                                 ${t.subtasks.map(st => `<li>${st.title}</li>`).join('')}
                             </ul>
-                            <button onclick='addGeneratedTask(${JSON.stringify(t)})' class="text-xs bg-indigo-50 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold w-full hover:bg-indigo-100 transition">
+                            <button onclick='addGeneratedTask(${JSON.stringify(t).replace(/'/g, "&#39;")})' class="text-xs bg-indigo-50 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold w-full hover:bg-indigo-100 transition">
                                 + הוסף למשימות הבית
                             </button>
                         </div>
