@@ -343,7 +343,10 @@
 
         function renderView(viewName, params = {}) {
             mainContent.innerHTML = '';
-            
+            // Clean up any task modal that was appended directly to #app
+            const staleModal = document.getElementById('addTaskModal');
+            if (staleModal) staleModal.remove();
+
             // Default styling
             backBtn.classList.add('hidden');
             document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -554,62 +557,69 @@
                         ${listHtml}
                     </div>
                 </div>
-                
-                <!-- Add Task Modal -->
-                <div id="addTaskModal" class="fixed inset-0 bg-gray-900/60 z-50 hidden flex-col justify-end p-0 backdrop-blur-sm">
-                    <div class="bg-white dark:bg-gray-800 rounded-t-3xl p-6 w-full max-w-md mx-auto transform translate-y-full transition-transform duration-300 flex flex-col max-h-[90dvh]">
-                        <div class="w-12 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full mx-auto mb-6"></div>
-                        <h3 class="text-xl font-bold mb-4">יצירת משימה</h3>
-                        
-                        <div class="overflow-y-auto flex-1 pr-2 space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium mb-1">שם המשימה</label>
-                                <input type="text" id="newTaskTitle" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="לדוגמה: סידור חדר">
-                            </div>
-                            
-                            <div>
-                                <label class="block text-sm font-medium mb-1">למי מיועד?</label>
-                                <div class="flex flex-wrap gap-2">
-                                    ${state.users.filter(u=>u.role==='child').map(u => `
-                                        <label class="flex items-center gap-2 p-2 border border-gray-200 dark:border-gray-600 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 has-[:checked]:bg-indigo-50 has-[:checked]:border-primary dark:has-[:checked]:bg-indigo-900/30">
-                                            <input type="checkbox" value="${u.id}" class="task-assignee-cb hidden">
-                                            <span>${u.avatar} ${u.name}</span>
-                                        </label>
-                                    `).join('')}
-                                </div>
-                            </div>
+            `;
 
-                            <div class="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-100 dark:border-amber-800/30">
-                                <div>
-                                    <div class="font-bold text-amber-800 dark:text-amber-400 flex items-center gap-1">
-                                        <i data-lucide="star" class="w-4 h-4"></i> משימת חובה
-                                    </div>
-                                    <div class="text-xs text-amber-600/80 dark:text-amber-500/80 mt-1">חובה לביצוע כדי "לשחרר" מסכים</div>
-                                </div>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                  <input type="checkbox" id="newTaskMandatory" class="sr-only peer" checked>
-                                  <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-accent"></div>
-                                </label>
-                            </div>
-                            
-                            <div>
-                                <label class="block text-sm font-medium mb-2 flex justify-between">
-                                    <span>צ'ק ליסט (תתי-משימות)</span>
-                                    <button id="addSubtaskBtn" class="text-primary text-xs font-bold">+ הוסף</button>
-                                </label>
-                                <div id="subtasksContainer" class="space-y-2">
-                                    <input type="text" class="subtask-input w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary" placeholder="למשל: לאסוף צעצועים מהרצפה">
-                                </div>
+            // Inject modal directly into #app so it sits above the bottom nav (z-30)
+            const existingModal = document.getElementById('addTaskModal');
+            if (existingModal) existingModal.remove();
+
+            const modalEl = document.createElement('div');
+            modalEl.id = 'addTaskModal';
+            modalEl.className = 'fixed inset-0 bg-gray-900/60 z-50 hidden flex-col justify-end p-0 backdrop-blur-sm';
+            modalEl.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 rounded-t-3xl p-6 w-full max-w-md mx-auto transform translate-y-full transition-transform duration-300 flex flex-col max-h-[90dvh]">
+                    <div class="w-12 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full mx-auto mb-6"></div>
+                    <h3 class="text-xl font-bold mb-4">יצירת משימה</h3>
+
+                    <div class="overflow-y-auto flex-1 pr-2 space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">שם המשימה</label>
+                            <input type="text" id="newTaskTitle" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="לדוגמה: סידור חדר">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-1">למי מיועד?</label>
+                            <div class="flex flex-wrap gap-2">
+                                ${state.users.filter(u=>u.role==='child').map(u => `
+                                    <label class="flex items-center gap-2 p-2 border border-gray-200 dark:border-gray-600 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 has-[:checked]:bg-indigo-50 has-[:checked]:border-primary dark:has-[:checked]:bg-indigo-900/30">
+                                        <input type="checkbox" value="${u.id}" class="task-assignee-cb hidden">
+                                        <span>${u.avatar} ${u.name}</span>
+                                    </label>
+                                `).join('')}
                             </div>
                         </div>
 
-                        <div class="mt-6 flex gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
-                            <button id="cancelTaskBtn" class="flex-1 py-3 font-bold text-gray-500 bg-gray-100 dark:bg-gray-700 rounded-xl">ביטול</button>
-                            <button id="saveTaskBtn" class="flex-1 py-3 font-bold text-white bg-primary rounded-xl shadow-md">שמור משימה</button>
+                        <div class="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-100 dark:border-amber-800/30">
+                            <div>
+                                <div class="font-bold text-amber-800 dark:text-amber-400 flex items-center gap-1">
+                                    <i data-lucide="star" class="w-4 h-4"></i> משימת חובה
+                                </div>
+                                <div class="text-xs text-amber-600/80 dark:text-amber-500/80 mt-1">חובה לביצוע כדי "לשחרר" מסכים</div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                              <input type="checkbox" id="newTaskMandatory" class="sr-only peer" checked>
+                              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-accent"></div>
+                            </label>
                         </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-2 flex justify-between">
+                                <span>צ'ק ליסט (תתי-משימות)</span>
+                                <button id="addSubtaskBtn" class="text-primary text-xs font-bold">+ הוסף</button>
+                            </label>
+                            <div id="subtasksContainer" class="space-y-2">
+                                <input type="text" class="subtask-input w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary" placeholder="למשל: לאסוף צעצועים מהרצפה">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+                        <button id="cancelTaskBtn" class="flex-1 py-3 font-bold text-gray-500 bg-gray-100 dark:bg-gray-700 rounded-xl">ביטול</button>
+                        <button id="saveTaskBtn" class="flex-1 py-3 font-bold text-white bg-primary rounded-xl shadow-md">שמור משימה</button>
                     </div>
                 </div>
             `;
+            document.getElementById('app').appendChild(modalEl);
 
             lucide.createIcons();
 
