@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -67,6 +68,9 @@
                 </div>
             </div>
             <div class="flex gap-2">
+                <button id="syncBtn" class="hidden p-2.5 bg-white/20 rounded-full hover:bg-white/30 transition backdrop-blur-sm shadow-sm" onclick="manualSync()" title="סנכרן עם Google Sheets">
+                    <i data-lucide="cloud-upload" id="syncIcon" class="w-5 h-5"></i>
+                </button>
                 <button class="p-2.5 bg-white/20 rounded-full hover:bg-white/30 transition backdrop-blur-sm shadow-sm" onclick="renderView('about')">
                     <i data-lucide="info" class="w-5 h-5"></i>
                 </button>
@@ -184,9 +188,19 @@
         // ==========================================
         // CONFIGURATION & STATE
         // ==========================================
-        // ==========================================
         const AVATARS = ['😊', '😎', '👸', '🦸‍♂️', '🦸‍♀️', '🥷', '🦄', '🦖', '🤖', '👽'];
-        
+
+        // Google Sheets sync config
+        // Create a Google Sheet with 3 tabs named: Users, Tasks, DailyStatus
+        const HP_CLIENT_ID = "427247172628-tqle335su4809um35beovkdedm26lhf6.apps.googleusercontent.com";
+        const HP_SCOPES = "https://www.googleapis.com/auth/spreadsheets";
+        const HP_SPREADSHEET_ID = ""; // הכנס כאן את ה-ID של ה-Google Sheet שלך
+
+        let hpTokenClient;
+        let hpAccessToken = null;
+        let sheetsIsDirty = false;
+        let autoSyncTimer = null;
+
         let state = {
             users: [], // { id, name, age, avatar, role: 'parent'|'child' }
             tasks: [], // { id, title, assignees: [userIds], frequency: 'daily'|'weekly', subtasks: [{title, isDone}], isMandatory: boolean, requireProof: boolean }
@@ -207,23 +221,222 @@
 
         function saveState() {
             localStorage.setItem('homePartnersState', JSON.stringify(state));
+            if (hpAccessToken) {
+                sheetsIsDirty = true;
+                updateSyncUI();
+                scheduleAutoSync();
+            }
         }
 
         function loadState() {
             const saved = localStorage.getItem('homePartnersState');
             if (saved) {
                 state = JSON.parse(saved);
-                // Ensure daily status exists for today
                 const today = getTodayStr();
                 if (!state.dailyStatus[today]) {
                     state.dailyStatus[today] = {};
                 }
             } else {
-                // Initialize first time
                 state.dailyStatus[getTodayStr()] = {};
-                saveState();
+                localStorage.setItem('homePartnersState', JSON.stringify(state));
             }
         }
+
+        // ==========================================
+        // GOOGLE SHEETS SYNC
+        // ==========================================
+
+        function safeParseJson(str, fallback) {
+            try { return JSON.parse(str); } catch(e) { return fallback; }
+        }
+
+        function updateSyncUI() {
+            const btn = document.getElementById('syncBtn');
+            const icon = document.getElementById('syncIcon');
+            if (!btn) return;
+            if (!hpAccessToken) { btn.classList.add('hidden'); return; }
+            btn.classList.remove('hidden');
+            if (sheetsIsDirty) {
+                icon.setAttribute('data-lucide', 'cloud-upload');
+                btn.classList.add('animate-pulse');
+                btn.title = 'יש שינויים לא מסונכרנים – לחץ לסנכרן';
+            } else {
+                icon.setAttribute('data-lucide', 'cloud-check');
+                btn.classList.remove('animate-pulse');
+                btn.title = 'מסונכרן עם Google Sheets';
+            }
+            lucide.createIcons();
+        }
+
+        function scheduleAutoSync() {
+            clearTimeout(autoSyncTimer);
+            autoSyncTimer = setTimeout(() => {
+                if (sheetsIsDirty && hpAccessToken) syncToSheets();
+            }, 20000);
+        }
+
+        async function hpSheetsFetch(path, options = {}) {
+            if (!hpAccessToken) throw new Error('לא מחובר');
+            const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${HP_SPREADSHEET_ID}/${path}`, {
+                ...options,
+                headers: {
+                    Authorization: `Bearer ${hpAccessToken}`,
+                    'Content-Type': 'application/json',
+                    ...(options.headers || {})
+                }
+            });
+            if (res.status === 401) { hpSignOut(); throw new Error('פג תוקף החיבור, התחבר מחדש'); }
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error?.message || 'שגיאת Sheets API');
+            return data;
+        }
+
+        async function loadFromSheets() {
+            if (!hpAccessToken || !HP_SPREADSHEET_ID) return;
+            try {
+                showToast('טוען נתונים מ-Google Sheets...');
+
+                const [usersRes, tasksRes, statusRes] = await Promise.all([
+                    hpSheetsFetch('values/Users!A2:E'),
+                    hpSheetsFetch('values/Tasks!A2:G'),
+                    hpSheetsFetch('values/DailyStatus!A2:E')
+                ]);
+
+                state.users = (usersRes.values || [])
+                    .filter(r => r[0])
+                    .map(r => ({ id: r[0], name: r[1], role: r[2], age: r[3] ? parseInt(r[3]) : null, avatar: r[4] || '😊' }));
+
+                state.tasks = (tasksRes.values || [])
+                    .filter(r => r[0])
+                    .map(r => ({
+                        id: r[0], title: r[1],
+                        assignees: safeParseJson(r[2], []),
+                        frequency: r[3] || 'daily',
+                        subtasks: safeParseJson(r[4], []),
+                        isMandatory: r[5] === 'true',
+                        requireProof: r[6] === 'true'
+                    }));
+
+                state.dailyStatus = {};
+                (statusRes.values || []).forEach(r => {
+                    const [date, taskId, userId, isDone, subtasksJson] = r;
+                    if (!date || !taskId || !userId) return;
+                    if (!state.dailyStatus[date]) state.dailyStatus[date] = {};
+                    if (!state.dailyStatus[date][taskId]) state.dailyStatus[date][taskId] = {};
+                    state.dailyStatus[date][taskId][userId] = {
+                        isDone: isDone === 'true',
+                        subtasks: safeParseJson(subtasksJson, [])
+                    };
+                });
+
+                const today = getTodayStr();
+                if (!state.dailyStatus[today]) state.dailyStatus[today] = {};
+
+                // Keep currentUser if valid
+                if (state.currentUser && !state.users.find(u => u.id === state.currentUser)) {
+                    state.currentUser = null;
+                }
+
+                localStorage.setItem('homePartnersState', JSON.stringify(state));
+                sheetsIsDirty = false;
+                updateSyncUI();
+                showToast('הנתונים נטענו בהצלחה!');
+            } catch(e) {
+                showToast('שגיאה בטעינה מ-Sheets: ' + e.message, 'error');
+            }
+        }
+
+        async function syncToSheets() {
+            if (!hpAccessToken || !HP_SPREADSHEET_ID) return;
+            const icon = document.getElementById('syncIcon');
+            if (icon) { icon.setAttribute('data-lucide', 'loader-2'); icon.classList.add('animate-spin'); lucide.createIcons(); }
+
+            try {
+                const usersValues = [
+                    ['id', 'name', 'role', 'age', 'avatar'],
+                    ...state.users.map(u => [u.id, u.name, u.role, u.age ?? '', u.avatar])
+                ];
+
+                const tasksValues = [
+                    ['id', 'title', 'assignees', 'frequency', 'subtasks', 'isMandatory', 'requireProof'],
+                    ...state.tasks.map(t => [
+                        t.id, t.title, JSON.stringify(t.assignees), t.frequency,
+                        JSON.stringify(t.subtasks), t.isMandatory, t.requireProof
+                    ])
+                ];
+
+                const statusValues = [['date', 'taskId', 'userId', 'isDone', 'subtasks']];
+                Object.entries(state.dailyStatus).forEach(([date, tasks]) => {
+                    Object.entries(tasks).forEach(([taskId, users]) => {
+                        Object.entries(users).forEach(([userId, status]) => {
+                            statusValues.push([date, taskId, userId, status.isDone, JSON.stringify(status.subtasks || [])]);
+                        });
+                    });
+                });
+
+                await Promise.all([
+                    hpSheetsFetch('values/Users!A:E:clear', { method: 'POST', body: JSON.stringify({}) }),
+                    hpSheetsFetch('values/Tasks!A:G:clear', { method: 'POST', body: JSON.stringify({}) }),
+                    hpSheetsFetch('values/DailyStatus!A:E:clear', { method: 'POST', body: JSON.stringify({}) })
+                ]);
+
+                await Promise.all([
+                    hpSheetsFetch('values/Users!A1?valueInputOption=RAW', { method: 'PUT', body: JSON.stringify({ values: usersValues }) }),
+                    hpSheetsFetch('values/Tasks!A1?valueInputOption=RAW', { method: 'PUT', body: JSON.stringify({ values: tasksValues }) }),
+                    hpSheetsFetch('values/DailyStatus!A1?valueInputOption=RAW', { method: 'PUT', body: JSON.stringify({ values: statusValues }) })
+                ]);
+
+                sheetsIsDirty = false;
+                updateSyncUI();
+                showToast('סונכרן בהצלחה עם Google Sheets ✓');
+            } catch(e) {
+                showToast('שגיאה בסנכרון: ' + e.message, 'error');
+            } finally {
+                if (icon) { icon.classList.remove('animate-spin'); lucide.createIcons(); }
+                updateSyncUI();
+            }
+        }
+
+        window.manualSync = () => syncToSheets();
+
+        function initGoogleAuth() {
+            if (!HP_SPREADSHEET_ID || typeof google === 'undefined') return;
+            hpTokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: HP_CLIENT_ID,
+                scope: HP_SCOPES,
+                callback: async (resp) => {
+                    if (resp.error) { showToast('כשל בהתחברות Google', 'error'); return; }
+                    hpAccessToken = resp.access_token;
+                    const expiry = Date.now() + (resp.expires_in * 1000);
+                    localStorage.setItem('hp_token', hpAccessToken);
+                    localStorage.setItem('hp_token_expiry', expiry);
+                    updateSyncUI();
+                    await loadFromSheets();
+                    // Re-route after loading fresh data
+                    const current = state.users.find(u => u.id === state.currentUser);
+                    if (current) {
+                        renderView(current.role === 'parent' ? 'parent-dashboard' : 'child-dashboard', { userId: current.id });
+                    } else {
+                        renderView('login');
+                    }
+                }
+            });
+        }
+
+        window.hpSignIn = () => {
+            if (!HP_SPREADSHEET_ID) return showToast('יש להגדיר HP_SPREADSHEET_ID בקוד תחילה', 'error');
+            if (hpTokenClient) hpTokenClient.requestAccessToken({ prompt: '' });
+        };
+
+        window.hpSignOut = () => {
+            if (hpAccessToken) google.accounts.oauth2.revoke(hpAccessToken, () => {});
+            hpAccessToken = null;
+            sheetsIsDirty = false;
+            localStorage.removeItem('hp_token');
+            localStorage.removeItem('hp_token_expiry');
+            updateSyncUI();
+            showToast('התנתקת מ-Google');
+        };
 
         function showToast(message, type = 'default') {
             const toast = document.getElementById('toast');
@@ -405,17 +618,57 @@
                         <i data-lucide="home" class="w-12 h-12 text-primary"></i>
                     </div>
                     <h2 class="text-2xl font-bold mb-3">נראה שאין עדיין צוות!</h2>
-                    <p class="text-gray-500 dark:text-gray-400 mb-8 max-w-xs">בואו נגדיר את בני המשפחה ונתחיל להפוך את ניהול הבית למשחק.</p>
+                    <p class="text-gray-500 dark:text-gray-400 mb-6 max-w-xs">בואו נגדיר את בני המשפחה ונתחיל להפוך את ניהול הבית למשחק.</p>
+                    ${HP_SPREADSHEET_ID && !hpAccessToken ? `
+                        <button onclick="hpSignIn()" class="w-full mb-3 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-white px-6 py-3 rounded-2xl font-bold flex justify-center items-center gap-2 shadow-sm hover:shadow-md transition">
+                            <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                            התחבר עם Google לסנכרון
+                        </button>
+                    ` : ''}
                     <button id="startSetupBtn" class="bg-primary text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg hover:bg-indigo-600 transition-colors w-full">התחל כאן</button>
                 `;
                 mainContent.appendChild(wrapper);
                 document.getElementById('startSetupBtn').onclick = () => renderView('family-setup');
+                lucide.createIcons();
                 return;
             }
 
+            const container = document.createElement('div');
+            container.className = "p-6 slide-up";
+
+            // Google sync bar
+            if (HP_SPREADSHEET_ID) {
+                const syncBar = document.createElement('div');
+                syncBar.className = "mb-4 p-3 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 flex items-center justify-between";
+                if (hpAccessToken) {
+                    syncBar.innerHTML = `
+                        <div class="flex items-center gap-2 text-sm text-gray-500">
+                            <i data-lucide="cloud-check" class="w-4 h-4 text-green-500"></i>
+                            <span>מחובר ל-Google Sheets</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="loadFromSheets().then(()=>renderView('login'))" class="text-xs text-primary font-bold px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg">טען מחדש</button>
+                            <button onclick="hpSignOut();renderView('login')" class="text-xs text-gray-400 font-bold px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-lg">התנתק</button>
+                        </div>
+                    `;
+                } else {
+                    syncBar.innerHTML = `
+                        <div class="flex items-center gap-2 text-sm text-gray-500">
+                            <i data-lucide="cloud-off" class="w-4 h-4 text-gray-400"></i>
+                            <span>לא מחובר לענן</span>
+                        </div>
+                        <button onclick="hpSignIn()" class="text-xs text-primary font-bold px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg flex items-center gap-1">
+                            <svg class="w-3 h-3" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                            התחבר
+                        </button>
+                    `;
+                }
+                container.appendChild(syncBar);
+            }
+
             const grid = document.createElement('div');
-            grid.className = "grid grid-cols-2 gap-4 p-6 slide-up";
-            
+            grid.className = "grid grid-cols-2 gap-4";
+
             state.users.forEach(user => {
                 const btn = document.createElement('button');
                 btn.className = "bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col items-center gap-4 hover:shadow-md transition active:scale-95";
@@ -437,7 +690,9 @@
                 };
                 grid.appendChild(btn);
             });
-            mainContent.appendChild(grid);
+            container.appendChild(grid);
+            mainContent.appendChild(container);
+            lucide.createIcons();
         }
 
         // --- View: Parent Dashboard ---
@@ -1445,7 +1700,6 @@
         });
 
         function initApp() {
-            // Load theme
             if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                 setTheme(true);
             } else {
@@ -1453,7 +1707,25 @@
             }
 
             loadState();
-            
+
+            // Restore Google token from cache if still valid
+            const cachedToken = localStorage.getItem('hp_token');
+            const cachedExpiry = localStorage.getItem('hp_token_expiry');
+            if (cachedToken && cachedExpiry && Date.now() < Number(cachedExpiry)) {
+                hpAccessToken = cachedToken;
+            }
+
+            // Init Google OAuth (runs after gsi script loads)
+            const tryInitGoogle = () => {
+                if (typeof google !== 'undefined') {
+                    initGoogleAuth();
+                    updateSyncUI();
+                } else {
+                    setTimeout(tryInitGoogle, 500);
+                }
+            };
+            tryInitGoogle();
+
             // Route based on state
             if (!state.currentUser) {
                 renderView('login');
@@ -1467,6 +1739,11 @@
                     renderView('login');
                 }
             }
+
+            // Auto-sync every 20s if dirty
+            setInterval(() => {
+                if (sheetsIsDirty && hpAccessToken) syncToSheets();
+            }, 20000);
         }
 
         // Start
