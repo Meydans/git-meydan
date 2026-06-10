@@ -536,8 +536,15 @@
 
     function sanitizeCategory(rawCategory, allowedCategories) {
       const cleaned = String(rawCategory || "").trim().toUpperCase().replace(/[*_]/g, "");
+      // Try exact match first
       if (allowedCategories.includes(cleaned)) {
         return cleaned;
+      }
+      // Try fuzzy matching - check if any allowed category contains the cleaned word
+      for (const allowed of allowedCategories) {
+        if (allowed.includes(cleaned) || cleaned.includes(allowed)) {
+          return allowed;
+        }
       }
       return "OTHER";
     }
@@ -554,20 +561,29 @@ Pick the best category from: ${list.categories.join(", ")}.
 Return ONLY the category name in plain text, nothing else.
           `.trim();
 
-          const res = await fetch("/api/gemini", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              model: GEMINI_MODEL,
-              prompt: catPrompt
-            })
-          });
+          try {
+            const res = await fetch("/api/gemini", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                model: GEMINI_MODEL,
+                prompt: catPrompt
+              })
+            });
 
-          if (res.ok) {
-            const resData = await res.json();
-            const text = resData?.candidates?.[0]?.content?.parts?.[0]?.text || "OTHER";
-            item.category = sanitizeCategory(text, list.categories);
-          } else {
+            if (res.ok) {
+              const resData = await res.json();
+              console.log(`[DEBUG] Gemini response for "${item.name}":`, resData);
+              const text = resData?.candidates?.[0]?.content?.parts?.[0]?.text || "OTHER";
+              const category = sanitizeCategory(text, list.categories);
+              console.log(`[DEBUG] Categorized "${item.name}" as "${category}" (raw: "${text}")`);
+              item.category = category;
+            } else {
+              console.warn(`[DEBUG] Gemini API returned status ${res.status} for "${item.name}"`);
+              item.category = "OTHER";
+            }
+          } catch (itemErr) {
+            console.error(`[DEBUG] Error categorizing "${item.name}":`, itemErr);
             item.category = "OTHER";
           }
         }
@@ -986,18 +1002,33 @@ Pick the best category from: ${list.categories.join(", ")}.
 Return ONLY the category name in plain text, nothing else.
         `.trim();
 
-        const res = await fetch("/api/gemini", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: GEMINI_MODEL,
-            prompt: catPrompt
-          })
-        });
+        let category = "OTHER";
+        try {
+          const res = await fetch("/api/gemini", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: GEMINI_MODEL,
+              prompt: catPrompt
+            })
+          });
 
-        const resData = await res.json();
-        const text = resData?.candidates?.[0]?.content?.parts?.[0]?.text || "OTHER";
-        const category = sanitizeCategory(text, list.categories);
+          if (res.ok) {
+            const resData = await res.json();
+            console.log(`[DEBUG] Gemini response for new item "${name}":`, resData);
+            const text = resData?.candidates?.[0]?.content?.parts?.[0]?.text || "OTHER";
+            category = sanitizeCategory(text, list.categories);
+            console.log(`[DEBUG] New item "${name}" categorized as "${category}" (raw: "${text}")`);
+          } else {
+            console.warn(`[DEBUG] Gemini API error for new item: HTTP ${res.status}`);
+            setAppStatus(`Failed to categorize: API error`);
+            return;
+          }
+        } catch (err) {
+          console.error(`[DEBUG] Error calling Gemini API for new item:`, err);
+          setAppStatus(`Failed to categorize: ${err.message}`);
+          return;
+        }
 
         data.items.push({
           id: `item-new-${Date.now()}`,
@@ -1013,6 +1044,7 @@ Return ONLY the category name in plain text, nothing else.
         updateSyncButton();
         setAppStatus(`Added "${name}" to ${category}. Remember to sync!`);
       } catch (err) {
+        console.error(`[DEBUG] Error in addItem:`, err);
         setAppStatus(`Failed to add: ${err.message}`);
       }
     }
