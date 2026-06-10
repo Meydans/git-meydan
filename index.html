@@ -260,7 +260,7 @@
         <h3 class="font-display text-xl font-semibold mb-2">Google Sheets Access</h3>
         <p class="text-slate-400 mb-8">Sign in to load your master grocery list and sync your weekly shopping plans.</p>
         <button id="signInBtn"
-          class="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 font-semibold text-white shadow-lg shadow-blue-500/20 transition-all active:scale-[0.98]">
+          class="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 font-semibold text-white shadow-lg shadow-blue-500/20 transition-all">
           Sign in with Google
         </button>
         <p id="authStatus" class="mt-4 text-sm text-slate-500"></p>
@@ -299,7 +299,7 @@
             <div class="flex gap-3">
               <div class="relative min-w-[140px]">
                 <select id="newItemType"
-                  class="w-full h-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all appearance-none cursor-pointer font-medium pr-10">
+                  class="w-full h-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all appearance-none cursor-pointer">
                   <option value="mandatory">Essential ★</option>
                   <option value="optional">Optional</option>
                 </select>
@@ -505,6 +505,11 @@
       appStatus.textContent = msg;
     }
 
+    function escapeHtml(text) {
+      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+      return String(text).replace(/[&<>"']/g, m => map[m]);
+    }
+
     function normalizeType(rawType) {
       return String(rawType || "").trim().toLowerCase() === "mandatory" ? "mandatory" : "optional";
     }
@@ -517,6 +522,61 @@
       syncBtn.disabled = !getCurrentData().sourceDirty;
     }
 
+    function parseGeminiJson(text) {
+      try {
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          return JSON.parse(jsonMatch[0]);
+        }
+      } catch (e) {
+        console.warn("Failed to parse Gemini JSON:", e);
+      }
+      return {};
+    }
+
+    function sanitizeCategory(rawCategory, allowedCategories) {
+      const cleaned = String(rawCategory || "").trim().toUpperCase().replace(/[*_]/g, "");
+      if (allowedCategories.includes(cleaned)) {
+        return cleaned;
+      }
+      return "OTHER";
+    }
+
+    async function categorizeItemsInBatch(items) {
+      if (!items.length) return;
+      const list = getCurrentList();
+      
+      try {
+        for (const item of items) {
+          const catPrompt = `
+You are a grocery assistant. Categorize this item: "${item.name}".
+Pick the best category from: ${list.categories.join(", ")}.
+Return ONLY the category name in plain text, nothing else.
+          `.trim();
+
+          const res = await fetch("/api/gemini", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: GEMINI_MODEL,
+              prompt: catPrompt
+            })
+          });
+
+          if (res.ok) {
+            const resData = await res.json();
+            const text = resData?.candidates?.[0]?.content?.parts?.[0]?.text || "OTHER";
+            item.category = sanitizeCategory(text, list.categories);
+          } else {
+            item.category = "OTHER";
+          }
+        }
+      } catch (err) {
+        console.error("Batch categorization error:", err);
+        items.forEach(item => item.category = "OTHER");
+      }
+    }
+
     function renderListSwitcher() {
       listSwitcher.innerHTML = "";
       Object.keys(LISTS).forEach(key => {
@@ -526,8 +586,8 @@
         const isActive = key === currentListId;
         
         const btn = document.createElement("button");
-        btn.className = `flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all shrink-0 border ${isActive ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400' : 'bg-slate-800/50 border-slate-700/50 text-slate-400 hover:bg-slate-800 hover:text-slate-300'}`;
-        btn.innerHTML = `${list.icon} <span class="hidden sm:inline">${list.label}</span><span class="sm:hidden">${list.label.split(' ')[0]}</span> ${unchCount > 0 ? `<span class="ml-1 px-1.5 py-0.5 rounded-md bg-slate-900 text-[10px]">${unchCount}</span>` : ''}`;
+        btn.className = `flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all shrink-0 border ${isActive ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400' : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-800'}`;
+        btn.innerHTML = `${list.icon} <span class="hidden sm:inline">${list.label}</span><span class="sm:hidden">${list.label.split(' ')[0]}</span> ${unchCount > 0 ? `<span class="ml-1 px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-xs font-bold">${unchCount}</span>` : ''}`;
         
         btn.onclick = () => switchList(key);
         listSwitcher.appendChild(btn);
@@ -814,11 +874,11 @@
             </h5>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               ${items.map(item => `
-                <div data-item-id="${item.id}" class="group flex items-center justify-between p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/50 hover:bg-slate-800/80 hover:border-emerald-500/30 transition-all ${item.has ? 'opacity-60' : ''}">
+                <div data-item-id="${item.id}" class="group flex items-center justify-between p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/50 hover:bg-slate-800/80 hover:border-emerald-500/40 transition-all">
                   <label class="flex items-center gap-3 cursor-pointer flex-grow">
                     <div class="relative flex items-center justify-center">
-                      <input type="checkbox" ${item.has ? "checked" : ""} class="item-checkbox peer appearance-none h-6 w-6 rounded-lg border-2 border-slate-600 bg-slate-900 checked:bg-emerald-500 checked:border-emerald-500 transition-all cursor-pointer" />
-                      <svg xmlns="http://www.w3.org/2000/svg" class="absolute pointer-events-none w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                      <input type="checkbox" ${item.has ? "checked" : ""} class="item-checkbox peer appearance-none h-6 w-6 rounded-lg border-2 border-slate-600 bg-slate-900 checked:bg-emerald-500 checked:border-emerald-500 cursor-pointer" />
+                      <svg xmlns="http://www.w3.org/2000/svg" class="absolute pointer-events-none w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                     </div>
                     <div class="flex flex-col">
                       <span class="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors ${item.has ? 'line-through text-slate-500' : ''}">${escapeHtml(item.name)}</span>
@@ -828,7 +888,7 @@
                     </div>
                   </label>
                   <button class="edit-item-btn p-2 text-slate-500 hover:text-white hover:bg-slate-700 rounded-lg transition-all opacity-0 group-hover:opacity-100 focus:opacity-100">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                   </button>
                 </div>
               `).join("")}
@@ -901,7 +961,6 @@
       }
     }
 
-
     async function addItem() {
       const name = newItemInput.value.trim();
       const type = normalizeType(newItemType.value);
@@ -938,14 +997,14 @@ Return ONLY the category name in plain text, nothing else.
 
         const resData = await res.json();
         const text = resData?.candidates?.[0]?.content?.parts?.[0]?.text || "OTHER";
-        const category = text.trim().toUpperCase().replace(/[*_]/g, "");
+        const category = sanitizeCategory(text, list.categories);
 
         data.items.push({
           id: `item-new-${Date.now()}`,
           name,
           type,
           has: false,
-          category: category || "OTHER"
+          category
         });
 
         data.sourceDirty = true;
@@ -998,127 +1057,38 @@ The "order" array MUST contain all categories provided.
           data.categoryOrder = parsed.order.map(c => c.trim().toUpperCase());
           renderMasterList();
           localStorage.setItem(list.categoryOrderCacheKey, JSON.stringify(data.categoryOrder));
-          setAppStatus("Shopping path optimized with AI!");
+          setAppStatus("Shopping path optimized!");
         } else {
-          throw new Error("Invalid AI response.");
+          setAppStatus("Could not generate optimized path. Try again.");
         }
       } catch (err) {
         setAppStatus(`Optimization failed: ${err.message}`);
       }
     }
 
-    function parseGeminiJson(text) {
-      const cleaned = text.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/i, "").trim();
-      try {
-        return JSON.parse(cleaned);
-      } catch (e) {
-        return {};
-      }
-    }
-
     async function syncSheets() {
       try {
-        const data = getCurrentData();
         const list = getCurrentList();
-        setAppStatus("Syncing with Google Sheets...");
+        const data = getCurrentData();
+        setAppStatus(`Syncing ${list.label}...`);
 
-        // Fetch current sheet state so we can merge instead of blindly overwriting.
-        // This prevents one user's sync from erasing another user's changes.
-        let sheetCheckedMap = {};
-        try {
-          const sheetData = await sheetsFetch(`values/${list.sheetName}!A2:D`);
-          (sheetData.values || []).forEach(row => {
-            const name = String(row[0] || "").trim().toLowerCase();
-            if (name) sheetCheckedMap[name] = String(row[2] || "").trim().toLowerCase() === "checked";
-          });
-        } catch (e) {
-          // If the fetch fails, fall back to writing local state as-is
-          console.warn("Could not fetch sheet for merge, writing local state:", e);
-        }
-
-        // Merge strategy:
-        // - Items the user explicitly checked/unchecked this session → use local state
-        // - Items the user never touched → use whatever the sheet currently says
-        //   (preserves changes made by another user on another device)
-        const dirtyIds = data.dirtyItemIds;
-        const masterValues = [
-          ["Item", "Type", "status", "category"],
-          ...data.items.map((item) => {
-            let isChecked;
-            if (dirtyIds.has(item.id)) {
-              // Explicitly changed locally — local wins
-              isChecked = item.has;
-            } else {
-              // Not touched locally — keep sheet value if it exists, else keep local
-              const sheetHas = sheetCheckedMap[item.name.toLowerCase()];
-              isChecked = sheetHas !== undefined ? sheetHas : item.has;
-            }
-            // Keep local item in sync with the merged result
-            item.has = isChecked;
-            return [item.name, item.type, isChecked ? "checked" : "unchecked", item.category];
-          })
-        ];
-
-        await sheetsFetch(`values/${list.sheetName}!A:D:clear`, { method: "POST", body: JSON.stringify({}) });
-        await sheetsFetch(`values/${list.sheetName}!A1?valueInputOption=RAW`, {
-          method: "PUT",
-          body: JSON.stringify({ values: masterValues })
+        const values = [];
+        data.items.forEach(item => {
+          values.push([item.name, item.type, item.has ? "checked" : "", item.category]);
         });
 
-        data.dirtyItemIds = new Set();
+        await sheetsFetch(`values/${list.sheetName}!A2:D${values.length + 1}?valueInputOption=RAW`, {
+          method: "PUT",
+          body: JSON.stringify({ values })
+        });
+
         data.sourceDirty = false;
-        localStorage.setItem(list.cacheKey, JSON.stringify(data.items));
+        data.dirtyItemIds.clear();
         updateSyncButton();
-        setAppStatus(`Sync complete! ${data.items.length} items updated.`);
+        setAppStatus(`Synced ${data.items.length} items to ${list.label}.`);
+        localStorage.setItem(list.cacheKey, JSON.stringify(data.items));
       } catch (err) {
         setAppStatus(`Sync failed: ${err.message}`);
-      }
-    }
-
-    function escapeHtml(str) {
-      return str
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-    }
-
-    async function categorizeItemsInBatch(items) {
-      try {
-        const list = getCurrentList();
-        const names = items.map(a => a.name).join(", ");
-        const prompt = `
-You are a grocery assistant. Categorize these items: ${names}.
-Pick the best category for each from: ${list.categories.join(", ")}.
-Return ONLY valid JSON in this exact format:
-{
-  "results": [
-    { "item": "item name", "category": "CATEGORY" }
-  ]
-}
-        `.trim();
-
-        const res = await fetch("/api/gemini", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ model: GEMINI_MODEL, prompt })
-        });
-
-        const data = await res.json();
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-        const parsed = parseGeminiJson(text);
-
-        if (parsed.results && Array.isArray(parsed.results)) {
-          parsed.results.forEach(result => {
-            const item = items.find(i => i.name.toLowerCase() === result.item.toLowerCase());
-            if (item) {
-              item.category = String(result.category || "OTHER").trim().toUpperCase().replace(/[*_]/g, "");
-            }
-          });
-        }
-      } catch (e) {
-        console.error("Batch categorization failed", e);
       }
     }
   </script>
