@@ -393,6 +393,22 @@
           </select>
         </div>
 
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Category</label>
+          <div class="relative">
+            <select id="editItemCategory"
+              class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all appearance-none cursor-pointer font-medium">
+              <!-- Dynamically populated -->
+            </select>
+            <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-500">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
         <div class="pt-4 flex flex-col gap-3">
           <button id="saveEditBtn"
             class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-white shadow-lg shadow-emerald-600/20 transition-all active:scale-[0.98]">
@@ -492,6 +508,7 @@
     const editModal = document.getElementById("editModal");
     const editItemName = document.getElementById("editItemName");
     const editItemType = document.getElementById("editItemType");
+    const editItemCategory = document.getElementById("editItemCategory");
     const saveEditBtn = document.getElementById("saveEditBtn");
     const deleteItemBtn = document.getElementById("deleteItemBtn");
     const closeModalBtn = document.getElementById("closeModalBtn");
@@ -943,6 +960,18 @@ Return ONLY the category name in plain text, nothing else.
             currentEditId = id;
             editItemName.value = item.name;
             editItemType.value = item.type;
+            
+            // Populate category dropdown based on current list's categories
+            const list = getCurrentList();
+            editItemCategory.innerHTML = "";
+            list.categories.forEach(cat => {
+              const option = document.createElement("option");
+              option.value = cat;
+              option.textContent = cat;
+              editItemCategory.appendChild(option);
+            });
+            editItemCategory.value = item.category || "OTHER";
+            
             editModal.classList.remove("hidden");
           }
         });
@@ -955,6 +984,7 @@ Return ONLY the category name in plain text, nothing else.
       if (item) {
         item.name = editItemName.value.trim();
         item.type = editItemType.value;
+        item.category = editItemCategory.value;
         data.sourceDirty = true;
         localStorage.setItem(getCurrentList().cacheKey, JSON.stringify(data.items));
         updateSyncButton();
@@ -980,34 +1010,98 @@ Return ONLY the category name in plain text, nothing else.
       }
     }
 
+    function guessCategoryLocally(name, items, categories) {
+      const lowerName = name.toLowerCase().trim();
+      
+      // 1. Exact or substring match in existing items
+      for (const item of items) {
+        const itemName = item.name.toLowerCase().trim();
+        if (itemName && item.category && item.category !== "OTHER") {
+          if (lowerName === itemName || lowerName.includes(itemName) || itemName.includes(lowerName)) {
+            if (categories.includes(item.category)) {
+              return item.category;
+            }
+          }
+        }
+      }
+      
+      // 2. Simple keyword matching dictionary
+      const keywords = {
+        PRODUCE: ["עגבני", "מלפפון", "בצל", "תפוח", "בננה", "גזר", "חסה", "תפוח אדמה", "שום", "לימון", "אבוקדו", "פטריות", "פלפל", "קישוא", "חציל", "כרוב", "בטטה", "תות", "ענבים", "ירק", "ירקות", "פירות", "tomato", "onion", "potato", "carrot", "lettuce", "garlic", "lemon", "avocado", "banana", "apple", "fruit", "vegetable", "cucumber"],
+        DAIRY: ["חלב", "גבינ", "קוטג", "יוגורט", "חמאה", "שמנת", "קצפת", "לבנה", "צהובה", "מוצרלה", "milk", "cheese", "yogurt", "butter", "cream", "dairy"],
+        MEAT: ["עוף", "בשר", "חזה", "פרגיות", "בקר", "צלעות", "נקניק", "המבורגר", "שניצל", "chicken", "meat", "beef", "pork", "turkey"],
+        SEAFOOD: ["דג", "סלמון", "טונה טריה", "שרימפס", "fish", "salmon", "seafood"],
+        FROZEN: ["צ'יפס", "מלווח", "ג'חנון", "בורקס", "פיצה", "גלידה", "קפוא", "frozen", "ice cream"],
+        BAKERY: ["לחם", "פיתות", "לחמני", "חלה", "עוגה", "עוגיות", "מאפה", "bread", "pita", "bun", "cake", "cookies", "bakery"],
+        PANTRY: ["אורז", "פסטה", "שמן", "מלח", "סוכר", "קמח", "טונה", "רסק", "קוסקוס", "פתיתים", "עדשים", "שעועית", "חומץ", "רוטב", "דבש", "ריבה", "שוקולד", "חלווה", "קורנפלקס", "דגנים", "פירורי לחם", "ספגטי", "rice", "pasta", "oil", "salt", "sugar", "flour", "tuna", "pantry", "sauce", "honey", "cereal"],
+        BEVERAGES: ["מים", "קולה", "סודה", "מיץ", "בירה", "יין", "קפה", "תה", "משקה", "משקאות", "water", "juice", "coke", "soda", "beer", "wine", "coffee", "tea", "drink"],
+        HOUSEHOLD: ["טואלט", "כלים", "כביסה", "מרכך", "אשפה", "שקיות", "מטליות", "נייר", "detergent", "soap", "trash", "paper", "household", "cleaning"],
+        "PERSONAL CARE": ["שמפו", "מרכך שיער", "דאודורנט", "משחת שיניים", "סבון גוף", "סבון", "shampoo", "toothpaste", "deodorant", "soap", "personal"],
+        VITAMINS: ["ויטמין", "אומגה", "ברזל", "חומצה", "סידן", "מגנזיום", "תוספת", "vitamin", "supplement"],
+        "FIRST AID": ["אקמול", "נורופן", "אדוויל", "פלסטר", "חבישה", "אלכוג", "מדחום", "תרופה", "פראצטמול", "advil", "nurofen", "bandaid", "medicine", "pill"],
+        "SKIN CARE": ["קרם", "סרום", "מסכה לפנים", "הגנה", "שמש", "cream", "lotion", "skin", "sunscreen"],
+        "HAIR CARE": ["שמפו", "מרכך שיער", "מברשת שיער", "צבע לשיער", "hair"],
+        "ORAL CARE": ["מברשת שיניים", "מי פה", "חוט דנטלי", "tooth", "oral"],
+        "BABY CARE": ["חיתולים", "טיטולים", "מטרנה", "סימילאק", "מגבונים", "baby", "diaper"],
+        "PAPER GOODS": ["חד פעמי", "כוסות", "צלחות", "מפיות", "מנגזים", "paper", "cup", "plate", "napkin"],
+        CLEANING: ["אקונומיקה", "רצפות", "סנו", "cleaning", "bleach"],
+        SNACKS: ["חטיפ", "במבה", "ביסלי", "תפוצ'יפס", "קליק", "snack", "chips", "chocolate"]
+      };
+      
+      for (const cat of Object.keys(keywords)) {
+        if (categories.includes(cat)) {
+          for (const kw of keywords[cat]) {
+            if (lowerName.includes(kw)) {
+              return cat;
+            }
+          }
+        }
+      }
+      
+      return "OTHER";
+    }
+
     async function addItem() {
       const name = newItemInput.value.trim();
       const type = normalizeType(newItemType.value);
       const data = getCurrentData();
+      const list = getCurrentList();
 
       if (!name) {
         setAppStatus("Enter an item name first.");
         return;
       }
 
-      // FIXED: Check if item exists in current list's data
-      const exists = data.items.some((item) => item.name.toLowerCase() === name.toLowerCase());
-      if (exists) {
-        setAppStatus(`"${name}" already exists in ${getCurrentList().label}.`);
-        console.log(`[DEBUG] Duplicate check: "${name}" found in ${currentListId}`);
+      // Check if item exists in current list's data
+      const existingItem = data.items.find((item) => item.name.toLowerCase() === name.toLowerCase());
+      if (existingItem) {
+        if (existingItem.has) {
+          existingItem.has = false;
+          data.sourceDirty = true;
+          localStorage.setItem(list.cacheKey, JSON.stringify(data.items));
+          newItemInput.value = "";
+          renderListSwitcher();
+          renderMasterList();
+          updateSyncButton();
+          setAppStatus(`"${existingItem.name}" כבר קיים ברשימה, הורדנו את הסימון שלו והחזרנו לרשימה.`);
+        } else {
+          setAppStatus(`"${existingItem.name}" כבר קיים ברשימה ואינו מסומן.`);
+        }
         return;
       }
 
       try {
-        const list = getCurrentList();
-        setAppStatus(`Categorizing "${name}" with AI...`);
+        setAppStatus(`Categorizing "${name}"...`);
         const catPrompt = `
 You are a grocery assistant. Categorize this item: "${name}".
 Pick the best category from: ${list.categories.join(", ")}.
 Return ONLY the category name in plain text, nothing else.
         `.trim();
 
-        let category = "OTHER";
+        // Try local categorization first
+        let category = guessCategoryLocally(name, data.items, list.categories);
+        let aiSuccess = false;
+
         try {
           const res = await fetch("/api/gemini", {
             method: "POST",
@@ -1024,15 +1118,12 @@ Return ONLY the category name in plain text, nothing else.
             const text = resData?.candidates?.[0]?.content?.parts?.[0]?.text || "OTHER";
             category = sanitizeCategory(text, list.categories);
             console.log(`[DEBUG] New item "${name}" categorized as "${category}" (raw: "${text}")`);
+            aiSuccess = true;
           } else {
-            console.warn(`[DEBUG] Gemini API error for new item: HTTP ${res.status}`);
-            setAppStatus(`Failed to categorize: API error`);
-            return;
+            console.warn(`[DEBUG] Gemini API returned status ${res.status} for "${name}". Using guessed category "${category}"`);
           }
         } catch (err) {
           console.error(`[DEBUG] Error calling Gemini API for new item:`, err);
-          setAppStatus(`Failed to categorize: ${err.message}`);
-          return;
         }
 
         const newItem = {
@@ -1045,14 +1136,18 @@ Return ONLY the category name in plain text, nothing else.
 
         data.items.push(newItem);
         data.sourceDirty = true;
-        // FIXED: Persist new item to localStorage immediately
         localStorage.setItem(list.cacheKey, JSON.stringify(data.items));
         
         newItemInput.value = "";
         renderListSwitcher();
         renderMasterList();
         updateSyncButton();
-        setAppStatus(`Added "${name}" to ${category}. Sync to save to Google Sheets.`);
+        
+        if (aiSuccess) {
+          setAppStatus(`Added "${name}" to ${category}. Sync to save to Google Sheets.`);
+        } else {
+          setAppStatus(`Added "${name}" to ${category} (guessed/offline). Sync to save.`);
+        }
       } catch (err) {
         console.error(`[DEBUG] Error in addItem:`, err);
         setAppStatus(`Failed to add: ${err.message}`);
