@@ -956,6 +956,7 @@ Return ONLY the category name in plain text, nothing else.
         item.name = editItemName.value.trim();
         item.type = editItemType.value;
         data.sourceDirty = true;
+        localStorage.setItem(getCurrentList().cacheKey, JSON.stringify(data.items));
         updateSyncButton();
         renderMasterList();
         editModal.classList.add("hidden");
@@ -970,10 +971,12 @@ Return ONLY the category name in plain text, nothing else.
         const name = data.items[index].name;
         data.items.splice(index, 1);
         data.sourceDirty = true;
+        // FIXED: Persist deletion to localStorage immediately
+        localStorage.setItem(getCurrentList().cacheKey, JSON.stringify(data.items));
         updateSyncButton();
         renderMasterList();
         editModal.classList.add("hidden");
-        setAppStatus(`Deleted "${name}".`);
+        setAppStatus(`Deleted "${name}". Sync to save to Google Sheets.`);
       }
     }
 
@@ -987,9 +990,11 @@ Return ONLY the category name in plain text, nothing else.
         return;
       }
 
+      // FIXED: Check if item exists in current list's data
       const exists = data.items.some((item) => item.name.toLowerCase() === name.toLowerCase());
       if (exists) {
-        setAppStatus("That item already exists.");
+        setAppStatus(`"${name}" already exists in ${getCurrentList().label}.`);
+        console.log(`[DEBUG] Duplicate check: "${name}" found in ${currentListId}`);
         return;
       }
 
@@ -1030,19 +1035,24 @@ Return ONLY the category name in plain text, nothing else.
           return;
         }
 
-        data.items.push({
+        const newItem = {
           id: `item-new-${Date.now()}`,
           name,
           type,
           has: false,
           category
-        });
+        };
 
+        data.items.push(newItem);
         data.sourceDirty = true;
+        // FIXED: Persist new item to localStorage immediately
+        localStorage.setItem(list.cacheKey, JSON.stringify(data.items));
+        
         newItemInput.value = "";
+        renderListSwitcher();
         renderMasterList();
         updateSyncButton();
-        setAppStatus(`Added "${name}" to ${category}. Remember to sync!`);
+        setAppStatus(`Added "${name}" to ${category}. Sync to save to Google Sheets.`);
       } catch (err) {
         console.error(`[DEBUG] Error in addItem:`, err);
         setAppStatus(`Failed to add: ${err.message}`);
