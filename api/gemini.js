@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Server is missing GEMINI_API_KEY" });
   }
 
-  const model = typeof req.body?.model === "string" && req.body.model.trim() ? req.body.model.trim() : "gemini-2.0-flash";
+  const model = typeof req.body?.model === "string" && req.body.model.trim() ? req.body.model.trim() : "gemini-3.5-flash";
   const prompt = typeof req.body?.prompt === "string" ? req.body.prompt.trim() : "";
 
   if (!prompt) {

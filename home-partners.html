@@ -461,7 +461,7 @@
                 const response = await fetch("/api/gemini", {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt, model: "gemini-2.0-flash" })
+                    body: JSON.stringify({ prompt, model: "gemini-3.5-flash" })
                 });
                 
                 if (!response.ok) {
