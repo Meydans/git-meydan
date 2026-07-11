@@ -596,9 +596,13 @@ Return ONLY valid JSON, no markdown:
           setAiStatus("active-direct");
         } else {
           setAiStatus("checking");
-          fetch("/api/gemini", { method: "HEAD" })
+          fetch("/api/gemini", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt: "" })
+          })
             .then(res => {
-              if (res.status === 405) {
+              if (res.status === 400) {
                 setAiStatus("active-proxy");
               } else {
                 setAiStatus("offline");
