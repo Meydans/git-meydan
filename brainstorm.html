@@ -663,7 +663,9 @@ Return ONLY valid JSON, no markdown:
           setInsight(parsed.insight);
         } catch (err) {
           console.error("AI error:", err);
-          setSessionError(err.message || "Failed to contact Gemini");
+          if (err.message !== "AI is configured offline.") {
+            setSessionError(err.message || "Failed to contact Gemini");
+          }
           const fallback = FALLBACK_QUESTIONS[Math.min(nextStep, FALLBACK_QUESTIONS.length - 1)];
           setQuestion(fallback.question);
           setOptions(fallback.options);
@@ -709,7 +711,9 @@ Return ONLY valid JSON, no markdown:
           setSummary(parsed);
         } catch (err) {
           console.error("AI error:", err);
-          setSessionError(err.message || "Failed to contact Gemini");
+          if (err.message !== "AI is configured offline.") {
+            setSessionError(err.message || "Failed to contact Gemini");
+          }
           setSummary({
             problem: "Based on what you've shared, you're navigating something that's been weighing on you and deserves more clarity.",
             rootCauses: ["An unmet need or unspoken expectation", "A recurring pattern that keeps showing up", "Tension between what you want and your current situation"],
