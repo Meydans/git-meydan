@@ -643,7 +643,7 @@ Return ONLY valid JSON, no markdown:
         setIsLoading(true);
         setSessionError(null);
         try {
-          if (!apiKey && aiStatus === "offline") {
+          if (!apiKey && aiStatus !== "active-proxy") {
             throw new Error("AI is configured offline.");
           }
           const prompt = buildPrompt(userAnswer, newHistory, nextStep);
@@ -691,7 +691,7 @@ Return ONLY valid JSON, no markdown:
         setIsLoading(true);
         setSessionError(null);
         try {
-          if (!apiKey && aiStatus === "offline") {
+          if (!apiKey && aiStatus !== "active-proxy") {
             throw new Error("AI is configured offline.");
           }
           const prompt = buildSummaryPrompt(path);

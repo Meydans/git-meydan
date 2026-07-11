@@ -688,7 +688,7 @@ Return ONLY the category name in plain text, nothing else.
           `.trim();
 
           try {
-            if (!geminiApiKey && aiStatus === "offline") {
+            if (!geminiApiKey && aiStatus !== "active-proxy") {
               throw new Error("AI is configured offline.");
             }
             const resData = await callGemini(catPrompt, GEMINI_MODEL);
@@ -1319,7 +1319,7 @@ Return ONLY the category name in plain text, nothing else.
         let aiSuccess = false;
 
         try {
-          if (!geminiApiKey && aiStatus === "offline") {
+          if (!geminiApiKey && aiStatus !== "active-proxy") {
             throw new Error("AI is configured offline.");
           }
           const resData = await callGemini(catPrompt, GEMINI_MODEL);
@@ -1383,7 +1383,7 @@ Return ONLY valid JSON in this exact format:
 The "order" array MUST contain all categories provided.
           `.trim();
 
-        if (!geminiApiKey && aiStatus === "offline") {
+        if (!geminiApiKey && aiStatus !== "active-proxy") {
           throw new Error("AI is configured offline.");
         }
         const resData = await callGemini(prompt, GEMINI_MODEL);
