@@ -524,7 +524,7 @@
         updateAiStatusBadge();
         fetch("/api/gemini", { method: "HEAD" })
           .then(res => {
-            if (res.status === 405 || res.ok) {
+            if (res.status === 405) {
               aiStatus = "active-proxy";
             } else {
               aiStatus = "offline";
