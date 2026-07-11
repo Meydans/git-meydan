@@ -581,6 +581,7 @@ Return ONLY valid JSON, no markdown:
       const [selectedOption, setSelectedOption] = useState(null);
       const [customAnswer, setCustomAnswer] = useState("");
       const [summary, setSummary] = useState(null);
+      const [sessionError, setSessionError] = useState(null);
 
       const [apiKey, setApiKey] = useState(() => localStorage.getItem("gemini_api_key") || "");
       const [aiStatus, setAiStatus] = useState("checking");
@@ -640,19 +641,25 @@ Return ONLY valid JSON, no markdown:
 
       const fetchNextQuestion = async (userAnswer, newHistory, nextStep) => {
         setIsLoading(true);
+        setSessionError(null);
         try {
           if (!apiKey && aiStatus === "offline") {
             throw new Error("AI is configured offline.");
           }
           const prompt = buildPrompt(userAnswer, newHistory, nextStep);
           const rawData = await callGemini(prompt, "gemini-2.0-flash");
-          const text = rawData.candidates?.[0]?.content?.parts?.[0]?.text?.replace(/```(json)?/g, '').trim();
-          const parsed = JSON.parse(text);
+          const text = rawData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          const jsonMatch = text.match(/\{[\s\S]*\}/);
+          if (!jsonMatch) {
+            throw new Error("Invalid response format from AI.");
+          }
+          const parsed = JSON.parse(jsonMatch[0]);
           setQuestion(parsed.question);
           setOptions(parsed.options || []);
           setInsight(parsed.insight);
         } catch (err) {
           console.error("AI error:", err);
+          setSessionError(err.message || "Failed to contact Gemini");
           const fallback = FALLBACK_QUESTIONS[Math.min(nextStep, FALLBACK_QUESTIONS.length - 1)];
           setQuestion(fallback.question);
           setOptions(fallback.options);
@@ -682,17 +689,23 @@ Return ONLY valid JSON, no markdown:
       const handleSummarize = async () => {
         if (isLoading) return;
         setIsLoading(true);
+        setSessionError(null);
         try {
           if (!apiKey && aiStatus === "offline") {
             throw new Error("AI is configured offline.");
           }
           const prompt = buildSummaryPrompt(path);
           const rawData = await callGemini(prompt, "gemini-2.0-flash");
-          const text = rawData.candidates?.[0]?.content?.parts?.[0]?.text?.replace(/```(json)?/g, '').trim();
-          const parsed = JSON.parse(text);
+          const text = rawData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          const jsonMatch = text.match(/\{[\s\S]*\}/);
+          if (!jsonMatch) {
+            throw new Error("Invalid response format from AI.");
+          }
+          const parsed = JSON.parse(jsonMatch[0]);
           setSummary(parsed);
         } catch (err) {
           console.error("AI error:", err);
+          setSessionError(err.message || "Failed to contact Gemini");
           setSummary({
             problem: "Based on what you've shared, you're navigating something that's been weighing on you and deserves more clarity.",
             rootCauses: ["An unmet need or unspoken expectation", "A recurring pattern that keeps showing up", "Tension between what you want and your current situation"],
@@ -713,6 +726,7 @@ Return ONLY valid JSON, no markdown:
         setSelectedOption(null);
         setCustomAnswer("");
         setSummary(null);
+        setSessionError(null);
       };
 
       return (
@@ -756,6 +770,17 @@ Return ONLY valid JSON, no markdown:
 
               {/* Question Card */}
               <div className="w-full max-w-2xl bg-white/80 glass rounded-3xl p-8 sm:p-12 mb-8 text-center shadow-xl animate-fade-in border-t-4 dynamic-card">
+                {aiStatus === 'offline' && !apiKey && (
+                  <div className="mb-6 -mt-4 py-2 px-4 rounded-xl bg-amber-50 border border-amber-100 text-amber-700 text-xs font-semibold inline-flex items-center gap-1.5 mx-auto">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+                    Running in Offline Mode (Using static fallback questions)
+                  </div>
+                )}
+                {sessionError && (
+                  <div className="mb-6 -mt-4 py-2 px-4 rounded-xl bg-rose-50 border border-rose-100 text-rose-700 text-xs font-semibold inline-flex items-center gap-1.5 mx-auto">
+                    ⚠️ AI Error: {sessionError}. Using static fallback question.
+                  </div>
+                )}
                 <h3 className="font-display text-2xl sm:text-3xl font-medium leading-relaxed mb-8 text-slate-800">
                   {question}
                 </h3>
