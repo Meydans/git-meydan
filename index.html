@@ -86,6 +86,12 @@
     ::-webkit-scrollbar-thumb:hover {
       background: #475569;
     }
+
+    dialog::backdrop {
+      background-color: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
   </style>
 </head>
 
@@ -242,10 +248,17 @@
     <div class="absolute top-0 right-0 -z-10 w-[500px] h-[500px] bg-emerald-500/10 blur-[120px] rounded-full"></div>
 
     <div class="max-w-4xl mx-auto">
-      <header class="mb-10">
-        <h2 id="pageTitle" class="font-display text-3xl sm:text-4xl font-bold text-white mb-2">Mandatory Grocery Manager</h2>
-        <p id="pageSubtitle" class="text-slate-400 max-w-xl">Check your inventory, generate your shopping list with AI, and keep
-          everything in sync with Google Sheets.</p>
+      <header class="mb-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 id="pageTitle" class="font-display text-3xl sm:text-4xl font-bold text-white mb-2">Mandatory Grocery Manager</h2>
+          <p id="pageSubtitle" class="text-slate-400 max-w-xl">Check your inventory, generate your shopping list with AI, and keep
+            everything in sync with Google Sheets.</p>
+        </div>
+        <button id="aiStatusBadge" class="self-start sm:self-center flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-sm cursor-pointer z-10 bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700" title="Checking AI status...">
+          <span id="aiStatusDot" class="w-2.5 h-2.5 rounded-full bg-slate-500 animate-pulse"></span>
+          <span id="aiStatusText">Checking AI...</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="opacity-60"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
       </header>
 
       <!-- Auth View -->
@@ -429,6 +442,102 @@
     const SPREADSHEET_ID = "1EZ3XjCTLHOnt-d3hQpCJ67Mfg0DYwKCN3xEyAgCY_ws";
     const GEMINI_MODEL = "gemini-2.0-flash";
 
+    let geminiApiKey = localStorage.getItem("gemini_api_key") || "";
+    let aiStatus = "checking";
+
+    async function callGemini(prompt, model = GEMINI_MODEL) {
+      if (geminiApiKey) {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${geminiApiKey}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.2 }
+          })
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData?.error?.message || `API request failed with status ${res.status}`);
+        }
+        return res.json();
+      } else {
+        const res = await fetch("/api/gemini", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt, model })
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData?.error?.message || `Proxy request failed with status ${res.status}`);
+        }
+        return res.json();
+      }
+    }
+
+    function updateAiStatusBadge() {
+      const badge = document.getElementById("aiStatusBadge");
+      const dot = document.getElementById("aiStatusDot");
+      const text = document.getElementById("aiStatusText");
+      if (!badge || !dot || !text) return;
+
+      const config = {
+        checking: {
+          text: "Checking AI...",
+          dotClass: "bg-slate-500 animate-pulse",
+          badgeClass: "bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700",
+          title: "Checking connection to AI proxy..."
+        },
+        'active-proxy': {
+          text: "AI: Active (Vercel Proxy)",
+          dotClass: "bg-emerald-500 shadow-[0_0_8px_#10b981]",
+          badgeClass: "bg-emerald-950/40 text-emerald-400 border-emerald-800/60 hover:bg-emerald-900/30",
+          title: "Connected via serverless proxy. Click to configure custom key."
+        },
+        'active-direct': {
+          text: "AI: Active (Direct Key)",
+          dotClass: "bg-teal-500 shadow-[0_0_8px_#14b8a6]",
+          badgeClass: "bg-teal-950/40 text-teal-400 border-teal-800/60 hover:bg-teal-900/30",
+          title: "Connected directly with your API Key. Click to configure."
+        },
+        offline: {
+          text: "AI: Offline (Fallback Mode)",
+          dotClass: "bg-amber-500 shadow-[0_0_8px_#f59e0b]",
+          badgeClass: "bg-amber-950/40 text-amber-400 border-amber-800/60 hover:bg-amber-900/30",
+          title: "Failed to connect to AI. Click to set your custom Gemini API key."
+        }
+      };
+
+      const current = config[aiStatus] || config.offline;
+      
+      dot.className = `w-2.5 h-2.5 rounded-full ${current.dotClass}`;
+      badge.className = `self-start sm:self-center flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-sm cursor-pointer z-10 ${current.badgeClass}`;
+      badge.title = current.title;
+      text.textContent = current.text;
+    }
+
+    function checkAiStatus() {
+      if (geminiApiKey) {
+        aiStatus = "active-direct";
+        updateAiStatusBadge();
+      } else {
+        aiStatus = "checking";
+        updateAiStatusBadge();
+        fetch("/api/gemini", { method: "HEAD" })
+          .then(res => {
+            if (res.status === 405 || res.ok) {
+              aiStatus = "active-proxy";
+            } else {
+              aiStatus = "offline";
+            }
+            updateAiStatusBadge();
+          })
+          .catch(() => {
+            aiStatus = "offline";
+            updateAiStatusBadge();
+          });
+      }
+    }
+
     let tokenClient;
     let accessToken = null;
 
@@ -579,26 +688,15 @@ Return ONLY the category name in plain text, nothing else.
           `.trim();
 
           try {
-            const res = await fetch("/api/gemini", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                model: GEMINI_MODEL,
-                prompt: catPrompt
-              })
-            });
-
-            if (res.ok) {
-              const resData = await res.json();
-              console.log(`[DEBUG] Gemini response for "${item.name}":`, resData);
-              const text = resData?.candidates?.[0]?.content?.parts?.[0]?.text || "OTHER";
-              const category = sanitizeCategory(text, list.categories);
-              console.log(`[DEBUG] Categorized "${item.name}" as "${category}" (raw: "${text}")`);
-              item.category = category;
-            } else {
-              console.warn(`[DEBUG] Gemini API returned status ${res.status} for "${item.name}"`);
-              item.category = "OTHER";
+            if (!geminiApiKey && aiStatus === "offline") {
+              throw new Error("AI is configured offline.");
             }
+            const resData = await callGemini(catPrompt, GEMINI_MODEL);
+            console.log(`[DEBUG] Gemini response for "${item.name}":`, resData);
+            const text = resData?.candidates?.[0]?.content?.parts?.[0]?.text || "OTHER";
+            const category = sanitizeCategory(text, list.categories);
+            console.log(`[DEBUG] Categorized "${item.name}" as "${category}" (raw: "${text}")`);
+            item.category = category;
           } catch (itemErr) {
             console.error(`[DEBUG] Error categorizing "${item.name}":`, itemErr);
             item.category = "OTHER";
@@ -761,6 +859,124 @@ Return ONLY the category name in plain text, nothing else.
       editModal.addEventListener("click", (e) => {
         if (e.target === editModal) editModal.classList.add("hidden");
       });
+
+      // AI Settings Modal & Status initialization
+      const aiStatusBadge = document.getElementById("aiStatusBadge");
+      const aiSettingsModal = document.getElementById("aiSettingsModal");
+      const closeAiSettingsBtn = document.getElementById("closeAiSettingsBtn");
+      const cancelAiSettingsBtn = document.getElementById("cancelAiSettingsBtn");
+      const aiSettingsForm = document.getElementById("aiSettingsForm");
+      const aiKeyInput = document.getElementById("aiKeyInput");
+      const toggleAiKeyVisibility = document.getElementById("toggleAiKeyVisibility");
+      const toggleAiKeyIcon = document.getElementById("toggleAiKeyIcon");
+      const testAiKeyBtn = document.getElementById("testAiKeyBtn");
+      const clearAiKeyBtn = document.getElementById("clearAiKeyBtn");
+      const aiTestStatus = document.getElementById("aiTestStatus");
+      const aiTestStatusText = document.getElementById("aiTestStatusText");
+
+      let showAiKey = false;
+      toggleAiKeyVisibility.addEventListener("click", () => {
+        showAiKey = !showAiKey;
+        aiKeyInput.type = showAiKey ? "text" : "password";
+        if (showAiKey) {
+          toggleAiKeyIcon.innerHTML = `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>`;
+        } else {
+          toggleAiKeyIcon.innerHTML = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>`;
+        }
+      });
+
+      aiStatusBadge.addEventListener("click", () => {
+        aiKeyInput.value = geminiApiKey;
+        aiTestStatus.classList.add("hidden");
+        if (geminiApiKey) {
+          clearAiKeyBtn.classList.remove("hidden");
+        } else {
+          clearAiKeyBtn.classList.add("hidden");
+        }
+        aiSettingsModal.showModal();
+      });
+
+      closeAiSettingsBtn.addEventListener("click", () => aiSettingsModal.close());
+      cancelAiSettingsBtn.addEventListener("click", () => aiSettingsModal.close());
+
+      aiSettingsModal.addEventListener("click", (e) => {
+        if (e.target !== aiSettingsModal) return;
+        const rect = aiSettingsModal.getBoundingClientRect();
+        const isDialogContent = (
+          rect.top <= e.clientY &&
+          e.clientY <= rect.top + rect.height &&
+          rect.left <= e.clientX &&
+          e.clientX <= rect.left + rect.width
+        );
+        if (!isDialogContent) {
+          aiSettingsModal.close();
+        }
+      });
+
+      testAiKeyBtn.addEventListener("click", async () => {
+        const key = aiKeyInput.value.trim();
+        if (!key) {
+          showTestStatus("error", "API key cannot be empty.");
+          return;
+        }
+        showTestStatus("testing", "Testing connection...");
+        try {
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: "Respond only with the word PONG." }] }]
+            })
+          });
+          const data = await res.json();
+          if (res.ok && data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+            showTestStatus("success", "Connection successful! Model is ready.");
+          } else {
+            throw new Error(data?.error?.message || "Invalid API Key or API error.");
+          }
+        } catch (err) {
+          showTestStatus("error", `Connection failed: ${err.message}`);
+        }
+      });
+
+      function showTestStatus(type, message) {
+        aiTestStatus.className = "p-3.5 rounded-2xl text-xs flex items-start gap-2 border animate-fade-in";
+        if (type === "testing") {
+          aiTestStatus.classList.add("bg-slate-950", "text-slate-400", "border-slate-800");
+          aiTestStatusText.textContent = `⏳ ${message}`;
+        } else if (type === "success") {
+          aiTestStatus.classList.add("bg-emerald-950/40", "text-emerald-400", "border-emerald-800/60");
+          aiTestStatusText.textContent = `✅ ${message}`;
+        } else {
+          aiTestStatus.classList.add("bg-rose-950/40", "text-rose-400", "border-rose-800/60");
+          aiTestStatusText.textContent = `❌ ${message}`;
+        }
+        aiTestStatus.classList.remove("hidden");
+      }
+
+      aiSettingsForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const key = aiKeyInput.value.trim();
+        if (key) {
+          localStorage.setItem("gemini_api_key", key);
+          geminiApiKey = key;
+        } else {
+          localStorage.removeItem("gemini_api_key");
+          geminiApiKey = "";
+        }
+        checkAiStatus();
+        aiSettingsModal.close();
+      });
+
+      clearAiKeyBtn.addEventListener("click", () => {
+        localStorage.removeItem("gemini_api_key");
+        geminiApiKey = "";
+        aiKeyInput.value = "";
+        checkAiStatus();
+        aiSettingsModal.close();
+      });
+
+      checkAiStatus();
     };
 
     function showApp() {
@@ -1103,25 +1319,15 @@ Return ONLY the category name in plain text, nothing else.
         let aiSuccess = false;
 
         try {
-          const res = await fetch("/api/gemini", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              model: GEMINI_MODEL,
-              prompt: catPrompt
-            })
-          });
-
-          if (res.ok) {
-            const resData = await res.json();
-            console.log(`[DEBUG] Gemini response for new item "${name}":`, resData);
-            const text = resData?.candidates?.[0]?.content?.parts?.[0]?.text || "OTHER";
-            category = sanitizeCategory(text, list.categories);
-            console.log(`[DEBUG] New item "${name}" categorized as "${category}" (raw: "${text}")`);
-            aiSuccess = true;
-          } else {
-            console.warn(`[DEBUG] Gemini API returned status ${res.status} for "${name}". Using guessed category "${category}"`);
+          if (!geminiApiKey && aiStatus === "offline") {
+            throw new Error("AI is configured offline.");
           }
+          const resData = await callGemini(catPrompt, GEMINI_MODEL);
+          console.log(`[DEBUG] Gemini response for new item "${name}":`, resData);
+          const text = resData?.candidates?.[0]?.content?.parts?.[0]?.text || "OTHER";
+          category = sanitizeCategory(text, list.categories);
+          console.log(`[DEBUG] New item "${name}" categorized as "${category}" (raw: "${text}")`);
+          aiSuccess = true;
         } catch (err) {
           console.error(`[DEBUG] Error calling Gemini API for new item:`, err);
         }
@@ -1177,16 +1383,10 @@ Return ONLY valid JSON in this exact format:
 The "order" array MUST contain all categories provided.
           `.trim();
 
-        const res = await fetch("/api/gemini", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: GEMINI_MODEL,
-            prompt
-          })
-        });
-
-        const resData = await res.json();
+        if (!geminiApiKey && aiStatus === "offline") {
+          throw new Error("AI is configured offline.");
+        }
+        const resData = await callGemini(prompt, GEMINI_MODEL);
         const text = resData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
         const parsed = parseGeminiJson(text);
 
@@ -1229,6 +1429,63 @@ The "order" array MUST contain all categories provided.
       }
     }
   </script>
-</body>
 
+  <!-- AI Settings Modal -->
+  <dialog id="aiSettingsModal" closedby="any" class="rounded-3xl p-6 sm:p-8 w-full max-w-md bg-slate-900 text-white border border-slate-800 shadow-2xl backdrop:bg-slate-950/60 backdrop:backdrop-blur-sm select-none">
+    <div class="flex flex-col gap-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-display text-xl font-bold text-white">AI Configuration</h3>
+        <button id="closeAiSettingsBtn" type="button" class="p-1 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <p class="text-slate-400 text-xs sm:text-sm leading-relaxed">
+        This application is running entirely in your browser. Since Vercel proxy functions are not supported on static hosts like GitHub Pages, you can use your own Google Gemini API key to activate full AI features.
+      </p>
+
+      <form id="aiSettingsForm" class="flex flex-col gap-4 mt-2">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Gemini API Key</label>
+          <div class="relative flex items-center">
+            <input id="aiKeyInput" type="password" placeholder="Enter your Gemini API key..." class="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-white font-mono" />
+            <button id="toggleAiKeyVisibility" type="button" class="absolute right-3 p-1 rounded-full text-slate-400 hover:text-white transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="toggleAiKeyIcon"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+          </div>
+          <div class="flex justify-between items-center text-[11px] text-slate-500">
+            <span>Your key is saved locally in your browser.</span>
+            <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" class="text-emerald-400 hover:underline font-semibold flex items-center gap-0.5">
+              Get a key from AI Studio
+              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
+            </a>
+          </div>
+        </div>
+
+        <div id="aiTestStatus" class="p-3.5 rounded-2xl text-xs hidden items-start gap-2 border">
+          <span id="aiTestStatusText" class="font-semibold select-all leading-normal flex-1"></span>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 mt-2 border-t border-slate-800 pt-4">
+          <div class="flex gap-2">
+            <button id="testAiKeyBtn" type="button" class="px-4 py-2 text-xs font-semibold rounded-full border border-slate-800 hover:bg-slate-800 transition-colors text-slate-300">
+              Test Connection
+            </button>
+            <button id="clearAiKeyBtn" type="button" class="px-4 py-2 text-xs font-semibold rounded-full border border-rose-950 hover:bg-rose-950/30 text-rose-500 transition-colors hidden">
+              Clear Key
+            </button>
+          </div>
+          <div class="flex gap-2">
+            <button id="cancelAiSettingsBtn" type="button" class="px-4 py-2 text-xs font-semibold rounded-full border border-slate-800 hover:bg-slate-800 text-slate-400 transition-colors">
+              Cancel
+            </button>
+            <button type="submit" class="px-5 py-2 text-xs font-semibold rounded-full bg-emerald-600 hover:bg-emerald-500 text-white shadow-md hover:shadow-lg transition-all">
+              Save Key
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </dialog>
+</body>
 </html>

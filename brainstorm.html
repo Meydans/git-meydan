@@ -582,7 +582,7 @@ Return ONLY valid JSON, no markdown:
       const [customAnswer, setCustomAnswer] = useState("");
       const [summary, setSummary] = useState(null);
 
-      const [apiKey, setApiKey] = useState(() => localStorage.getItem("brainstorm_gemini_api_key") || "");
+      const [apiKey, setApiKey] = useState(() => localStorage.getItem("gemini_api_key") || "");
       const [aiStatus, setAiStatus] = useState("checking");
       const dialogRef = useRef(null);
 
@@ -837,11 +837,11 @@ Return ONLY valid JSON, no markdown:
             dialogRef={dialogRef}
             currentKey={apiKey}
             onSave={(newKey) => {
-              localStorage.setItem("brainstorm_gemini_api_key", newKey);
+              localStorage.setItem("gemini_api_key", newKey);
               setApiKey(newKey);
             }}
             onClear={() => {
-              localStorage.removeItem("brainstorm_gemini_api_key");
+              localStorage.removeItem("gemini_api_key");
               setApiKey("");
             }}
             aiStatus={aiStatus}
