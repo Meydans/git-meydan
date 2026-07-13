@@ -4,19 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="google-site-verification" content="GNF_Lj0PkGm7_dStHJGbn1ujJBfoM19grwJ4t_7gxy4" />
-  <title>Brainstorming Mind Map</title>
+  <title>Brainstorm Map</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- React & ReactDOM -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  
-  <!-- Babel -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -73,27 +68,26 @@
       -webkit-backdrop-filter: blur(12px);
       box-shadow: 0 10px 40px -10px rgba(0,0,0,0.05);
     }
-    
     .loading-dot {
       width: 10px; height: 10px; border-radius: 50%; display: inline-block;
     }
     .loading-dot:nth-child(1) { animation-delay: 0s; }
     .loading-dot:nth-child(2) { animation-delay: 0.2s; }
     .loading-dot:nth-child(3) { animation-delay: 0.4s; }
-    
+
     .theme-purple { --theme-color: #a855f7; --theme-bg: rgba(168,85,247,0.06); --theme-border: rgba(168,85,247,0.2); }
     .theme-teal { --theme-color: #0d9488; --theme-bg: rgba(20,184,166,0.06); --theme-border: rgba(20,184,166,0.2); }
     .theme-coral { --theme-color: #e11d48; --theme-bg: rgba(244,63,94,0.06); --theme-border: rgba(244,63,94,0.2); }
     .theme-pink { --theme-color: #db2777; --theme-bg: rgba(236,72,153,0.06); --theme-border: rgba(236,72,153,0.2); }
     .theme-blue { --theme-color: #2563eb; --theme-bg: rgba(59,130,246,0.06); --theme-border: rgba(59,130,246,0.2); }
     .theme-amber { --theme-color: #d97706; --theme-bg: rgba(245,158,11,0.06); --theme-border: rgba(245,158,11,0.2); }
-    
+
     .dynamic-card { background: var(--theme-bg); border-color: var(--theme-border); }
     .dynamic-text { color: var(--theme-color); }
     .dynamic-bg { background-color: var(--theme-color); }
     .dynamic-hover:hover { background-color: var(--theme-color); color: #fff; border-color: var(--theme-color); }
     .dynamic-ring:focus { outline: none; box-shadow: 0 0 0 3px var(--theme-border); }
-    
+
     input::placeholder { color: #94a3b8; }
 
     dialog::backdrop {
@@ -101,15 +95,32 @@
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
     }
+
+    .tree-scroll {
+      overflow: auto;
+      max-height: min(42vh, 420px);
+    }
+
+    .tree-node-active {
+      box-shadow: 0 0 0 2px var(--theme-color), 0 8px 24px -8px rgba(15, 23, 42, 0.25);
+    }
+
+    .sidebar-scroll {
+      overflow-y: auto;
+      max-height: calc(100vh - 8rem);
+    }
+
+    @media (max-width: 1023px) {
+      .sidebar-scroll { max-height: 40vh; }
+    }
   </style>
 </head>
 <body class="flex flex-col min-h-screen relative overflow-x-hidden">
-  
-  <!-- Mobile Header Minimal -->
+
   <div class="lg:hidden w-full h-16 bg-white border-b border-slate-100 flex items-center justify-center relative z-30">
     <div class="flex items-center gap-3">
       <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" className="text-slate-600"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 2.5 2.5 0 0 1-.3-4.11 2.5 2.5 0 0 1 1.76-4.59A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 2.5 2.5 0 0 0 .3-4.11 2.5 2.5 0 0 0-1.76-4.59A2.5 2.5 0 0 0 14.5 2Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-slate-600"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 2.5 2.5 0 0 1-.3-4.11 2.5 2.5 0 0 1 1.76-4.59A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 2.5 2.5 0 0 0 .3-4.11 2.5 2.5 0 0 0-1.76-4.59A2.5 2.5 0 0 0 14.5 2Z"/></svg>
       </div>
       <span class="font-display font-bold text-slate-800">Brainstorm Map</span>
     </div>
@@ -119,7 +130,6 @@
     </a>
   </div>
 
-  <!-- Header Desktop Minimal -->
   <header class="hidden lg:flex w-full h-20 items-center justify-between px-10 relative z-30">
     <a href="./index.html" class="text-sm font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1 py-2 px-4 rounded-full hover:bg-slate-100 transition-colors">
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
@@ -127,25 +137,21 @@
     </a>
     <div class="flex items-center gap-3">
       <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" className="text-slate-600"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 2.5 2.5 0 0 1-.3-4.11 2.5 2.5 0 0 1 1.76-4.59A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 2.5 2.5 0 0 0 .3-4.11 2.5 2.5 0 0 0-1.76-4.59A2.5 2.5 0 0 0 14.5 2Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-slate-600"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 2.5 2.5 0 0 1-.3-4.11 2.5 2.5 0 0 1 1.76-4.59A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 2.5 2.5 0 0 0 .3-4.11 2.5 2.5 0 0 0-1.76-4.59A2.5 2.5 0 0 0 14.5 2Z"/></svg>
       </div>
       <span class="font-display font-bold text-slate-800">Brainstorm Map</span>
     </div>
   </header>
 
-  <!-- Main Content (React Root) -->
-  <main class="flex-1 overflow-y-auto p-4 sm:p-10 relative mt-16 lg:mt-0 flex flex-col" id="root">
-    <!-- React will render here -->
-  </main>
+  <main class="flex-1 overflow-y-auto p-4 sm:p-8 relative mt-16 lg:mt-0 flex flex-col" id="root"></main>
 
-  <!-- React Application -->
   <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
+    const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
-    const COLORS = [
-      'theme-purple', 'theme-teal', 'theme-coral', 
-      'theme-pink', 'theme-blue', 'theme-amber'
-    ];
+    const STORAGE_KEY = "brainstorm_v2_sessions";
+    const ACTIVE_KEY = "brainstorm_v2_active";
+    const API_KEY_STORAGE = "gemini_api_key";
+    const MIN_STEPS_FOR_SUMMARY = 3;
 
     const PHASES = [
       { id: 'explore',   label: 'Explore',       minStep: 0, maxStep: 1, color: 'theme-blue'   },
@@ -153,12 +159,7 @@
       { id: 'deepen',    label: 'Going Deeper',   minStep: 4, maxStep: Infinity, color: 'theme-teal' },
     ];
 
-    function getPhase(step) {
-      return PHASES.find(p => step >= p.minStep && step <= p.maxStep) || PHASES[PHASES.length - 1];
-    }
-
     const FALLBACK_QUESTIONS = [
-      // Phase 0 – Explore
       {
         question: "What's the situation or challenge you want to think through?",
         options: ["A decision I'm stuck on", "A relationship tension", "Something feels off", "A goal I'm not reaching", "A big life change", "I'm not sure yet"],
@@ -169,7 +170,6 @@
         options: ["Draining my energy", "Causing avoidance", "Creating conflict", "Keeping me up at night", "Slowing me down", "Hard to describe"],
         insight: "Understanding how it's affecting you helps separate the surface noise from what really matters."
       },
-      // Phase 2 – Root Cause
       {
         question: "If you had to guess the real reason this is happening — not the obvious one — what would it be?",
         options: ["Fear of something", "Unmet need", "Unclear values", "Old habit or pattern", "Someone else's influence", "External pressure"],
@@ -180,7 +180,6 @@
         options: ["Yes, repeatedly", "Similar but different", "New territory", "Feels familiar", "Tied to one person", "Tied to a life stage"],
         insight: "Patterns often point to root causes that follow us across different situations."
       },
-      // Phase 4 – Solutions
       {
         question: "What have you already tried, or considered trying?",
         options: ["Talked to someone", "Ignored it", "Changed my routine", "Set a boundary", "Made a plan", "Nothing yet"],
@@ -193,20 +192,113 @@
       },
     ];
 
-    function LoadingDots() {
-      return (
-        <div className="flex gap-1.5 justify-center items-center py-4">
-          <div className="loading-dot bg-white/60 animate-bounce-dot"></div>
-          <div className="loading-dot bg-white/60 animate-bounce-dot"></div>
-          <div className="loading-dot bg-white/60 animate-bounce-dot"></div>
-        </div>
-      );
+    const ROOT_QUESTION = {
+      question: "What's on your mind? What would you like to think through today?",
+      options: ["A decision I'm stuck on", "Something in my personal life", "A work challenge", "A relationship", "A goal or dream", "Just feeling off"],
+      insight: "This is your space to think — there's no wrong place to start."
+    };
+
+    function uid() {
+      return `n_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
     }
 
-    // Phase-aware prompt builder
-    function buildPrompt(userAnswer, history, nextStep) {
-      const historyText = history.map((item, i) => `Step ${i+1}: Q: "${item.q}" A: "${item.a}"`).join("\n");
+    function getPhase(step) {
+      return PHASES.find(p => step >= p.minStep && step <= p.maxStep) || PHASES[PHASES.length - 1];
+    }
 
+    function createNode({ question, options, insight, depth = 0, parentId = null, answer = null }) {
+      const phase = getPhase(depth);
+      return {
+        id: uid(),
+        question,
+        options: options || [],
+        insight: insight || "",
+        answer,
+        depth,
+        parentId,
+        childIds: [],
+        color: phase.color,
+        createdAt: Date.now(),
+      };
+    }
+
+    function createSession(name) {
+      const root = createNode({ ...ROOT_QUESTION, depth: 0, parentId: null });
+      const now = Date.now();
+      return {
+        id: uid(),
+        name: name || `Session ${new Date().toLocaleString()}`,
+        createdAt: now,
+        updatedAt: now,
+        nodes: { [root.id]: root },
+        rootId: root.id,
+        currentId: root.id,
+        summary: null,
+      };
+    }
+
+    function loadAllSessions() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" ? parsed : {};
+      } catch {
+        return {};
+      }
+    }
+
+    function saveAllSessions(sessions) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+    }
+
+    function getActiveSessionId() {
+      return localStorage.getItem(ACTIVE_KEY) || null;
+    }
+
+    function setActiveSessionId(id) {
+      if (id) localStorage.setItem(ACTIVE_KEY, id);
+      else localStorage.removeItem(ACTIVE_KEY);
+    }
+
+    function getNode(session, id) {
+      return session?.nodes?.[id] || null;
+    }
+
+    function getPathToNode(session, nodeId) {
+      const path = [];
+      let cur = getNode(session, nodeId);
+      while (cur) {
+        path.unshift(cur);
+        cur = cur.parentId ? getNode(session, cur.parentId) : null;
+      }
+      return path;
+    }
+
+    function getAnsweredPath(session, nodeId) {
+      return getPathToNode(session, nodeId).filter(n => n.answer != null);
+    }
+
+    function historyFromPath(nodes) {
+      return nodes
+        .filter(n => n.answer != null)
+        .map(n => ({ q: n.question, a: n.answer, color: n.color }));
+    }
+
+    function countBranches(session) {
+      let branches = 0;
+      Object.values(session.nodes).forEach(n => {
+        if (n.childIds.length > 1) branches += n.childIds.length - 1;
+      });
+      return branches;
+    }
+
+    function countAnswered(session) {
+      return Object.values(session.nodes).filter(n => n.answer != null).length;
+    }
+
+    function buildPrompt(userAnswer, history, nextStep) {
+      const historyText = history.map((item, i) => `Step ${i + 1}: Q: "${item.q}" A: "${item.a}"`).join("\n");
       let phaseInstruction = "";
       if (nextStep <= 1) {
         phaseInstruction = `PHASE: Problem Exploration.
@@ -223,7 +315,7 @@ Goal: Keep the conversation moving forward. Alternate between deepening the unde
 
 ${phaseInstruction}
 
-Conversation so far:
+Conversation so far (this branch):
 ${historyText}
 
 The user just answered: "${userAnswer}"
@@ -241,10 +333,9 @@ Return ONLY valid JSON, no markdown:
 }`;
     }
 
-    // Summary generator prompt
     function buildSummaryPrompt(history) {
-      const historyText = history.map((item, i) => `Q: "${item.q}" → A: "${item.a}"`).join("\n");
-      return `You are a problem-solving coach. Based on this brainstorming session, synthesize a clear summary.
+      const historyText = history.map((item) => `Q: "${item.q}" → A: "${item.a}"`).join("\n");
+      return `You are a problem-solving coach. Based on this brainstorming session branch, synthesize a clear summary.
 
 Session transcript:
 ${historyText}
@@ -258,12 +349,22 @@ Return ONLY valid JSON, no markdown:
 }`;
     }
 
+    function LoadingDots() {
+      return (
+        <div className="flex gap-1.5 justify-center items-center py-4">
+          <div className="loading-dot bg-white/60 animate-bounce-dot"></div>
+          <div className="loading-dot bg-white/60 animate-bounce-dot"></div>
+          <div className="loading-dot bg-white/60 animate-bounce-dot"></div>
+        </div>
+      );
+    }
+
     function PhaseBar({ currentStep }) {
       return (
-        <div className="flex items-center justify-center gap-2 mb-8 w-full animate-fade-in">
+        <div className="flex items-center justify-center gap-2 mb-6 w-full animate-fade-in flex-wrap">
           {PHASES.map((phase, idx) => {
             const isActive = currentStep >= phase.minStep && currentStep <= phase.maxStep;
-            const isDone   = currentStep > phase.maxStep;
+            const isDone = currentStep > phase.maxStep;
             return (
               <React.Fragment key={phase.id}>
                 <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-500 ${
@@ -271,11 +372,17 @@ Return ONLY valid JSON, no markdown:
                   isDone   ? 'bg-slate-200 text-slate-500' :
                              'bg-slate-100 text-slate-400'
                 }`}>
-                  {isDone && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/></svg>}
+                  {isDone && (
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/>
+                    </svg>
+                  )}
                   {phase.label}
                 </div>
                 {idx < PHASES.length - 1 && (
-                  <svg className="w-3 h-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+                  <svg className="w-3 h-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
+                  </svg>
                 )}
               </React.Fragment>
             );
@@ -284,18 +391,17 @@ Return ONLY valid JSON, no markdown:
       );
     }
 
-    function SummaryPanel({ summary, onReset }) {
+    function SummaryPanel({ summary, onReset, onBackToMap }) {
       return (
         <div className="w-full max-w-2xl animate-fade-in flex flex-col gap-5">
           <div className="bg-white/90 glass rounded-3xl p-8 shadow-xl border-t-4 theme-purple dynamic-card">
             <h3 className="font-display text-xl font-bold text-slate-800 mb-3">Problem</h3>
             <p className="text-slate-600 text-sm leading-relaxed">{summary.problem}</p>
           </div>
-
           <div className="bg-white/90 glass rounded-3xl p-8 shadow-xl border-t-4 theme-amber dynamic-card">
             <h3 className="font-display text-xl font-bold text-slate-800 mb-3">Root Causes</h3>
             <ul className="flex flex-col gap-2">
-              {summary.rootCauses.map((rc, i) => (
+              {(summary.rootCauses || []).map((rc, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
                   <span className="mt-1 w-2 h-2 rounded-full bg-amber-400 flex-shrink-0"></span>
                   {rc}
@@ -303,11 +409,10 @@ Return ONLY valid JSON, no markdown:
               ))}
             </ul>
           </div>
-
           <div className="bg-white/90 glass rounded-3xl p-8 shadow-xl border-t-4 theme-teal dynamic-card">
             <h3 className="font-display text-xl font-bold text-slate-800 mb-3">Suggested Solutions</h3>
             <ul className="flex flex-col gap-2">
-              {summary.solutions.map((s, i) => (
+              {(summary.solutions || []).map((s, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
                   <span className="mt-1 w-2 h-2 rounded-full bg-teal-400 flex-shrink-0"></span>
                   {s}
@@ -315,16 +420,19 @@ Return ONLY valid JSON, no markdown:
               ))}
             </ul>
           </div>
-
           <div className="bg-slate-800 rounded-3xl p-8 shadow-xl text-center">
             <p className="text-slate-400 text-xs uppercase font-semibold tracking-widest mb-2">Priority Next Action</p>
             <p className="text-white font-display text-lg font-semibold">{summary.nextAction}</p>
           </div>
-
-          <button onClick={onReset} className="mt-4 text-xs font-semibold uppercase tracking-widest text-slate-400 hover:text-slate-700 transition-colors flex items-center gap-2 justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-            Start New Session
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <button onClick={onBackToMap} className="text-xs font-semibold uppercase tracking-widest text-slate-500 hover:text-slate-800 transition-colors flex items-center gap-2">
+              ← Back to map
+            </button>
+            <button onClick={onReset} className="text-xs font-semibold uppercase tracking-widest text-slate-400 hover:text-slate-700 transition-colors flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+              Start New Session
+            </button>
+          </div>
         </div>
       );
     }
@@ -356,9 +464,7 @@ Return ONLY valid JSON, no markdown:
           title: "Failed to connect to AI. Click to set your custom Gemini API key."
         }
       };
-
       const current = config[status] || config.offline;
-
       return (
         <button
           onClick={onClick}
@@ -372,7 +478,7 @@ Return ONLY valid JSON, no markdown:
       );
     }
 
-    function ApiSettingsModal({ dialogRef, currentKey, onSave, onClear, aiStatus }) {
+    function ApiSettingsModal({ dialogRef, currentKey, onSave, onClear }) {
       const [keyInput, setKeyInput] = useState(currentKey);
       const [showKey, setShowKey] = useState(false);
       const [testStatus, setTestStatus] = useState(null);
@@ -428,7 +534,6 @@ Return ONLY valid JSON, no markdown:
       useEffect(() => {
         const dialog = dialogRef.current;
         if (!dialog) return;
-
         const handleBackdropClick = (event) => {
           if (event.target !== dialog) return;
           const rect = dialog.getBoundingClientRect();
@@ -438,15 +543,10 @@ Return ONLY valid JSON, no markdown:
             rect.left <= event.clientX &&
             event.clientX <= rect.left + rect.width
           );
-          if (!isDialogContent) {
-            dialog.close();
-          }
+          if (!isDialogContent) dialog.close();
         };
-
         dialog.addEventListener('click', handleBackdropClick);
-        return () => {
-          dialog.removeEventListener('click', handleBackdropClick);
-        };
+        return () => dialog.removeEventListener('click', handleBackdropClick);
       }, [dialogRef]);
 
       return (
@@ -458,27 +558,17 @@ Return ONLY valid JSON, no markdown:
         >
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <h3 id="settingsModalTitle" className="font-display text-xl font-bold text-slate-800">
-                AI Configuration
-              </h3>
-              <button
-                type="button"
-                onClick={() => dialogRef.current?.close()}
-                className="p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
-              >
+              <h3 id="settingsModalTitle" className="font-display text-xl font-bold text-slate-800">AI Configuration</h3>
+              <button type="button" onClick={() => dialogRef.current?.close()} className="p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
               </button>
             </div>
-
             <p className="text-slate-500 text-xs sm:text-sm leading-relaxed">
-              This application is running entirely in your browser. Since Vercel proxy functions are not supported on static hosts like GitHub Pages, you can use your own Google Gemini API key to activate full AI features.
+              This application runs in your browser. On static hosts you can use your own Google Gemini API key. Sessions are saved locally on this device.
             </p>
-
             <form onSubmit={handleSave} className="flex flex-col gap-4 mt-2">
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                  Gemini API Key
-                </label>
+                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Gemini API Key</label>
                 <div className="relative flex items-center">
                   <input
                     type={showKey ? "text" : "password"}
@@ -487,11 +577,7 @@ Return ONLY valid JSON, no markdown:
                     placeholder="Enter your Gemini API key..."
                     className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-slate-800 font-mono"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowKey(!showKey)}
-                    className="absolute right-3 p-1 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
-                  >
+                  <button type="button" onClick={() => setShowKey(!showKey)} className="absolute right-3 p-1 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
                     {showKey ? (
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
                     ) : (
@@ -501,18 +587,12 @@ Return ONLY valid JSON, no markdown:
                 </div>
                 <div className="flex justify-between items-center text-[11px] text-slate-400">
                   <span>Your key is saved locally in your browser.</span>
-                  <a
-                    href="https://aistudio.google.com/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-purple-600 hover:underline font-semibold flex items-center gap-0.5"
-                  >
-                    Get a key from AI Studio
+                  <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline font-semibold flex items-center gap-0.5">
+                    Get a key
                     <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
                   </a>
                 </div>
               </div>
-
               {testStatus && (
                 <div className={`p-3.5 rounded-2xl text-xs flex items-start gap-2 animate-fade-in border ${
                   testStatus === 'testing' ? 'bg-slate-50 text-slate-600 border-slate-200' :
@@ -526,39 +606,22 @@ Return ONLY valid JSON, no markdown:
                   </span>
                 </div>
               )}
-
               <div className="flex flex-wrap items-center justify-between gap-3 mt-2 border-t border-slate-100 pt-4">
                 <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleTest}
-                    disabled={testStatus === 'testing'}
-                    className="px-4 py-2 text-xs font-semibold rounded-full border border-slate-200 hover:bg-slate-50 transition-colors text-slate-700 disabled:opacity-50"
-                  >
+                  <button type="button" onClick={handleTest} disabled={testStatus === 'testing'} className="px-4 py-2 text-xs font-semibold rounded-full border border-slate-200 hover:bg-slate-50 transition-colors text-slate-700 disabled:opacity-50">
                     Test Connection
                   </button>
                   {currentKey && (
-                    <button
-                      type="button"
-                      onClick={handleClear}
-                      className="px-4 py-2 text-xs font-semibold rounded-full border border-rose-200 hover:bg-rose-50 text-rose-600 transition-colors"
-                    >
+                    <button type="button" onClick={handleClear} className="px-4 py-2 text-xs font-semibold rounded-full border border-rose-200 hover:bg-rose-50 text-rose-600 transition-colors">
                       Clear Key
                     </button>
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => dialogRef.current?.close()}
-                    className="px-4 py-2 text-xs font-semibold rounded-full border border-slate-200 hover:bg-slate-50 text-slate-500 transition-colors"
-                  >
+                  <button type="button" onClick={() => dialogRef.current?.close()} className="px-4 py-2 text-xs font-semibold rounded-full border border-slate-200 hover:bg-slate-50 text-slate-500 transition-colors">
                     Cancel
                   </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2 text-xs font-semibold rounded-full bg-slate-800 hover:bg-slate-700 text-white shadow-md hover:shadow-lg transition-all"
-                  >
+                  <button type="submit" className="px-5 py-2 text-xs font-semibold rounded-full bg-slate-800 hover:bg-slate-700 text-white shadow-md hover:shadow-lg transition-all">
                     Save Key
                   </button>
                 </div>
@@ -569,27 +632,313 @@ Return ONLY valid JSON, no markdown:
       );
     }
 
+    function TreeNodeView({ session, nodeId, currentId, activePathIds, onSelect }) {
+      const node = getNode(session, nodeId);
+      if (!node) return null;
+      const isCurrent = node.id === currentId;
+      const onActivePath = activePathIds.has(node.id);
+      const isBranchPoint = node.childIds.length > 1;
+      const label = node.answer
+        ? node.answer
+        : (node.id === session.rootId ? "Start" : "Open question");
+      const shortQ = node.question.length > 48 ? node.question.slice(0, 48) + "…" : node.question;
+
+      return (
+        <li className="relative">
+          <button
+            type="button"
+            onClick={() => onSelect(node.id)}
+            title={`${node.question}${node.answer ? `\n→ ${node.answer}` : ""}`}
+            className={`group text-left w-full max-w-xs rounded-2xl border px-3 py-2.5 transition-all duration-200 ${
+              isCurrent
+                ? `${node.color} dynamic-card tree-node-active border`
+                : onActivePath
+                  ? `${node.color} dynamic-card border opacity-95 hover:scale-[1.02]`
+                  : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <span className={`text-[10px] font-bold uppercase tracking-wider ${isCurrent ? 'dynamic-text' : 'text-slate-400'}`}>
+                {node.depth === 0 ? 'Root' : `Step ${node.depth}`}
+              </span>
+              {isBranchPoint && (
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                  {node.childIds.length} branches
+                </span>
+              )}
+              {isCurrent && (
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-800 text-white">You are here</span>
+              )}
+            </div>
+            <div className={`text-sm font-semibold leading-snug ${isCurrent || onActivePath ? 'text-slate-800' : 'text-slate-600'}`}>
+              {label}
+            </div>
+            {node.answer && (
+              <div className="text-[11px] text-slate-400 mt-1 line-clamp-2 group-hover:text-slate-500">
+                from: {shortQ}
+              </div>
+            )}
+          </button>
+
+          {node.childIds.length > 0 && (
+            <ul className={`mt-3 ml-4 pl-4 border-l-2 space-y-3 ${
+              isBranchPoint ? 'border-purple-300' : 'border-slate-200'
+            }`}>
+              {node.childIds.map((childId) => (
+                <TreeNodeView
+                  key={childId}
+                  session={session}
+                  nodeId={childId}
+                  currentId={currentId}
+                  activePathIds={activePathIds}
+                  onSelect={onSelect}
+                />
+              ))}
+            </ul>
+          )}
+        </li>
+      );
+    }
+
+    function BranchMap({ session, onSelectNode }) {
+      const activePathIds = useMemo(() => {
+        return new Set(getPathToNode(session, session.currentId).map(n => n.id));
+      }, [session]);
+
+      const branchCount = countBranches(session);
+      const answered = countAnswered(session);
+
+      return (
+        <div className="w-full bg-white/70 glass rounded-3xl border border-slate-200 p-4 sm:p-5 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div>
+              <h3 className="font-display font-bold text-slate-800 text-sm">Thought map</h3>
+              <p className="text-[11px] text-slate-400 mt-0.5">Click any node to jump there · branch by answering again from a past step</p>
+            </div>
+            <div className="flex gap-2 text-[11px] font-semibold">
+              <span className="px-2 py-1 rounded-full bg-slate-100 text-slate-600">{answered} answered</span>
+              <span className="px-2 py-1 rounded-full bg-purple-50 text-purple-700">{branchCount} fork{branchCount === 1 ? '' : 's'}</span>
+            </div>
+          </div>
+          <div className="tree-scroll pr-1">
+            <ul className="space-y-3">
+              <TreeNodeView
+                session={session}
+                nodeId={session.rootId}
+                currentId={session.currentId}
+                activePathIds={activePathIds}
+                onSelect={onSelectNode}
+              />
+            </ul>
+          </div>
+        </div>
+      );
+    }
+
+    function PathTrail({ session }) {
+      const path = getPathToNode(session, session.currentId);
+      if (path.length === 0) return null;
+      return (
+        <div className="flex flex-wrap items-center justify-center gap-2 mb-6 w-full animate-fade-in">
+          {path.map((item, idx) => (
+            <React.Fragment key={item.id}>
+              <div className={`px-3 py-1.5 rounded-full text-xs font-semibold ${item.color} dynamic-card border flex items-center gap-2 max-w-[14rem]`}>
+                <span className="opacity-50 text-[10px] flex-shrink-0">{idx === 0 ? 'Start' : `Q${idx}`}</span>
+                <span className="truncate">{item.answer || '…'}</span>
+              </div>
+              {idx < path.length - 1 && (
+                <svg className="w-3 h-3 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7"/>
+                </svg>
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+      );
+    }
+
+    function SessionsSidebar({
+      sessions,
+      activeId,
+      onNew,
+      onSelect,
+      onRename,
+      onDelete,
+      onExport,
+      onImport,
+      collapsed,
+      onToggle,
+    }) {
+      const list = Object.values(sessions).sort((a, b) => b.updatedAt - a.updatedAt);
+      const fileRef = useRef(null);
+
+      return (
+        <aside className={`w-full lg:w-72 flex-shrink-0 ${collapsed ? 'lg:w-12' : ''}`}>
+          <div className="bg-white/80 glass rounded-3xl border border-slate-200 shadow-sm p-4 sticky top-4">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              {!collapsed && <h3 className="font-display font-bold text-slate-800 text-sm">Sessions</h3>}
+              <div className="flex items-center gap-1 ml-auto">
+                <button
+                  type="button"
+                  onClick={onNew}
+                  title="New session"
+                  className="p-2 rounded-full hover:bg-slate-100 text-slate-600 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
+                </button>
+                {!collapsed && (
+                  <>
+                    <button type="button" onClick={onExport} title="Export active session" className="p-2 rounded-full hover:bg-slate-100 text-slate-600 transition-colors">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </button>
+                    <button type="button" onClick={() => fileRef.current?.click()} title="Import session" className="p-2 rounded-full hover:bg-slate-100 text-slate-600 transition-colors">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    </button>
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      accept="application/json,.json"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) onImport(file);
+                        e.target.value = "";
+                      }}
+                    />
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={onToggle}
+                  title={collapsed ? "Expand sessions" : "Collapse"}
+                  className="hidden lg:inline-flex p-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    {collapsed
+                      ? <path d="M9 18l6-6-6-6"/>
+                      : <path d="M15 18l-6-6 6-6"/>}
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {!collapsed && (
+              <div className="sidebar-scroll flex flex-col gap-2 pr-1">
+                {list.length === 0 && (
+                  <p className="text-xs text-slate-400 py-4 text-center">No saved sessions yet. Start exploring — auto-saves as you go.</p>
+                )}
+                {list.map((s) => {
+                  const active = s.id === activeId;
+                  const answered = countAnswered(s);
+                  const forks = countBranches(s);
+                  return (
+                    <div
+                      key={s.id}
+                      className={`rounded-2xl border p-3 transition-all ${
+                        active ? 'border-purple-300 bg-purple-50/60 shadow-sm' : 'border-slate-100 bg-white hover:border-slate-200'
+                      }`}
+                    >
+                      <button type="button" onClick={() => onSelect(s.id)} className="w-full text-left">
+                        <div className="font-semibold text-sm text-slate-800 truncate">{s.name}</div>
+                        <div className="flex flex-wrap gap-1.5 mt-1.5 text-[10px] font-semibold text-slate-400">
+                          <span>{answered} steps</span>
+                          {forks > 0 && <span className="text-purple-600">{forks} fork{forks === 1 ? '' : 's'}</span>}
+                          <span>{new Date(s.updatedAt).toLocaleDateString()}</span>
+                        </div>
+                      </button>
+                      {active && (
+                        <div className="flex gap-1 mt-2 pt-2 border-t border-purple-100">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const name = prompt("Rename session", s.name);
+                              if (name && name.trim()) onRename(s.id, name.trim());
+                            }}
+                            className="flex-1 text-[11px] font-semibold py-1.5 rounded-lg hover:bg-white text-slate-600"
+                          >
+                            Rename
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm("Delete this session? This cannot be undone.")) onDelete(s.id);
+                            }}
+                            className="flex-1 text-[11px] font-semibold py-1.5 rounded-lg hover:bg-rose-50 text-rose-600"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </aside>
+      );
+    }
+
+    function bootstrapSessions() {
+      const all = loadAllSessions();
+      const activeId = getActiveSessionId();
+      if (activeId && all[activeId]) {
+        return { sessions: all, session: all[activeId] };
+      }
+      const first = Object.values(all).sort((a, b) => b.updatedAt - a.updatedAt)[0];
+      if (first) {
+        setActiveSessionId(first.id);
+        return { sessions: all, session: first };
+      }
+      const fresh = createSession("My first session");
+      const next = { ...all, [fresh.id]: fresh };
+      saveAllSessions(next);
+      setActiveSessionId(fresh.id);
+      return { sessions: next, session: fresh };
+    }
+
     function App() {
-      const [path, setPath] = useState([]);
-      const [currentStep, setCurrentStep] = useState(0);
-      const [question, setQuestion] = useState("What's on your mind? What would you like to think through today?");
-      const [options, setOptions] = useState([
-        "A decision I'm stuck on", "Something in my personal life", "A work challenge", "A relationship", "A goal or dream", "Just feeling off"
-      ]);
-      const [insight, setInsight] = useState("This is your space to think — there's no wrong place to start.");
+      const [boot] = useState(bootstrapSessions);
+      const [sessions, setSessions] = useState(() => boot.sessions);
+      const [session, setSession] = useState(() => boot.session);
+
       const [isLoading, setIsLoading] = useState(false);
       const [selectedOption, setSelectedOption] = useState(null);
       const [customAnswer, setCustomAnswer] = useState("");
-      const [summary, setSummary] = useState(null);
       const [sessionError, setSessionError] = useState(null);
+      const [showSummary, setShowSummary] = useState(false);
+      const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+      const [mapOpen, setMapOpen] = useState(true);
 
-      const [apiKey, setApiKey] = useState(() => localStorage.getItem("gemini_api_key") || "");
+      const [apiKey, setApiKey] = useState(() => localStorage.getItem(API_KEY_STORAGE) || "");
       const [aiStatus, setAiStatus] = useState("checking");
       const dialogRef = useRef(null);
 
+      const currentNode = getNode(session, session.currentId) || getNode(session, session.rootId);
+      const currentStep = currentNode?.depth || 0;
       const phase = getPhase(currentStep);
       const themeClass = phase.color;
-      const MIN_STEPS_FOR_SUMMARY = 3;
+      const answeredOnPath = getAnsweredPath(session, session.currentId);
+      const siblingBranches = useMemo(() => {
+        if (!currentNode?.parentId) return [];
+        const parent = getNode(session, currentNode.parentId);
+        if (!parent) return [];
+        return parent.childIds
+          .filter(id => id !== currentNode.id)
+          .map(id => getNode(session, id))
+          .filter(Boolean);
+      }, [session, currentNode]);
+
+      const persistSession = useCallback((nextSession) => {
+        const updated = { ...nextSession, updatedAt: Date.now() };
+        setSession(updated);
+        setSessions(prev => {
+          const next = { ...prev, [updated.id]: updated };
+          saveAllSessions(next);
+          return next;
+        });
+        setActiveSessionId(updated.id);
+      }, []);
 
       useEffect(() => {
         if (apiKey) {
@@ -602,15 +951,10 @@ Return ONLY valid JSON, no markdown:
             body: JSON.stringify({ prompt: "" })
           })
             .then(res => {
-              if (res.status === 400) {
-                setAiStatus("active-proxy");
-              } else {
-                setAiStatus("offline");
-              }
+              if (res.status === 400) setAiStatus("active-proxy");
+              else setAiStatus("offline");
             })
-            .catch(() => {
-              setAiStatus("offline");
-            });
+            .catch(() => setAiStatus("offline"));
         }
       }, [apiKey]);
 
@@ -629,67 +973,121 @@ Return ONLY valid JSON, no markdown:
             throw new Error(errData?.error?.message || `API request failed with status ${res.status}`);
           }
           return res.json();
-        } else {
-          const res = await fetch("/api/gemini", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt, model })
-          });
-          if (!res.ok) {
-            const errData = await res.json().catch(() => ({}));
-            throw new Error(errData?.error?.message || `Proxy request failed with status ${res.status}`);
-          }
-          return res.json();
         }
+        const res = await fetch("/api/gemini", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt, model })
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData?.error?.message || `Proxy request failed with status ${res.status}`);
+        }
+        return res.json();
       };
 
-      const fetchNextQuestion = async (userAnswer, newHistory, nextStep) => {
+      const parseAiJson = (rawData) => {
+        const text = rawData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error("Invalid response format from AI.");
+        return JSON.parse(jsonMatch[0]);
+      };
+
+      const handleChoice = async (opt) => {
+        if (isLoading || !currentNode) return;
         setIsLoading(true);
+        setSelectedOption(opt);
         setSessionError(null);
+        setShowSummary(false);
+
         try {
-          if (!apiKey && aiStatus !== "active-proxy") {
-            throw new Error("AI is configured offline.");
+          // Mark answer on current node
+          const answeredNode = { ...currentNode, answer: opt };
+          let nodes = { ...session.nodes, [answeredNode.id]: answeredNode };
+
+          // Reuse existing child if this answer already created a branch
+          const matchingChild = answeredNode.childIds
+            .map(id => nodes[id])
+            .find(c => c && c.parentAnswer === opt);
+
+          if (matchingChild) {
+            persistSession({
+              ...session,
+              nodes,
+              currentId: matchingChild.id,
+              summary: null,
+            });
+            return;
           }
-          const prompt = buildPrompt(userAnswer, newHistory, nextStep);
-          const rawData = await callGemini(prompt, "gemini-3.5-flash");
-          const text = rawData.candidates?.[0]?.content?.parts?.[0]?.text || "";
-          const jsonMatch = text.match(/\{[\s\S]*\}/);
-          if (!jsonMatch) {
-            throw new Error("Invalid response format from AI.");
+
+          const pathHistory = historyFromPath(getPathToNode({ ...session, nodes }, answeredNode.id));
+          const nextDepth = answeredNode.depth + 1;
+          let nextQ = FALLBACK_QUESTIONS[Math.min(nextDepth, FALLBACK_QUESTIONS.length - 1)];
+
+          try {
+            if (!apiKey && aiStatus !== "active-proxy") {
+              throw new Error("AI is configured offline.");
+            }
+            const prompt = buildPrompt(opt, pathHistory, nextDepth);
+            const rawData = await callGemini(prompt, "gemini-3.5-flash");
+            const parsed = parseAiJson(rawData);
+            nextQ = {
+              question: parsed.question,
+              options: parsed.options || [],
+              insight: parsed.insight,
+            };
+          } catch (err) {
+            console.error("AI error:", err);
+            if (err.message !== "AI is configured offline.") {
+              setSessionError(err.message || "Failed to contact Gemini");
+            }
           }
-          const parsed = JSON.parse(jsonMatch[0]);
-          setQuestion(parsed.question);
-          setOptions(parsed.options || []);
-          setInsight(parsed.insight);
-        } catch (err) {
-          console.error("AI error:", err);
-          if (err.message !== "AI is configured offline.") {
-            setSessionError(err.message || "Failed to contact Gemini");
-          }
-          const fallback = FALLBACK_QUESTIONS[Math.min(nextStep, FALLBACK_QUESTIONS.length - 1)];
-          setQuestion(fallback.question);
-          setOptions(fallback.options);
-          setInsight(fallback.insight);
+
+          const child = createNode({
+            question: nextQ.question,
+            options: nextQ.options,
+            insight: nextQ.insight,
+            depth: nextDepth,
+            parentId: answeredNode.id,
+          });
+          child.parentAnswer = opt;
+
+          const parentWithChild = {
+            ...answeredNode,
+            childIds: [...answeredNode.childIds, child.id],
+          };
+          nodes = {
+            ...nodes,
+            [parentWithChild.id]: parentWithChild,
+            [child.id]: child,
+          };
+
+          persistSession({
+            ...session,
+            nodes,
+            currentId: child.id,
+            summary: null,
+          });
         } finally {
           setIsLoading(false);
           setSelectedOption(null);
           setCustomAnswer("");
-          setCurrentStep(nextStep);
         }
-      };
-
-      const handleChoice = (opt) => {
-        if (isLoading) return;
-        const newHistory = [...path, { q: question, a: opt, color: themeClass }];
-        setPath(newHistory);
-        const nextStep = currentStep + 1;
-        fetchNextQuestion(opt, newHistory, nextStep);
       };
 
       const handleCustomSubmit = (e) => {
         e.preventDefault();
         const trimmed = customAnswer.trim();
         if (trimmed && !isLoading) handleChoice(trimmed);
+      };
+
+      const handleSelectNode = (nodeId) => {
+        if (isLoading) return;
+        setShowSummary(false);
+        setSessionError(null);
+        setSelectedOption(null);
+        setCustomAnswer("");
+        persistSession({ ...session, currentId: nodeId });
       };
 
       const handleSummarize = async () => {
@@ -700,185 +1098,335 @@ Return ONLY valid JSON, no markdown:
           if (!apiKey && aiStatus !== "active-proxy") {
             throw new Error("AI is configured offline.");
           }
-          const prompt = buildSummaryPrompt(path);
+          const history = historyFromPath(getPathToNode(session, session.currentId));
+          const prompt = buildSummaryPrompt(history);
           const rawData = await callGemini(prompt, "gemini-3.5-flash");
-          const text = rawData.candidates?.[0]?.content?.parts?.[0]?.text || "";
-          const jsonMatch = text.match(/\{[\s\S]*\}/);
-          if (!jsonMatch) {
-            throw new Error("Invalid response format from AI.");
-          }
-          const parsed = JSON.parse(jsonMatch[0]);
-          setSummary(parsed);
+          const parsed = parseAiJson(rawData);
+          const next = { ...session, summary: parsed };
+          persistSession(next);
+          setShowSummary(true);
         } catch (err) {
           console.error("AI error:", err);
           if (err.message !== "AI is configured offline.") {
             setSessionError(err.message || "Failed to contact Gemini");
           }
-          setSummary({
+          const fallback = {
             problem: "Based on what you've shared, you're navigating something that's been weighing on you and deserves more clarity.",
             rootCauses: ["An unmet need or unspoken expectation", "A recurring pattern that keeps showing up", "Tension between what you want and your current situation"],
             solutions: ["Name the one thing you most need right now and ask for it", "Take one small concrete step this week toward the change you want", "Have an honest conversation — with yourself or someone else — about what's really going on"],
             nextAction: "Pick the insight that resonated most and do one thing about it in the next 24 hours."
-          });
+          };
+          persistSession({ ...session, summary: fallback });
+          setShowSummary(true);
         } finally {
           setIsLoading(false);
         }
       };
 
-      const resetSession = () => {
-        setPath([]);
-        setCurrentStep(0);
-        setQuestion("What's on your mind? What would you like to think through today?");
-        setOptions(["A decision I'm stuck on", "Something in my personal life", "A work challenge", "A relationship", "A goal or dream", "Just feeling off"]);
-        setInsight("This is your space to think — there's no wrong place to start.");
-        setSelectedOption(null);
-        setCustomAnswer("");
-        setSummary(null);
+      const handleNewSession = () => {
+        const name = prompt("Name this session", `Session ${new Date().toLocaleString()}`);
+        if (name === null) return;
+        const fresh = createSession(name.trim() || `Session ${new Date().toLocaleString()}`);
+        setSessions(prev => {
+          const next = { ...prev, [fresh.id]: fresh };
+          saveAllSessions(next);
+          return next;
+        });
+        setSession(fresh);
+        setActiveSessionId(fresh.id);
+        setShowSummary(false);
         setSessionError(null);
+        setCustomAnswer("");
       };
 
-      return (
-        <div className={`w-full max-w-4xl mx-auto flex flex-col items-center h-full transition-colors duration-700 ${themeClass}`}>
+      const handleSelectSession = (id) => {
+        const s = sessions[id];
+        if (!s) return;
+        setSession(s);
+        setActiveSessionId(id);
+        setShowSummary(!!s.summary);
+        setSessionError(null);
+        setCustomAnswer("");
+      };
 
-          {/* Background bloom */}
+      const handleRename = (id, name) => {
+        setSessions(prev => {
+          const s = prev[id];
+          if (!s) return prev;
+          const updated = { ...s, name, updatedAt: Date.now() };
+          const next = { ...prev, [id]: updated };
+          saveAllSessions(next);
+          if (session.id === id) setSession(updated);
+          return next;
+        });
+      };
+
+      const handleDelete = (id) => {
+        setSessions(prev => {
+          const next = { ...prev };
+          delete next[id];
+          saveAllSessions(next);
+          if (session.id === id) {
+            const remaining = Object.values(next).sort((a, b) => b.updatedAt - a.updatedAt);
+            if (remaining[0]) {
+              setSession(remaining[0]);
+              setActiveSessionId(remaining[0].id);
+            } else {
+              const fresh = createSession("My first session");
+              next[fresh.id] = fresh;
+              saveAllSessions(next);
+              setSession(fresh);
+              setActiveSessionId(fresh.id);
+            }
+            setShowSummary(false);
+          }
+          return next;
+        });
+      };
+
+      const handleExport = () => {
+        const blob = new Blob([JSON.stringify(session, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${(session.name || "session").replace(/[^\w\-]+/g, "_")}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+
+      const handleImport = async (file) => {
+        try {
+          const text = await file.text();
+          const data = JSON.parse(text);
+          if (!data || !data.nodes || !data.rootId || !data.currentId) {
+            alert("Invalid session file.");
+            return;
+          }
+          const imported = {
+            ...data,
+            id: uid(),
+            name: data.name ? `${data.name} (imported)` : `Imported ${new Date().toLocaleString()}`,
+            createdAt: data.createdAt || Date.now(),
+            updatedAt: Date.now(),
+          };
+          setSessions(prev => {
+            const next = { ...prev, [imported.id]: imported };
+            saveAllSessions(next);
+            return next;
+          });
+          setSession(imported);
+          setActiveSessionId(imported.id);
+          setShowSummary(!!imported.summary);
+        } catch {
+          alert("Could not import that file.");
+        }
+      };
+
+      const handleReset = () => {
+        if (!confirm("Start a brand-new session? Current one stays in your library.")) return;
+        handleNewSession();
+      };
+
+      // Existing children of current node (already explored answers from here)
+      const exploredFromHere = (currentNode?.childIds || [])
+        .map(id => getNode(session, id))
+        .filter(Boolean);
+
+      return (
+        <div className={`w-full max-w-7xl mx-auto flex flex-col lg:flex-row gap-6 items-start h-full transition-colors duration-700 ${themeClass}`}>
           <div className="absolute top-1/4 right-1/4 -z-10 w-[400px] h-[400px] blur-[150px] rounded-full dynamic-bg opacity-20 pointer-events-none transition-colors duration-1000"></div>
 
-          <header className="mb-6 w-full text-center flex flex-col items-center gap-3">
-            <div>
-              <h2 className="font-display text-3xl sm:text-4xl font-bold text-slate-800 mb-2">Brainstorm</h2>
-              <p className="text-slate-500">Explore what's on your mind → understand why → find a path forward.</p>
-            </div>
-            <AiStatusBadge status={aiStatus} onClick={() => dialogRef.current?.showModal()} />
-          </header>
-
-          {/* Phase progress bar */}
-          <PhaseBar currentStep={currentStep} />
-
-          {/* Summary view */}
-          {summary ? (
-            <SummaryPanel summary={summary} onReset={resetSession} />
-          ) : (
-            <>
-              {/* Breadcrumbs */}
-              {path.length > 0 && (
-                <div className="flex flex-wrap items-center justify-center gap-2 mb-8 w-full animate-fade-in">
-                  {path.map((item, idx) => (
-                    <React.Fragment key={idx}>
-                      <div className={`px-3 py-1.5 rounded-full text-xs font-semibold ${item.color} dynamic-card border flex items-center gap-2`}>
-                        <span className="opacity-50 text-[10px]">Q{idx+1}</span>
-                        {item.a}
-                      </div>
-                      {idx < path.length - 1 && (
-                        <svg className="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7"/></svg>
-                      )}
-                    </React.Fragment>
-                  ))}
-                </div>
-              )}
-
-              {/* Question Card */}
-              <div className="w-full max-w-2xl bg-white/80 glass rounded-3xl p-8 sm:p-12 mb-8 text-center shadow-xl animate-fade-in border-t-4 dynamic-card">
-                {aiStatus === 'offline' && !apiKey && (
-                  <div className="mb-6 -mt-4 py-2 px-4 rounded-xl bg-amber-50 border border-amber-100 text-amber-700 text-xs font-semibold inline-flex items-center gap-1.5 mx-auto">
-                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
-                    Running in Offline Mode (Using static fallback questions)
-                  </div>
-                )}
-                {sessionError && (
-                  <div className="mb-6 -mt-4 py-2 px-4 rounded-xl bg-rose-50 border border-rose-100 text-rose-700 text-xs font-semibold inline-flex items-center gap-1.5 mx-auto">
-                    ⚠️ AI Error: {sessionError}. Using static fallback question.
-                  </div>
-                )}
-                <h3 className="font-display text-2xl sm:text-3xl font-medium leading-relaxed mb-8 text-slate-800">
-                  {question}
-                </h3>
-
-                {isLoading ? (
-                  <div className="h-48 flex items-center justify-center">
-                    <LoadingDots />
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-6">
-                    <div className="flex flex-wrap justify-center gap-3">
-                      {options.map((opt, i) => (
-                        <button
-                          key={i}
-                          onClick={() => handleChoice(opt)}
-                          disabled={isLoading}
-                          className={`px-6 py-3 rounded-full border border-slate-200 bg-white text-sm font-medium hover:-translate-y-1 transition-all duration-300 dynamic-hover text-slate-700 shadow-sm ${selectedOption === opt ? 'dynamic-bg text-white scale-105' : selectedOption ? 'animate-shrink-out' : ''}`}
-                        >
-                          {opt}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="relative mt-2 w-full max-w-sm mx-auto">
-                      <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                        <div className="w-full border-t border-slate-200"></div>
-                      </div>
-                      <div className="relative flex justify-center">
-                        <span className="px-3 bg-white text-xs text-slate-400 uppercase font-semibold rounded-full">or type your own</span>
-                      </div>
-                    </div>
-
-                    <form onSubmit={handleCustomSubmit} className={`w-full max-w-sm mx-auto flex gap-2 ${selectedOption ? 'animate-shrink-out' : ''}`}>
-                      <input
-                        type="text"
-                        value={customAnswer}
-                        onChange={e => setCustomAnswer(e.target.value)}
-                        placeholder="Describe in your own words..."
-                        className="flex-1 bg-white border border-slate-200 shadow-inner rounded-full px-5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all dynamic-ring text-slate-800"
-                        style={{ '--tw-ring-color': 'var(--theme-color)' }}
-                      />
-                      <button type="submit" disabled={!customAnswer.trim() || isLoading} className="p-2.5 rounded-full bg-slate-800 hover:bg-slate-700 transition-all text-white disabled:opacity-50 shadow-md">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                      </button>
-                    </form>
-                  </div>
-                )}
-              </div>
-
-              {/* Insight Panel */}
-              <div className="w-full max-w-2xl px-6 py-5 rounded-2xl bg-white/60 border border-slate-200 shadow-sm text-center animate-fade-in backdrop-blur-md">
-                <p className="text-slate-600 font-medium text-sm leading-relaxed italic">
-                  💡 {insight}
-                </p>
-              </div>
-
-              {/* Make sense of things button — appears after enough context */}
-              {path.length >= MIN_STEPS_FOR_SUMMARY && !isLoading && (
-                <button
-                  onClick={handleSummarize}
-                  className="mt-10 group flex items-center gap-3 px-7 py-4 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-sm shadow-lg transition-all duration-300 hover:-translate-y-1 animate-fade-in"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70 group-hover:opacity-100 transition-opacity"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-                  Let AI make sense of things
-                </button>
-              )}
-
-              {/* Loading state for summarize */}
-              {path.length >= MIN_STEPS_FOR_SUMMARY && isLoading && !question && (
-                <div className="mt-10 animate-fade-in">
-                  <LoadingDots />
-                  <p className="text-slate-500 text-sm mt-2">Pulling it all together…</p>
-                </div>
-              )}
-            </>
-          )}
-
-          <ApiSettingsModal
-            dialogRef={dialogRef}
-            currentKey={apiKey}
-            onSave={(newKey) => {
-              localStorage.setItem("gemini_api_key", newKey);
-              setApiKey(newKey);
-            }}
-            onClear={() => {
-              localStorage.removeItem("gemini_api_key");
-              setApiKey("");
-            }}
-            aiStatus={aiStatus}
+          <SessionsSidebar
+            sessions={sessions}
+            activeId={session.id}
+            onNew={handleNewSession}
+            onSelect={handleSelectSession}
+            onRename={handleRename}
+            onDelete={handleDelete}
+            onExport={handleExport}
+            onImport={handleImport}
+            collapsed={sidebarCollapsed}
+            onToggle={() => setSidebarCollapsed(c => !c)}
           />
+
+          <div className="flex-1 w-full flex flex-col items-center min-w-0">
+            <header className="mb-4 w-full text-center flex flex-col items-center gap-3">
+              <div>
+                <h2 className="font-display text-3xl sm:text-4xl font-bold text-slate-800 mb-1">Brainstorm</h2>
+                <p className="text-slate-500 text-sm sm:text-base">Explore · branch · map your thinking · find a path forward.</p>
+                <p className="text-xs text-slate-400 mt-1 font-medium">{session.name} · auto-saved</p>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <AiStatusBadge status={aiStatus} onClick={() => dialogRef.current?.showModal()} />
+                <button
+                  type="button"
+                  onClick={() => setMapOpen(o => !o)}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 shadow-sm"
+                >
+                  {mapOpen ? "Hide map" : "Show map"}
+                </button>
+              </div>
+            </header>
+
+            <PhaseBar currentStep={currentStep} />
+
+            {mapOpen && (
+              <div className="w-full max-w-3xl mb-6 animate-fade-in">
+                <BranchMap session={session} onSelectNode={handleSelectNode} />
+              </div>
+            )}
+
+            {showSummary && session.summary ? (
+              <SummaryPanel
+                summary={session.summary}
+                onReset={handleReset}
+                onBackToMap={() => setShowSummary(false)}
+              />
+            ) : (
+              <>
+                <PathTrail session={session} />
+
+                {siblingBranches.length > 0 && (
+                  <div className="w-full max-w-2xl mb-4 flex flex-wrap items-center justify-center gap-2 animate-fade-in">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Sibling branches:</span>
+                    {siblingBranches.map(b => (
+                      <button
+                        key={b.id}
+                        type="button"
+                        onClick={() => handleSelectNode(b.id)}
+                        className="px-3 py-1 rounded-full text-xs font-semibold border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors"
+                      >
+                        {b.parentAnswer || b.answer || "Branch"}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <div className="w-full max-w-2xl bg-white/80 glass rounded-3xl p-8 sm:p-12 mb-6 text-center shadow-xl animate-fade-in border-t-4 dynamic-card">
+                  {aiStatus === 'offline' && !apiKey && (
+                    <div className="mb-6 -mt-4 py-2 px-4 rounded-xl bg-amber-50 border border-amber-100 text-amber-700 text-xs font-semibold inline-flex items-center gap-1.5 mx-auto">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+                      Running in Offline Mode (static fallback questions)
+                    </div>
+                  )}
+                  {sessionError && (
+                    <div className="mb-6 -mt-4 py-2 px-4 rounded-xl bg-rose-50 border border-rose-100 text-rose-700 text-xs font-semibold inline-flex items-center gap-1.5 mx-auto">
+                      ⚠️ AI Error: {sessionError}. Using static fallback.
+                    </div>
+                  )}
+
+                  {exploredFromHere.length > 0 && (
+                    <div className="mb-6 p-3 rounded-2xl bg-purple-50/80 border border-purple-100 text-left">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-purple-600 mb-2">
+                        Branches from this step ({exploredFromHere.length})
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {exploredFromHere.map(child => (
+                          <button
+                            key={child.id}
+                            type="button"
+                            onClick={() => handleSelectNode(child.id)}
+                            className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                              child.id === session.currentId
+                                ? 'bg-purple-600 text-white border-purple-600'
+                                : 'bg-white text-purple-700 border-purple-200 hover:bg-purple-100'
+                            }`}
+                          >
+                            → {child.parentAnswer || "Explore"}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[11px] text-purple-500 mt-2">Pick a different answer below to open a new branch.</p>
+                    </div>
+                  )}
+
+                  <h3 className="font-display text-2xl sm:text-3xl font-medium leading-relaxed mb-8 text-slate-800">
+                    {currentNode?.question}
+                  </h3>
+
+                  {isLoading ? (
+                    <div className="h-48 flex items-center justify-center">
+                      <LoadingDots />
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-6">
+                      <div className="flex flex-wrap justify-center gap-3">
+                        {(currentNode?.options || []).map((opt, i) => {
+                          const alreadyExplored = exploredFromHere.some(c => c.parentAnswer === opt);
+                          return (
+                            <button
+                              key={i}
+                              onClick={() => handleChoice(opt)}
+                              disabled={isLoading}
+                              className={`px-6 py-3 rounded-full border text-sm font-medium hover:-translate-y-1 transition-all duration-300 dynamic-hover shadow-sm ${
+                                alreadyExplored
+                                  ? 'border-purple-300 bg-purple-50 text-purple-800'
+                                  : 'border-slate-200 bg-white text-slate-700'
+                              } ${selectedOption === opt ? 'dynamic-bg text-white scale-105' : selectedOption ? 'animate-shrink-out' : ''}`}
+                            >
+                              {opt}{alreadyExplored ? ' ↩' : ''}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div className="relative mt-2 w-full max-w-sm mx-auto">
+                        <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                          <div className="w-full border-t border-slate-200"></div>
+                        </div>
+                        <div className="relative flex justify-center">
+                          <span className="px-3 bg-white text-xs text-slate-400 uppercase font-semibold rounded-full">or type your own</span>
+                        </div>
+                      </div>
+
+                      <form onSubmit={handleCustomSubmit} className={`w-full max-w-sm mx-auto flex gap-2 ${selectedOption ? 'animate-shrink-out' : ''}`}>
+                        <input
+                          type="text"
+                          value={customAnswer}
+                          onChange={e => setCustomAnswer(e.target.value)}
+                          placeholder="Describe in your own words..."
+                          className="flex-1 bg-white border border-slate-200 shadow-inner rounded-full px-5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all dynamic-ring text-slate-800"
+                          style={{ '--tw-ring-color': 'var(--theme-color)' }}
+                        />
+                        <button type="submit" disabled={!customAnswer.trim() || isLoading} className="p-2.5 rounded-full bg-slate-800 hover:bg-slate-700 transition-all text-white disabled:opacity-50 shadow-md">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                        </button>
+                      </form>
+                    </div>
+                  )}
+                </div>
+
+                <div className="w-full max-w-2xl px-6 py-5 rounded-2xl bg-white/60 border border-slate-200 shadow-sm text-center animate-fade-in backdrop-blur-md mb-6">
+                  <p className="text-slate-600 font-medium text-sm leading-relaxed italic">
+                    💡 {currentNode?.insight}
+                  </p>
+                </div>
+
+                {answeredOnPath.length >= MIN_STEPS_FOR_SUMMARY && !isLoading && (
+                  <button
+                    onClick={handleSummarize}
+                    className="mb-10 group flex items-center gap-3 px-7 py-4 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-sm shadow-lg transition-all duration-300 hover:-translate-y-1 animate-fade-in"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70 group-hover:opacity-100 transition-opacity"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                    Let AI make sense of this branch
+                  </button>
+                )}
+              </>
+            )}
+
+            <ApiSettingsModal
+              dialogRef={dialogRef}
+              currentKey={apiKey}
+              onSave={(newKey) => {
+                localStorage.setItem(API_KEY_STORAGE, newKey);
+                setApiKey(newKey);
+              }}
+              onClear={() => {
+                localStorage.removeItem(API_KEY_STORAGE);
+                setApiKey("");
+              }}
+            />
+          </div>
         </div>
       );
     }
