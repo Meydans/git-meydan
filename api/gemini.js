@@ -1,7 +1,26 @@
+const ALLOWED_ORIGINS = [
+  "https://meydans.github.io",
+  "http://localhost:5500",
+  "http://127.0.0.1:5500"
+];
+
+function isAllowedOrigin(req) {
+  const origin = req.headers.origin || "";
+  if (origin) return ALLOWED_ORIGINS.includes(origin.toLowerCase());
+
+  // Some browsers/requests omit Origin on same-site navigations; fall back to Referer.
+  const referer = req.headers.referer || "";
+  return ALLOWED_ORIGINS.some(allowed => referer.toLowerCase().startsWith(allowed.toLowerCase()));
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  if (!isAllowedOrigin(req)) {
+    return res.status(403).json({ error: "Origin not allowed" });
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
