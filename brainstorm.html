@@ -460,6 +460,16 @@
       };
     }
 
+    function localizeFreshRoot(session, lang) {
+      if (!session) return session;
+      const root = getNode(session, session.rootId);
+      if (!root || root.answer != null || root.childIds.length > 0) return session;
+      const localized = ROOT_QUESTION[lang] || ROOT_QUESTION.he;
+      if (root.question === localized.question) return session;
+      const updatedRoot = { ...root, question: localized.question, options: localized.options, insight: localized.insight };
+      return { ...session, nodes: { ...session.nodes, [root.id]: updatedRoot } };
+    }
+
     function createSession(name, lang) {
       const root = createNode({ ...ROOT_QUESTION[lang] || ROOT_QUESTION.he, depth: 0, parentId: null });
       const now = Date.now();
@@ -1140,12 +1150,14 @@ Return ONLY valid JSON, no markdown:
       const all = loadAllSessions();
       const activeId = getActiveSessionId();
       if (activeId && all[activeId]) {
-        return { sessions: all, session: all[activeId] };
+        const session = localizeFreshRoot(all[activeId], lang);
+        return { sessions: { ...all, [session.id]: session }, session };
       }
       const first = Object.values(all).sort((a, b) => b.updatedAt - a.updatedAt)[0];
       if (first) {
         setActiveSessionId(first.id);
-        return { sessions: all, session: first };
+        const session = localizeFreshRoot(first, lang);
+        return { sessions: { ...all, [session.id]: session }, session };
       }
       const fresh = createSession(t(lang, "firstSessionName"), lang);
       const next = { ...all, [fresh.id]: fresh };
@@ -1189,6 +1201,19 @@ Return ONLY valid JSON, no markdown:
         const headerApp = document.getElementById('headerAppName');
         if (headerApp) headerApp.textContent = tr('appName');
       }, [lang, dir, tr]);
+
+      useEffect(() => {
+        setSession(prev => {
+          const localized = localizeFreshRoot(prev, lang);
+          if (localized === prev) return prev;
+          setSessions(sPrev => {
+            const next = { ...sPrev, [localized.id]: localized };
+            saveAllSessions(next);
+            return next;
+          });
+          return localized;
+        });
+      }, [lang]);
 
       const currentNode = getNode(session, session.currentId) || getNode(session, session.rootId);
       const currentStep = currentNode?.depth || 0;
