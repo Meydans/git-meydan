@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Focus Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Assistant', 'sans-serif'],
+            display: ['Assistant', 'sans-serif'],
+          },
+          colors: {
+            slate: { 950: '#020617', 900: '#0f172a', 800: '#1e293b' },
+            appBlue: '#3b82f6',
+            appPurple: '#a855f7',
+            appTeal: '#14b8a6',
+          },
+          keyframes: {
+            bounceDot: {
+              '0%, 100%': { transform: 'translateY(0)', opacity: '0.4' },
+              '50%': { transform: 'translateY(-6px)', opacity: '1' },
+            },
+            fadeIn: {
+              '0%': { opacity: '0', transform: 'translateY(10px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            },
+            shrinkOut: {
+              '0%': { opacity: '1', transform: 'scale(1)' },
+              '100%': { opacity: '0', transform: 'scale(0.8)' },
+            }
+          },
+          animation: {
+            'bounce-dot': 'bounceDot 1s infinite',
+            'fade-in': 'fadeIn 0.5s ease-out forwards',
+            'shrink-out': 'shrinkOut 0.4s ease-in forwards',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Assistant', sans-serif;
+      background: #f8fafc;
+      min-height: 100vh;
+      color: #334155;
+      transition: background-color 0.5s ease;
+    }
+    .font-display { font-family: 'Assistant', sans-serif; }
+    .glass {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 10px 40px -10px rgba(0,0,0,0.05);
+    }
+    .loading-dot {
+      width: 10px; height: 10px; border-radius: 50%; display: inline-block;
+    }
+    .loading-dot:nth-child(1) { animation-delay: 0s; }
+    .loading-dot:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    .theme-blue { --theme-color: #2563eb; --theme-bg: rgba(59,130,246,0.06); --theme-border: rgba(59,130,246,0.2); }
+    .theme-purple { --theme-color: #a855f7; --theme-bg: rgba(168,85,247,0.06); --theme-border: rgba(168,85,247,0.2); }
+    .theme-teal { --theme-color: #0d9488; --theme-bg: rgba(20,184,166,0.06); --theme-border: rgba(20,184,166,0.2); }
+
+    .dynamic-card { background: var(--theme-bg); border-color: var(--theme-border); }
+    .dynamic-text { color: var(--theme-color); }
+    .dynamic-bg { background-color: var(--theme-color); }
+    .dynamic-hover:hover { background-color: var(--theme-color); color: #fff; border-color: var(--theme-color); }
+    .dynamic-ring:focus { outline: none; box-shadow: 0 0 0 3px var(--theme-border); }
+
+    input::placeholder { color: #94a3b8; }
+
+    dialog::backdrop {
+      background-color: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen relative overflow-x-hidden">
+
+  <div class="lg:hidden w-full h-16 bg-white border-b border-slate-100 flex items-center justify-center relative z-30">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-slate-600"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+      </div>
+      <span class="font-display font-bold text-slate-800">Focus Hub</span>
+    </div>
+    <a href="./index.html" class="absolute right-6 text-sm font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+      חזרה
+    </a>
+  </div>
+
+  <header class="hidden lg:flex w-full h-20 items-center justify-between px-10 relative z-30">
+    <a href="./index.html" class="text-sm font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1 py-2 px-4 rounded-full hover:bg-slate-100 transition-colors">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+      כל האפליקציות
+    </a>
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-slate-600"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+      </div>
+      <span class="font-display font-bold text-slate-800">Focus Hub</span>
+    </div>
+  </header>
+
+  <main class="flex-1 overflow-y-auto p-4 sm:p-8 relative mt-16 lg:mt-0 flex flex-col items-center" id="root"></main>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    const STORAGE_KEY = "focushub_v1_session";
+    const API_KEY_STORAGE = "gemini_api_key";
+
+    const ENERGY_OPTIONS = [
+      { id: 1, emoji: "🔋", label: "אנרגיה מלאה" },
+      { id: 2, emoji: "🪫", label: "אנרגיה בינונית" },
+      { id: 3, emoji: "📉", label: "אפס אנרגיה / מותש" },
+    ];
+
+    const DOMAIN_OPTIONS = [
+      { id: "A", emoji: "💼", label: "עבודה / קריירה" },
+      { id: "B", emoji: "🧠", label: "פרויקט אישי" },
+      { id: "C", emoji: "🏠", label: "בית / מטלות" },
+      { id: "D", emoji: "🌿", label: "פנאי / מנוחה" },
+      { id: "E", emoji: "🌀", label: "אזור חופשי" },
+    ];
+
+    const OUTCOME_OPTIONS = [
+      { id: "I", emoji: "⚡", label: "ניצחון מהיר", theme: "theme-blue" },
+      { id: "II", emoji: "🧩", label: "סדר בבלגן", theme: "theme-purple" },
+      { id: "III", emoji: "🛑", label: "עצירה ומנוחה", theme: "theme-teal" },
+    ];
+
+    const BARRIER_OPTIONS = [
+      "עייפות פיזית",
+      "ערפול מחשבתי",
+      "הסביבה לא מתאימה",
+      "אין מוטיבציה",
+      "לא בטוח/ה",
+    ];
+
+    const FALLBACK_CARDS = {
+      A: { headline: "צעד אחד בעבודה", drive: "לא צריך לפתור הכל עכשיו — רק להזיז משהו קטן קדימה.", micro: "פתחו את המייל/המסמך הכי דחוף, בלי לענות עליו.", medium: "כתבו רשימה של 3 דברים שצריך לטפל בהם היום.", full: "הקדישו 15 דקות למשימה אחת מוגדרת מראש, בלי הפרעות." },
+      B: { headline: "רגע לפרויקט שלכם", drive: "פרויקט אישי מתקדם גם בצעדים זעירים, לא רק בקפיצות.", micro: "פתחו את הקובץ/המחברת של הפרויקט ותביטו בו 30 שניות.", medium: "כתבו משפט אחד על הצעד הבא בפרויקט.", full: "עבדו 15 דקות רצופות על החלק הכי פשוט שנשאר." },
+      C: { headline: "משהו קטן בבית", drive: "בית מסודר מתחיל במשטח אחד פנוי.", micro: "פנו משטח אחד קטן — שולחן, כיור, מדף.", medium: "אספו את כל מה שלא שייך לחדר הזה לסל אחד.", full: "הקדישו 15 דקות לסידור אזור אחד עד הסוף." },
+      D: { headline: "רגע בשבילכם", drive: "מנוחה היא לא בזבוז זמן, היא הדלק הבא.", micro: "שתו כוס מים ותשבו בלי מסך ל-60 שניות.", medium: "צאו להליכה קצרה או תמתחו את הגוף 5 דקות.", full: "הקדישו 15 דקות לפעילות שבאמת מנוחה לכם — בלי רגשות אשמה." },
+      E: { headline: "בחרו בעצמכם", drive: "אין חובה להיצמד לקטגוריה — הכי חשוב שתזוזו קדימה.", micro: "בחרו דבר אחד קטן שעולה בראש ותעשו רק את הצעד הראשון שלו.", medium: "הקדישו 5-10 דקות לדבר שהכי מושך אתכם עכשיו.", full: "הקדישו 15 דקות לדבר אחד שבחרתם, בלי לתכנן יותר מדי." },
+    };
+
+    const FALLBACK_RESCUE = {
+      alternative: "הקפיאו את המשימה. תנו לעצמכם רשות לעצור לגמרי, לנשום עמוק 3 פעמים, ולחזור אליה כשיהיה לכם יותר כוח.",
+      note: "זה לא כישלון — זה סימן שהצעד היה גדול מדי הפעם.",
+    };
+
+    function uid() {
+      return `f_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    function loadSession() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" ? parsed : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function saveSession(session) {
+      if (session) localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+      else localStorage.removeItem(STORAGE_KEY);
+    }
+
+    function freshSession() {
+      return {
+        id: uid(),
+        screen: "setup",
+        energy: null,
+        domain: null,
+        outcome: null,
+        card: null,
+        chosenLevel: null,
+        chosenText: null,
+        rescue: null,
+      };
+    }
+
+    function buildFocusCardPrompt(energy, domain, outcome) {
+      const energyLabel = ENERGY_OPTIONS.find(e => e.id === energy)?.label || "";
+      const domainLabel = DOMAIN_OPTIONS.find(d => d.id === domain)?.label || "";
+      const outcomeLabel = OUTCOME_OPTIONS.find(o => o.id === outcome)?.label || "";
+
+      return `אתה "Focus Hub" — מדריך אמפתי וממוקד-ביצוע ליצירת משימות זעירות עבור אנשים עם עייפות החלטות, ערפול מוחי ואפס אנרגיה. המטרה שלך היא להעביר את המשתמש משיתוק/תשישות לפעולה זעירה ומיידית שבונה תנופה, בלי שיפוטיות, בלי חיכוך ובלי עומס קוגניטיבי.
+
+חוקים:
+1. אל תבקש מהמשתמש להסביר, לכתוב רשימות ארוכות או לחשוב לעומק.
+2. כייל את המאמץ לרמת האנרגיה. אם האנרגיה נמוכה/מותשת, הצעד הזעיר חייב לקחת פחות מ-60 שניות.
+3. בלי אשמה ובלי שיפוטיות.
+4. תמיד בעברית.
+
+המשתמש בחר:
+- רמת אנרגיה: ${energyLabel}
+- תחום חיים: ${domainLabel}
+- תוצאה רצויה: ${outcomeLabel}
+
+המשימה שלך: צור "כרטיס פוקוס" (Focus Card) עבור הבחירה הזו.
+
+החזר אך ורק JSON תקין, בלי markdown, בפורמט הבא:
+{
+  "headline": "כותרת קצרה וקולעת, עד 15 תווים",
+  "drive": "משפט אמפתי אחד שמסביר למה זה עוזר עכשיו",
+  "micro": "צעד זעיר, פחות מ-60 שניות, כמעט בלתי אפשרי להיכשל בו",
+  "medium": "צעד בינוני, 5-10 דקות, פעולה מאוזנת",
+  "full": "צעד מלא, 15+ דקות, צלילה עמוקה"
+}`;
+    }
+
+    function buildRescuePrompt(card, chosenText, barrierAnswer) {
+      return `אתה "Focus Hub" — מדריך אמפתי ליצירת משימות זעירות. המשתמש ניסה לבצע צעד אבל נתקע. אל תביע שיפוטיות או אשמה — תקיעה היא רק סימן שהצעד היה גדול מדי, לא כישלון.
+
+הצעד שהמשתמש ניסה: "${chosenText}"
+ההקשר: כותרת "${card?.headline || ""}", ${card?.drive || ""}
+המחסום שהמשתמש דיווח עליו: "${barrierAnswer}"
+
+המשימה שלך: הצע חלופה באפס-מאמץ (Zero-Effort Alternative) — למשל להקפיא את המשימה, לעבור למנוחה פסיבית, או פעולה של 10 שניות בלבד — שמותאמת למחסום שהמשתמש דיווח עליו.
+
+החזר אך ורק JSON תקין, בלי markdown, בפורמט הבא:
+{
+  "alternative": "החלופה באפס מאמץ, משפט או שניים",
+  "note": "משפט קצר של הרגעה, בלי אשמה"
+}`;
+    }
+
+    function LoadingDots() {
+      return (
+        <div className="flex gap-1.5 justify-center items-center py-4">
+          <div className="loading-dot bg-slate-400 animate-bounce-dot"></div>
+          <div className="loading-dot bg-slate-400 animate-bounce-dot"></div>
+          <div className="loading-dot bg-slate-400 animate-bounce-dot"></div>
+        </div>
+      );
+    }
+
+    function OptionGroup({ title, options, selectedId, onSelect, theme }) {
+      return (
+        <div className="w-full">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">{title}</p>
+          <div className="flex flex-wrap gap-3">
+            {options.map(opt => (
+              <button
+                key={opt.id}
+                onClick={() => onSelect(opt.id)}
+                className={`px-5 py-3 rounded-full border text-sm font-medium transition-all duration-300 hover:-translate-y-1 shadow-sm flex items-center gap-2 ${
+                  selectedId === opt.id
+                    ? `${opt.theme || theme || 'theme-blue'} dynamic-bg text-white scale-105 border-transparent`
+                    : 'border-slate-200 bg-white text-slate-700'
+                }`}
+              >
+                <span>{opt.emoji}</span>
+                <span>[{opt.id}] {opt.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function ApiSettingsModal({ dialogRef, currentKey, onSave, onClear }) {
+      const [value, setValue] = useState(currentKey || "");
+      useEffect(() => setValue(currentKey || ""), [currentKey]);
+      return (
+        <dialog ref={dialogRef} className="rounded-2xl p-0 backdrop:bg-slate-900/40 w-[90vw] max-w-md">
+          <form method="dialog" className="p-6 flex flex-col gap-4">
+            <h3 className="font-display text-lg font-bold text-slate-800">הגדרות AI (Gemini)</h3>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              ניתן להזין מפתח Gemini API אישי. אם לא מוזן מפתח, האפליקציה תנסה להשתמש בפרוקסי המשותף של האתר.
+            </p>
+            <input
+              type="text"
+              value={value}
+              onChange={e => setValue(e.target.value)}
+              placeholder="הדביקו כאן מפתח Gemini API"
+              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 dynamic-ring theme-blue"
+            />
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => { onClear(); dialogRef.current?.close(); }} className="px-4 py-2 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-100">
+                נקה מפתח
+              </button>
+              <button type="submit" onClick={() => onSave(value.trim())} className="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 text-white hover:bg-slate-700">
+                שמור
+              </button>
+            </div>
+          </form>
+        </dialog>
+      );
+    }
+
+    function App() {
+      const [session, setSession] = useState(() => loadSession() || freshSession());
+      const [isLoading, setIsLoading] = useState(false);
+      const [error, setError] = useState(null);
+      const [customStep, setCustomStep] = useState("");
+      const [customBarrier, setCustomBarrier] = useState("");
+      const [apiKey, setApiKey] = useState(() => localStorage.getItem(API_KEY_STORAGE) || "");
+      const dialogRef = useRef(null);
+
+      const persist = useCallback((next) => {
+        setSession(next);
+        saveSession(next);
+      }, []);
+
+      useEffect(() => {
+        if (session) saveSession(session);
+      }, []);
+
+      const callGemini = async (prompt, model = "gemini-3.5-flash") => {
+        if (apiKey) {
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${apiKey}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { temperature: 0.2 }
+            })
+          });
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData?.error?.message || `API request failed with status ${res.status}`);
+          }
+          return res.json();
+        }
+        const res = await fetch("/api/gemini", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt, model })
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData?.error?.message || `Proxy request failed with status ${res.status}`);
+        }
+        return res.json();
+      };
+
+      const parseAiJson = (rawData) => {
+        const text = rawData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error("Invalid response format from AI.");
+        return JSON.parse(jsonMatch[0]);
+      };
+
+      const generateFocusCard = async (energy, domain, outcome) => {
+        setIsLoading(true);
+        setError(null);
+        let card = FALLBACK_CARDS[domain] || FALLBACK_CARDS.E;
+        try {
+          const prompt = buildFocusCardPrompt(energy, domain, outcome);
+          const rawData = await callGemini(prompt);
+          const parsed = parseAiJson(rawData);
+          card = {
+            headline: parsed.headline,
+            drive: parsed.drive,
+            micro: parsed.micro,
+            medium: parsed.medium,
+            full: parsed.full,
+          };
+        } catch (err) {
+          console.error("AI error:", err);
+          setError(err.message || "לא הצלחנו להתחבר ל-AI, מציגים הצעה מוכנה מראש.");
+        } finally {
+          setIsLoading(false);
+        }
+        persist({
+          ...session,
+          energy, domain, outcome,
+          screen: "card",
+          card,
+          chosenLevel: null,
+          chosenText: null,
+          rescue: null,
+        });
+      };
+
+      const handleStart = () => {
+        if (!session.energy || !session.domain || !session.outcome) return;
+        generateFocusCard(session.energy, session.domain, session.outcome);
+      };
+
+      const handleChooseStep = (level, text) => {
+        persist({ ...session, chosenLevel: level, chosenText: text, rescue: null });
+        setCustomStep("");
+      };
+
+      const handleCustomStepSubmit = (e) => {
+        e.preventDefault();
+        const trimmed = customStep.trim();
+        if (trimmed && !isLoading) handleChooseStep("custom", trimmed);
+      };
+
+      const handleDone = () => {
+        persist({ ...session, screen: "celebrate" });
+      };
+
+      const handleStuck = () => {
+        persist({ ...session, screen: "rescue" });
+        setCustomBarrier("");
+      };
+
+      const runRescue = async (barrierAnswer) => {
+        setIsLoading(true);
+        setError(null);
+        let rescue = FALLBACK_RESCUE;
+        try {
+          const prompt = buildRescuePrompt(session.card, session.chosenText, barrierAnswer);
+          const rawData = await callGemini(prompt);
+          const parsed = parseAiJson(rawData);
+          rescue = { alternative: parsed.alternative, note: parsed.note };
+        } catch (err) {
+          console.error("AI error:", err);
+          setError(err.message || "לא הצלחנו להתחבר ל-AI, מציגים חלופה מוכנה מראש.");
+        } finally {
+          setIsLoading(false);
+        }
+        persist({ ...session, screen: "rescueResult", rescue, barrierAnswer });
+      };
+
+      const handleBarrierPick = (label) => runRescue(label);
+      const handleCustomBarrierSubmit = (e) => {
+        e.preventDefault();
+        const trimmed = customBarrier.trim();
+        if (trimmed && !isLoading) runRescue(trimmed);
+      };
+
+      const handleAnotherMicroStep = () => {
+        generateFocusCard(session.energy, session.domain, session.outcome);
+      };
+
+      const handleResetToSetup = () => {
+        persist(freshSession());
+        setCustomStep("");
+        setCustomBarrier("");
+        setError(null);
+      };
+
+      const theme = OUTCOME_OPTIONS.find(o => o.id === session.outcome)?.theme || "theme-blue";
+
+      return (
+        <div className={`w-full max-w-2xl flex flex-col items-center ${theme}`}>
+          {error && (
+            <div className="w-full mb-4 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs text-center animate-fade-in">
+              {error}
+            </div>
+          )}
+
+          {session.screen === "setup" && (
+            <div className="w-full bg-white/90 glass rounded-3xl p-8 shadow-xl flex flex-col gap-8 animate-fade-in">
+              <div className="text-center">
+                <h2 className="font-display text-2xl font-bold text-slate-800 mb-2">Focus Hub</h2>
+                <p className="text-sm text-slate-500">שלושה קליקים, וזה הכל. בואו נתחיל.</p>
+              </div>
+              <OptionGroup title="1. רמת אנרגיה" options={ENERGY_OPTIONS} selectedId={session.energy} onSelect={(id) => persist({ ...session, energy: id })} theme="theme-blue" />
+              <OptionGroup title="2. תחום חיים" options={DOMAIN_OPTIONS} selectedId={session.domain} onSelect={(id) => persist({ ...session, domain: id })} theme="theme-purple" />
+              <OptionGroup title="3. תוצאה רצויה" options={OUTCOME_OPTIONS} selectedId={session.outcome} onSelect={(id) => persist({ ...session, outcome: id })} theme="theme-teal" />
+              <button
+                onClick={handleStart}
+                disabled={!session.energy || !session.domain || !session.outcome || isLoading}
+                className="mt-2 w-full py-4 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm shadow-lg transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {isLoading ? "יוצר כרטיס פוקוס..." : "התחל 🚀"}
+              </button>
+            </div>
+          )}
+
+          {session.screen === "card" && (
+            isLoading ? (
+              <div className="h-48 flex items-center justify-center"><LoadingDots /></div>
+            ) : session.chosenLevel ? (
+              <div className="w-full bg-white/90 glass rounded-3xl p-8 shadow-xl flex flex-col items-center gap-6 animate-fade-in">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">הצעד שלכם עכשיו</p>
+                <h3 className="font-display text-xl sm:text-2xl font-medium leading-relaxed text-slate-800 text-center">
+                  {session.chosenText}
+                </h3>
+                <div className="flex flex-wrap justify-center gap-3 mt-2">
+                  <button onClick={handleDone} className="px-6 py-3 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold shadow-sm transition-all hover:-translate-y-1">
+                    ✅ [1] בוצע!
+                  </button>
+                  <button onClick={handleStuck} className="px-6 py-3 rounded-full border border-slate-200 bg-white text-slate-600 text-sm font-semibold shadow-sm transition-all hover:-translate-y-1">
+                    🧊 [2] תקוע / אין כוח
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="w-full bg-white/90 glass rounded-3xl p-8 shadow-xl flex flex-col items-center gap-6 animate-fade-in">
+                <h3 className="font-display text-2xl font-bold text-slate-800 text-center">{session.card?.headline}</h3>
+                <p className="text-sm text-slate-600 text-center italic px-4">💡 {session.card?.drive}</p>
+                <div className="flex flex-col gap-3 w-full">
+                  <button
+                    onClick={() => handleChooseStep("micro", session.card?.micro)}
+                    className={`w-full text-right px-5 py-4 rounded-2xl border text-sm font-medium transition-all hover:-translate-y-1 shadow-sm border-emerald-200 bg-emerald-50 text-emerald-800 ${session.energy === 3 ? 'ring-2 ring-emerald-300' : ''}`}
+                  >
+                    🟢 <span className="font-bold">צעד זעיר (עד 60 שנ׳):</span> {session.card?.micro}
+                    {session.energy === 3 && <span className="block text-[11px] text-emerald-600 mt-1">מומלץ לפי רמת האנרגיה שלכם</span>}
+                  </button>
+                  <button
+                    onClick={() => handleChooseStep("medium", session.card?.medium)}
+                    className="w-full text-right px-5 py-4 rounded-2xl border border-amber-200 bg-amber-50 text-amber-800 text-sm font-medium transition-all hover:-translate-y-1 shadow-sm"
+                  >
+                    🟡 <span className="font-bold">צעד בינוני (5-10 דק׳):</span> {session.card?.medium}
+                  </button>
+                  <button
+                    onClick={() => handleChooseStep("full", session.card?.full)}
+                    disabled={session.energy === 3}
+                    className={`w-full text-right px-5 py-4 rounded-2xl border text-sm font-medium transition-all shadow-sm ${
+                      session.energy === 3
+                        ? 'border-slate-100 bg-slate-50 text-slate-400 cursor-not-allowed'
+                        : 'border-rose-200 bg-rose-50 text-rose-800 hover:-translate-y-1'
+                    }`}
+                  >
+                    🔴 <span className="font-bold">צעד מלא (15+ דק׳):</span> {session.card?.full}
+                    {session.energy === 3 && <span className="block text-[11px] text-slate-400 mt-1">אולי לא עכשיו — האנרגיה נמוכה</span>}
+                  </button>
+                </div>
+
+                <div className="relative mt-2 w-full max-w-sm mx-auto">
+                  <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                    <div className="w-full border-t border-slate-200"></div>
+                  </div>
+                  <div className="relative flex justify-center">
+                    <span className="px-3 bg-white text-xs text-slate-400 font-semibold rounded-full">או תכתבו צעד משלכם</span>
+                  </div>
+                </div>
+
+                <form onSubmit={handleCustomStepSubmit} className="w-full max-w-sm mx-auto flex gap-2">
+                  <input
+                    type="text"
+                    value={customStep}
+                    onChange={e => setCustomStep(e.target.value)}
+                    placeholder="תארו את הצעד שלכם..."
+                    className="flex-1 bg-white border border-slate-200 shadow-inner rounded-full px-5 py-2.5 text-sm focus:outline-none focus:ring-2 dynamic-ring text-slate-800"
+                  />
+                  <button type="submit" disabled={!customStep.trim() || isLoading} className="p-2.5 rounded-full bg-slate-800 hover:bg-slate-700 transition-all text-white disabled:opacity-50 shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                  </button>
+                </form>
+
+                <button onClick={handleResetToSetup} className="text-xs text-slate-400 hover:text-slate-600 mt-2">↺ התחלה מחדש</button>
+              </div>
+            )
+          )}
+
+          {session.screen === "rescue" && (
+            isLoading ? (
+              <div className="h-48 flex items-center justify-center"><LoadingDots /></div>
+            ) : (
+              <div className="w-full bg-white/90 glass rounded-3xl p-8 shadow-xl flex flex-col items-center gap-6 animate-fade-in">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">בלי אשמה, בלי שיפוט</p>
+                <h3 className="font-display text-xl font-bold text-slate-800 text-center">מה עומד בדרך עכשיו?</h3>
+                <div className="flex flex-wrap justify-center gap-3">
+                  {BARRIER_OPTIONS.map(opt => (
+                    <button
+                      key={opt}
+                      onClick={() => handleBarrierPick(opt)}
+                      className="px-5 py-3 rounded-full border border-slate-200 bg-white text-slate-700 text-sm font-medium transition-all hover:-translate-y-1 dynamic-hover shadow-sm"
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative mt-2 w-full max-w-sm mx-auto">
+                  <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                    <div className="w-full border-t border-slate-200"></div>
+                  </div>
+                  <div className="relative flex justify-center">
+                    <span className="px-3 bg-white text-xs text-slate-400 font-semibold rounded-full">או תכתבו במילים שלכם</span>
+                  </div>
+                </div>
+
+                <form onSubmit={handleCustomBarrierSubmit} className="w-full max-w-sm mx-auto flex gap-2">
+                  <input
+                    type="text"
+                    value={customBarrier}
+                    onChange={e => setCustomBarrier(e.target.value)}
+                    placeholder="מה קורה עכשיו..."
+                    className="flex-1 bg-white border border-slate-200 shadow-inner rounded-full px-5 py-2.5 text-sm focus:outline-none focus:ring-2 dynamic-ring text-slate-800"
+                  />
+                  <button type="submit" disabled={!customBarrier.trim() || isLoading} className="p-2.5 rounded-full bg-slate-800 hover:bg-slate-700 transition-all text-white disabled:opacity-50 shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                  </button>
+                </form>
+              </div>
+            )
+          )}
+
+          {session.screen === "rescueResult" && (
+            <div className="w-full bg-white/90 glass rounded-3xl p-8 shadow-xl flex flex-col items-center gap-6 animate-fade-in">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">חלופה באפס מאמץ</p>
+              <h3 className="font-display text-xl font-medium leading-relaxed text-slate-800 text-center">
+                🧊 {session.rescue?.alternative}
+              </h3>
+              {session.rescue?.note && (
+                <p className="text-sm text-slate-500 text-center italic">{session.rescue.note}</p>
+              )}
+              <div className="flex flex-wrap justify-center gap-3 mt-2">
+                <button onClick={handleDone} className="px-6 py-3 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold shadow-sm transition-all hover:-translate-y-1">
+                  ✅ בוצע!
+                </button>
+                <button onClick={handleResetToSetup} className="px-6 py-3 rounded-full border border-slate-200 bg-white text-slate-600 text-sm font-semibold shadow-sm transition-all hover:-translate-y-1">
+                  🧊 הקפא ותן לי לנוח
+                </button>
+              </div>
+            </div>
+          )}
+
+          {session.screen === "celebrate" && (
+            <div className="w-full bg-white/90 glass rounded-3xl p-8 shadow-xl flex flex-col items-center gap-6 animate-fade-in text-center">
+              <div className="text-5xl">🎉</div>
+              <h3 className="font-display text-xl font-bold text-slate-800">כל הכבוד! עשיתם את זה.</h3>
+              <p className="text-sm text-slate-500">כל צעד קטן הוא ניצחון. בחרו מה הלאה.</p>
+              <div className="flex flex-wrap justify-center gap-3 mt-2">
+                <button onClick={handleAnotherMicroStep} disabled={isLoading} className="px-6 py-3 rounded-full bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold shadow-sm transition-all hover:-translate-y-1 disabled:opacity-50">
+                  ⚡ צעד קטן נוסף
+                </button>
+                <button onClick={handleResetToSetup} className="px-6 py-3 rounded-full border border-slate-200 bg-white text-slate-600 text-sm font-semibold shadow-sm transition-all hover:-translate-y-1">
+                  🌙 סיימתי להיום
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-8">
+            <button onClick={() => dialogRef.current?.showModal()} className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1">
+              ⚙️ הגדרות AI
+            </button>
+          </div>
+
+          <ApiSettingsModal
+            dialogRef={dialogRef}
+            currentKey={apiKey}
+            onSave={(newKey) => {
+              localStorage.setItem(API_KEY_STORAGE, newKey);
+              setApiKey(newKey);
+            }}
+            onClear={() => {
+              localStorage.removeItem(API_KEY_STORAGE);
+              setApiKey("");
+            }}
+          />
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
