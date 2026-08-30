@@ -515,8 +515,9 @@
             }
         }
 
-        async function generateTasksFromAI(age) {
-            const prompt = `תציע 3 מטלות בית ראליות, מתאימות ומעצימות לילד/ה בגיל ${age}.
+        async function generateTasksFromAI(age, childName = null) {
+            const who = childName ? `לילד/ה בשם ${childName} (גיל ${age})` : `לילד/ה בגיל ${age}`;
+            const prompt = `תציע 3 מטלות בית ראליות, מתאימות ומעצימות ${who}.
 לכל מטלה, ספק שם קצר, וצ'ק ליסט של 2-3 תתי-משימות קטנות שעוזרות להבין איך לבצע אותה.
 החזר אך ורק אובייקט JSON תקין (ללא markdown) בפורמט הבא:
 [{"title": "שם המטלה", "subtasks": [{"title": "תת משימה 1"}, {"title": "תת משימה 2"}]}]`;
@@ -1103,7 +1104,23 @@
                             <h3 class="font-bold text-lg">מחולל מטלות חכם</h3>
                         </div>
                         <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">ה-AI יציע מטלות מותאמות גיל כולל פירוק לתתי-משימות.</p>
-                        
+
+                        ${children.length > 0 ? `
+                        <div class="flex gap-2">
+                            <select id="aiChildSelect" class="flex-1 bg-white dark:bg-gray-800 border border-indigo-200 dark:border-indigo-700 rounded-xl px-4 py-3 outline-none focus:ring-2 ring-primary">
+                                <option value="">בחר ילד/ה...</option>
+                                ${children.map(c => `<option value="${c.id}">${c.avatar} ${c.name}${c.age ? ` (גיל ${c.age})` : ''}</option>`).join('')}
+                                <option value="__age__">גיל אחר (ללא שיוך לילד/ה)...</option>
+                            </select>
+                            <button id="aiGenerateTasksBtn" class="bg-primary text-white px-6 rounded-xl font-bold hover:bg-indigo-600 transition flex items-center justify-center whitespace-nowrap">
+                                הצע לי
+                            </button>
+                        </div>
+                        <select id="aiAgeSelect" class="hidden mt-2 w-full bg-white dark:bg-gray-800 border border-indigo-200 dark:border-indigo-700 rounded-xl px-4 py-3 outline-none focus:ring-2 ring-primary">
+                            <option value="">בחר גיל...</option>
+                            ${[3,4,5,6,7,8,9,10,11,12,13,14,15].map(a => `<option value="${a}">גיל ${a}</option>`).join('')}
+                        </select>
+                        ` : `
                         <div class="flex gap-2">
                             <select id="aiAgeSelect" class="flex-1 bg-white dark:bg-gray-800 border border-indigo-200 dark:border-indigo-700 rounded-xl px-4 py-3 outline-none focus:ring-2 ring-primary">
                                 <option value="">בחר גיל...</option>
@@ -1113,6 +1130,7 @@
                                 הצע לי
                             </button>
                         </div>
+                        `}
                         <div id="aiTasksResult" class="mt-4 space-y-3 hidden"></div>
                     </div>
 
@@ -1134,19 +1152,45 @@
             `;
             lucide.createIcons();
 
+            // Toggle to the manual age select when "other age" is chosen
+            const childSelectEl = document.getElementById('aiChildSelect');
+            if (childSelectEl) {
+                childSelectEl.onchange = () => {
+                    document.getElementById('aiAgeSelect').classList.toggle('hidden', childSelectEl.value !== '__age__');
+                };
+            }
+
             // Generate Tasks Logic
             document.getElementById('aiGenerateTasksBtn').onclick = async () => {
-                const age = document.getElementById('aiAgeSelect').value;
-                if(!age) return showToast('בחר גיל תחילה', 'error');
-                
+                let age, childName = null, childId = null;
+
+                if (childSelectEl) {
+                    const val = childSelectEl.value;
+                    if (!val) return showToast('בחר ילד/ה תחילה', 'error');
+                    if (val === '__age__') {
+                        age = document.getElementById('aiAgeSelect').value;
+                        if (!age) return showToast('בחר גיל תחילה', 'error');
+                    } else {
+                        const child = children.find(c => c.id === val);
+                        if (!child) return showToast('הילד/ה לא נמצא/ה', 'error');
+                        if (!child.age) return showToast('לא הוגדר גיל עבור ' + child.name, 'error');
+                        age = child.age;
+                        childName = child.name;
+                        childId = child.id;
+                    }
+                } else {
+                    age = document.getElementById('aiAgeSelect').value;
+                    if(!age) return showToast('בחר גיל תחילה', 'error');
+                }
+
                 const btn = document.getElementById('aiGenerateTasksBtn');
                 const resDiv = document.getElementById('aiTasksResult');
-                
+
                 btn.innerHTML = '<i data-lucide="loader-2" class="animate-spin"></i>';
                 lucide.createIcons();
-                
+
                 try {
-                    const tasks = await generateTasksFromAI(age);
+                    const tasks = await generateTasksFromAI(age, childName);
                     resDiv.classList.remove('hidden');
                     resDiv.innerHTML = tasks.map(t => `
                         <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm text-sm border border-gray-100 dark:border-gray-700">
@@ -1154,7 +1198,7 @@
                             <ul class="list-disc list-inside text-gray-600 dark:text-gray-400 mb-3 space-y-1">
                                 ${t.subtasks.map(st => `<li>${st.title}</li>`).join('')}
                             </ul>
-                            <button onclick='addGeneratedTask(${JSON.stringify(t).replace(/'/g, "&#39;")})' class="text-xs bg-indigo-50 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold w-full hover:bg-indigo-100 transition">
+                            <button onclick='addGeneratedTask(${JSON.stringify(t).replace(/'/g, "&#39;")}${childId ? `, "${childId}"` : ''})' class="text-xs bg-indigo-50 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold w-full hover:bg-indigo-100 transition">
                                 + הוסף למשימות הבית
                             </button>
                         </div>
@@ -1196,7 +1240,7 @@
             };
         }
 
-        window.addGeneratedTask = (taskObj) => {
+        window.addGeneratedTask = (taskObj, presetChildId = null) => {
             const children = state.users.filter(u => u.role === 'child');
 
             // Remove any existing assign modal
@@ -1216,7 +1260,7 @@
                             ? '<p class="text-sm text-gray-400 text-center py-2">אין ילדים מוגדרים במערכת</p>'
                             : children.map(c => `
                                 <label class="flex items-center gap-3 p-3 border border-gray-200 dark:border-gray-600 rounded-xl cursor-pointer has-[:checked]:bg-indigo-50 has-[:checked]:border-primary dark:has-[:checked]:bg-indigo-900/30 transition">
-                                    <input type="checkbox" value="${c.id}" class="assign-child-cb w-4 h-4 accent-primary">
+                                    <input type="checkbox" value="${c.id}" class="assign-child-cb w-4 h-4 accent-primary" ${c.id === presetChildId ? 'checked' : ''}>
                                     <span class="text-xl">${c.avatar}</span>
                                     <span class="font-medium">${c.name}</span>
                                 </label>

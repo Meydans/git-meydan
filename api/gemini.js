@@ -4,13 +4,26 @@ const ALLOWED_ORIGINS = [
   "http://127.0.0.1:5500"
 ];
 
+function isSameHost(url, host) {
+  if (!url || !host) return false;
+  try {
+    return new URL(url).host.toLowerCase() === host.toLowerCase();
+  } catch {
+    return false;
+  }
+}
+
 function isAllowedOrigin(req) {
+  const host = req.headers.host || "";
   const origin = req.headers.origin || "";
-  if (origin) return ALLOWED_ORIGINS.includes(origin.toLowerCase());
+  if (origin) {
+    return ALLOWED_ORIGINS.includes(origin.toLowerCase()) || isSameHost(origin, host);
+  }
 
   // Some browsers/requests omit Origin on same-site navigations; fall back to Referer.
   const referer = req.headers.referer || "";
-  return ALLOWED_ORIGINS.some(allowed => referer.toLowerCase().startsWith(allowed.toLowerCase()));
+  if (!referer) return false;
+  return ALLOWED_ORIGINS.some(allowed => referer.toLowerCase().startsWith(allowed.toLowerCase())) || isSameHost(referer, host);
 }
 
 export default async function handler(req, res) {
