@@ -652,6 +652,16 @@
       syncBtn.disabled = !getCurrentData().sourceDirty;
     }
 
+    function setSourceDirty(list, data, value) {
+      data.sourceDirty = value;
+      const dirtyKey = `${list.cacheKey}_dirty`;
+      if (value) {
+        localStorage.setItem(dirtyKey, "1");
+      } else {
+        localStorage.removeItem(dirtyKey);
+      }
+    }
+
     function parseGeminiJson(text) {
       try {
         const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -745,7 +755,7 @@ Return ONLY the category name in plain text, nothing else.
       renderMasterList();
       updateSyncButton();
       
-      if(data.items.length === 0 && accessToken) {
+      if (accessToken && !data.sourceDirty) {
         loadMasterItems();
       }
     }
@@ -805,6 +815,12 @@ Return ONLY the category name in plain text, nothing else.
 
       filterToggleBtn.addEventListener("click", toggleFilter);
 
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible" && accessToken && !getCurrentData().sourceDirty) {
+          loadMasterItems();
+        }
+      });
+
       Object.keys(LISTS).forEach(key => {
         const cachedToken = localStorage.getItem('grocery_token');
         const cachedExpiry = localStorage.getItem('grocery_token_expiry');
@@ -818,10 +834,14 @@ Return ONLY the category name in plain text, nothing else.
           accessToken = cachedToken;
           const cachedItems = localStorage.getItem(LISTS[key].cacheKey);
           const cachedOrder = localStorage.getItem(LISTS[key].categoryOrderCacheKey);
+          const cachedDirty = localStorage.getItem(`${LISTS[key].cacheKey}_dirty`);
 
           if (cachedItems) {
             listsData[key].items = JSON.parse(cachedItems);
             if (cachedOrder) listsData[key].categoryOrder = JSON.parse(cachedOrder);
+          }
+          if (cachedDirty === "1") {
+            listsData[key].sourceDirty = true;
           }
         }
       });
@@ -998,6 +1018,7 @@ Return ONLY the category name in plain text, nothing else.
         listsData[key].sourceDirty = false;
         localStorage.removeItem(LISTS[key].cacheKey);
         localStorage.removeItem(LISTS[key].categoryOrderCacheKey);
+        localStorage.removeItem(`${LISTS[key].cacheKey}_dirty`);
       });
       localStorage.removeItem('grocery_token');
       localStorage.removeItem('grocery_token_expiry');
@@ -1060,9 +1081,9 @@ Return ONLY the category name in plain text, nothing else.
         if (missingCats.length > 0) {
           setAppStatus(`Categorizing ${missingCats.length} items with AI...`);
           await categorizeItemsInBatch(missingCats);
-          data.sourceDirty = true;
+          setSourceDirty(list, data, true);
         } else {
-          data.sourceDirty = false;
+          setSourceDirty(list, data, false);
         }
 
         data.items = nextItems;
@@ -1156,14 +1177,15 @@ Return ONLY the category name in plain text, nothing else.
       masterList.querySelectorAll('.item-checkbox').forEach(cb => {
         cb.addEventListener('change', (e) => {
           const id = e.target.closest('[data-item-id]').dataset.itemId;
+          const list = getCurrentList();
           const data = getCurrentData();
           const item = data.items.find(i => i.id === id);
           if (item) {
             item.has = e.target.checked;
-            data.sourceDirty = true;
+            setSourceDirty(list, data, true);
             data.dirtyItemIds.add(item.id);
             // Persist checked state immediately so page close/refresh doesn't lose it
-            localStorage.setItem(getCurrentList().cacheKey, JSON.stringify(data.items));
+            localStorage.setItem(list.cacheKey, JSON.stringify(data.items));
             updateSyncButton();
             // Re-render local list to reflect changes (strikethrough/position)
             renderMasterList();
@@ -1199,14 +1221,15 @@ Return ONLY the category name in plain text, nothing else.
     }
 
     function saveEdit() {
+      const list = getCurrentList();
       const data = getCurrentData();
       const item = data.items.find(i => i.id === currentEditId);
       if (item) {
         item.name = editItemName.value.trim();
         item.type = editItemType.value;
         item.category = editItemCategory.value;
-        data.sourceDirty = true;
-        localStorage.setItem(getCurrentList().cacheKey, JSON.stringify(data.items));
+        setSourceDirty(list, data, true);
+        localStorage.setItem(list.cacheKey, JSON.stringify(data.items));
         updateSyncButton();
         renderMasterList();
         editModal.classList.add("hidden");
@@ -1215,14 +1238,15 @@ Return ONLY the category name in plain text, nothing else.
     }
 
     function deleteItem() {
+      const list = getCurrentList();
       const data = getCurrentData();
       const index = data.items.findIndex(i => i.id === currentEditId);
       if (index !== -1) {
         const name = data.items[index].name;
         data.items.splice(index, 1);
-        data.sourceDirty = true;
+        setSourceDirty(list, data, true);
         // FIXED: Persist deletion to localStorage immediately
-        localStorage.setItem(getCurrentList().cacheKey, JSON.stringify(data.items));
+        localStorage.setItem(list.cacheKey, JSON.stringify(data.items));
         updateSyncButton();
         renderMasterList();
         editModal.classList.add("hidden");
@@ -1297,7 +1321,7 @@ Return ONLY the category name in plain text, nothing else.
       if (existingItem) {
         if (existingItem.has) {
           existingItem.has = false;
-          data.sourceDirty = true;
+          setSourceDirty(list, data, true);
           localStorage.setItem(list.cacheKey, JSON.stringify(data.items));
           newItemInput.value = "";
           renderListSwitcher();
@@ -1345,7 +1369,7 @@ Return ONLY the category name in plain text, nothing else.
         };
 
         data.items.push(newItem);
-        data.sourceDirty = true;
+        setSourceDirty(list, data, true);
         localStorage.setItem(list.cacheKey, JSON.stringify(data.items));
         
         newItemInput.value = "";
@@ -1423,7 +1447,7 @@ The "order" array MUST contain all categories provided.
           body: JSON.stringify({ values })
         });
 
-        data.sourceDirty = false;
+        setSourceDirty(list, data, false);
         data.dirtyItemIds.clear();
         updateSyncButton();
         setAppStatus(`Synced ${data.items.length} items to ${list.label}.`);
