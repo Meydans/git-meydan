@@ -8,7 +8,7 @@ It is a separate Vercel project whose Root Directory is `gtd/`.
 - [x] Stage 1: DB schema + Drizzle migrations
 - [x] Stage 2: CRUD API routes for tasks and projects
 - [x] Stage 3: Minimal UI (Hebrew, RTL)
-- [ ] Stage 4: MCP layer over the API
+- [x] Stage 4: MCP server with OAuth
 
 ## Data model
 
@@ -69,6 +69,37 @@ curl -H "Authorization: Bearer $API_TOKEN" -H "Content-Type: application/json" \
 ```
 
 `scripts/api-smoke.sh <base-url> <token>` runs the full CRUD flow against any instance and deletes the rows it creates.
+
+## MCP (Claude)
+
+`/api/mcp` is a remote MCP server (Streamable HTTP, built on `mcp-handler`) exposing the GTD system to Claude.
+
+| Tool | What it does |
+| --- | --- |
+| `gtd_overview` | Today's date, counts per list, overdue and due-today tasks, the inbox, and active projects with no next action |
+| `list_tasks` | Tasks in a list (or all open ones), filtered by context, project or text |
+| `get_task` / `create_tasks` / `update_task` / `delete_task` | Task CRUD. `create_tasks` takes a batch and defaults to the inbox; `update_task` with `status: "done"` completes a task |
+| `list_projects` / `get_project` | Projects with outcome, per-list counts, progress, and whether they have a next action |
+| `create_project` / `update_project` / `delete_project` | Project CRUD. `create_project` can create its first next actions in the same call |
+
+There is also a `weekly_review` prompt, and server instructions that explain the GTD lists and contexts to the model.
+
+### Auth
+
+- **OAuth 2.1**, for claude.ai (web and mobile) and Claude Desktop. The app is its own authorization server:
+  - discovery via `/.well-known/oauth-protected-resource/api/mcp` and `/.well-known/oauth-authorization-server`
+  - Dynamic Client Registration at `/oauth/register`, plus Client ID Metadata Documents (https `client_id`)
+  - `/oauth/authorize`: a Hebrew consent screen. It asks for `APP_PASSWORD` unless you're already signed in, and can't be framed.
+  - `/oauth/token`: PKCE S256 is required, codes are single-use, and refresh tokens rotate
+  - Access tokens last 1 hour and refresh tokens 90 days. They are stored only as SHA-256 hashes and bound to this server's `/api/mcp` resource.
+  - **Changing `APP_PASSWORD` revokes every OAuth token.**
+- **`API_TOKEN` as a bearer token** also works, for Claude Code and scripts.
+
+### Connecting
+
+- **claude.ai** (also syncs to the mobile app): Settings → Connectors → Add custom connector → `https://<host>/api/mcp`. Claude runs the OAuth flow; approve it on the consent screen.
+- **Claude Code**: `claude mcp add --transport http gtd https://<host>/api/mcp --header "Authorization: Bearer $API_TOKEN"`
+- **Checks**: `scripts/mcp-smoke.sh <base-url> <token>` runs discovery, the 401 challenge, `initialize`, `tools/list` and `gtd_overview`.
 
 ## Scripts
 

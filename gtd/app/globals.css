@@ -431,3 +431,10 @@ button.danger { color: var(--danger); background: transparent; border-color: tra
 
 .done-bucket > summary h2::before { content: "▸"; font-size: 0.8em; }
 .done-bucket[open] > summary h2::before { content: "▾"; }
+
+/* ---------- OAuth consent ---------- */
+.consent { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.consent form { width: 100%; }
+.consent-icon { color: var(--accent); }
+.consent-text { margin: 0; }
+.consent .deny { width: 100%; justify-content: center; background: transparent; }
