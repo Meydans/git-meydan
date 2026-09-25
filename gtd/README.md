@@ -9,6 +9,9 @@ It is a separate Vercel project whose Root Directory is `gtd/`.
 - [x] Stage 2: CRUD API routes for tasks and projects
 - [x] Stage 3: Minimal UI (Hebrew, RTL)
 - [x] Stage 4: MCP server with OAuth
+- [x] Offline 1: installable app (PWA)
+- [ ] Offline 2: offline capture queue
+- [ ] Offline 3: offline reading of synced lists
 
 ## Data model
 
@@ -45,6 +48,13 @@ Hebrew, right-to-left. Sign in at `/login` with `APP_PASSWORD`, which sets an Ht
 
 Pages read the database on the server, and edits go through Server Actions. The browser never sees `API_TOKEN`.
 `proxy.ts` sends signed-out visitors to `/login`, and every page and action also checks the session itself.
+
+## Installable app (PWA)
+
+- `app/manifest.ts`: Hebrew/RTL, `standalone` display, starts at `/inbox`. It has `any` and `maskable` icons and two home-screen shortcuts: quick capture (`/inbox?capture=1`, which focuses the capture box) and Next actions.
+- Icons are generated from one design: `app/icon.svg` (favicon), `app/apple-icon.png`, and `public/icons/*`.
+- `public/sw.js`: precaches the offline page, caches content-hashed `/_next/static` assets, and falls back to `/offline` when a navigation fails without a network. Bump `VERSION` to replace the cache. It is served with `no-store` so updates reach installed apps. The service worker is registered only in production builds.
+- On Android/Chrome, an "Install app" item appears in the menu whenever the browser offers installation (`beforeinstallprompt`).
 
 ## API
 
