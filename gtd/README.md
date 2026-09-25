@@ -6,7 +6,7 @@ It is a separate Vercel project whose Root Directory is `gtd/`.
 ## Status
 
 - [x] Stage 1: DB schema + Drizzle migrations
-- [ ] Stage 2: CRUD API routes for tasks and projects
+- [x] Stage 2: CRUD API routes for tasks and projects
 - [ ] Stage 3: Minimal UI (Hebrew, RTL)
 - [ ] Stage 4: MCP layer over the API
 
@@ -25,6 +25,30 @@ It is a separate Vercel project whose Root Directory is `gtd/`.
 
 On Vercel, `npm run build` applies pending migrations before building, so a deploy fails if a migration fails.
 Preview and production share one database, so preview deploys also apply migrations.
+
+## API
+
+Every request needs `Authorization: Bearer $API_TOKEN`. Bodies and responses are JSON with camelCase fields.
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| `GET` | `/api/tasks` | Filters: `?status=`, `?context=` (URL-encode `@` as `%40`), `?projectId=` |
+| `POST` | `/api/tasks` | `title` required; `status` defaults to `inbox` |
+| `GET` / `PATCH` / `DELETE` | `/api/tasks/:id` | `PATCH` takes any subset of fields; send `null` to clear one |
+| `GET` | `/api/projects` | Filter: `?status=` |
+| `POST` | `/api/projects` | `name` required; `status` defaults to `active` |
+| `GET` / `PATCH` / `DELETE` | `/api/projects/:id` | Deleting a project keeps its tasks and clears their `projectId` |
+
+Task fields: `title`, `projectId`, `status`, `context`, `dueDate` (`YYYY-MM-DD`), `notes`.
+Project fields: `name`, `outcome`, `status`.
+Unknown fields and invalid values return `400` with per-field `details`; a missing or malformed id returns `404`.
+
+```sh
+curl -H "Authorization: Bearer $API_TOKEN" -H "Content-Type: application/json" \
+  -d '{"title":"להתקשר לנגר","status":"next","context":"@phone"}' https://<host>/api/tasks
+```
+
+`scripts/api-smoke.sh <base-url> <token>` runs the full CRUD flow against any instance and deletes the rows it creates.
 
 ## Scripts
 
