@@ -23,6 +23,9 @@ It is a separate Vercel project whose Root Directory is `gtd/`.
 2. Locally, pull the env vars (`vercel env pull .env.local`) or copy `.env.example` to `.env.local` and fill it in.
 3. Apply migrations: `npm run db:migrate`
 
+On Vercel, `npm run build` applies pending migrations before building, so a deploy fails if a migration fails.
+Preview and production share one database, so preview deploys also apply migrations.
+
 ## Scripts
 
 | Command | What it does |
