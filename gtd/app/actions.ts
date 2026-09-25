@@ -5,8 +5,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { projects, tasks } from "@/db/schema";
+import { toggleLine } from "@/lib/notes";
 import { checkPassword, endSession, requireSession, startSession } from "@/lib/session";
 import { idParam, projectCreate, taskCreate, taskStatusValue } from "@/lib/validation";
+import { z } from "zod";
 
 // Form fields arrive as strings; an empty optional field means "no value".
 function formFields(formData: FormData, names: string[]) {
@@ -34,6 +36,16 @@ const projectFields = (formData: FormData) =>
 
 const formId = (formData: FormData) => idParam.parse(formData.get("id"));
 
+// Only same-site paths, so a crafted form can't redirect elsewhere.
+function returnTo(formData: FormData, fallback: string) {
+  const value = formData.get("returnTo");
+  return typeof value === "string" && value.startsWith("/") && !value.startsWith("//") ? value : fallback;
+}
+
+function refresh() {
+  revalidatePath("/", "layout");
+}
+
 export async function login(formData: FormData) {
   const password = formData.get("password");
   if (typeof password !== "string" || !checkPassword(password)) redirect("/login?error=1");
@@ -49,42 +61,56 @@ export async function logout() {
 export async function createTask(formData: FormData) {
   await requireSession();
   await db.insert(tasks).values(taskFields(formData));
-  revalidatePath("/", "layout");
+  refresh();
 }
 
 export async function updateTask(formData: FormData) {
   await requireSession();
   await db.update(tasks).set(taskFields(formData)).where(eq(tasks.id, formId(formData)));
-  revalidatePath("/", "layout");
+  refresh();
+  redirect(returnTo(formData, "/inbox"));
 }
 
 export async function setTaskStatus(formData: FormData) {
   await requireSession();
   const status = taskStatusValue.parse(formData.get("status"));
   await db.update(tasks).set({ status }).where(eq(tasks.id, formId(formData)));
-  revalidatePath("/", "layout");
+  refresh();
+}
+
+export async function toggleChecklistItem(formData: FormData) {
+  await requireSession();
+  const id = formId(formData);
+  const line = z.coerce.number().int().min(0).parse(formData.get("line"));
+  const [task] = await db.select({ notes: tasks.notes }).from(tasks).where(eq(tasks.id, id));
+  if (!task?.notes) return;
+  await db.update(tasks).set({ notes: toggleLine(task.notes, line) }).where(eq(tasks.id, id));
+  refresh();
 }
 
 export async function deleteTask(formData: FormData) {
   await requireSession();
   await db.delete(tasks).where(eq(tasks.id, formId(formData)));
-  revalidatePath("/", "layout");
+  refresh();
+  redirect(returnTo(formData, "/inbox"));
 }
 
 export async function createProject(formData: FormData) {
   await requireSession();
-  await db.insert(projects).values(projectFields(formData));
-  revalidatePath("/", "layout");
+  const [project] = await db.insert(projects).values(projectFields(formData)).returning({ id: projects.id });
+  refresh();
+  redirect(`/projects/${project.id}`);
 }
 
 export async function updateProject(formData: FormData) {
   await requireSession();
   await db.update(projects).set(projectFields(formData)).where(eq(projects.id, formId(formData)));
-  revalidatePath("/", "layout");
+  refresh();
 }
 
 export async function deleteProject(formData: FormData) {
   await requireSession();
   await db.delete(projects).where(eq(projects.id, formId(formData)));
-  revalidatePath("/", "layout");
+  refresh();
+  redirect("/projects");
 }
