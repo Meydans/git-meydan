@@ -1316,7 +1316,11 @@ Return ONLY the category name in plain text, nothing else.
       return "OTHER";
     }
 
+    let isAddingItem = false;
+
     async function addItem() {
+      if (isAddingItem) return;
+
       const name = newItemInput.value.trim();
       const type = normalizeType(newItemType.value);
       const data = getCurrentData();
@@ -1345,6 +1349,8 @@ Return ONLY the category name in plain text, nothing else.
         return;
       }
 
+      isAddingItem = true;
+      addItemBtn.disabled = true;
       try {
         setAppStatus(`Categorizing "${name}"...`);
         const catPrompt = `
@@ -1396,6 +1402,9 @@ Return ONLY the category name in plain text, nothing else.
       } catch (err) {
         console.error(`[DEBUG] Error in addItem:`, err);
         setAppStatus(`Failed to add: ${err.message}`);
+      } finally {
+        isAddingItem = false;
+        addItemBtn.disabled = false;
       }
     }
 
