@@ -7,7 +7,7 @@ It is a separate Vercel project whose Root Directory is `gtd/`.
 
 - [x] Stage 1: DB schema + Drizzle migrations
 - [x] Stage 2: CRUD API routes for tasks and projects
-- [ ] Stage 3: Minimal UI (Hebrew, RTL)
+- [x] Stage 3: Minimal UI (Hebrew, RTL)
 - [ ] Stage 4: MCP layer over the API
 
 ## Data model
@@ -25,6 +25,16 @@ It is a separate Vercel project whose Root Directory is `gtd/`.
 
 On Vercel, `npm run build` applies pending migrations before building, so a deploy fails if a migration fails.
 Preview and production share one database, so preview deploys also apply migrations.
+
+## Web UI
+
+Hebrew, right-to-left. Sign in at `/login` with `APP_PASSWORD`, which sets an HttpOnly session cookie for 30 days.
+
+- `/`: a quick-capture box that adds to the inbox, then tasks grouped by status (inbox, next, waiting, someday). Done tasks are collapsed and show the latest 30. Click a task to edit all its fields or delete it; the circle marks it done, or back to next.
+- `/projects`: create and edit projects. Each project shows its open task count, and active projects with no next action are flagged.
+
+Pages read the database on the server, and edits go through Server Actions. The browser never sees `API_TOKEN`.
+`proxy.ts` sends signed-out visitors to `/login`, and every page and action also checks the session itself.
 
 ## API
 
