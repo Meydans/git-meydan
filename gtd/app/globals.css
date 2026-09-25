@@ -442,13 +442,32 @@ button.danger { color: var(--danger); background: transparent; border-color: tra
 /* ---------- PWA ---------- */
 .nav-item.install { color: var(--accent); }
 .nav-item.install svg { color: var(--accent); }
-.offline { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.primary-link { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; justify-content: center; }
+
 
 /* Installed app: respect the status bar and gesture areas. */
 @media (display-mode: standalone) {
   .topbar { padding-top: env(safe-area-inset-top); height: calc(56px + env(safe-area-inset-top)); }
   .content { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 }
-/* Wide tracking is for the Latin "GTD" wordmark only; it breaks up Hebrew letters. */
-.offline h1 { letter-spacing: normal; }
+
+/* ---------- Offline capture ---------- */
+.offline-screen { max-width: 560px; margin: 0 auto; padding: 32px 16px 64px; display: flex; flex-direction: column; gap: 14px; }
+.offline-head { display: flex; gap: 12px; align-items: flex-start; }
+.offline-head h1 { font-size: 1.4rem; }
+.offline-head .hint { margin-top: 2px; }
+.retry { align-self: center; margin-top: 8px; }
+
+.pending {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px dashed color-mix(in srgb, var(--warn) 60%, transparent);
+  background: var(--warn-soft);
+}
+.pending-head { display: flex; align-items: center; gap: 8px; color: var(--warn); }
+.pending-head strong { flex: 1; }
+.pending-action { padding: 3px 10px; font-size: 0.85rem; border-radius: 999px; background: var(--surface); }
+.pending-action:disabled { opacity: 0.5; cursor: default; }
+.pending-note { margin: 4px 0 8px; font-size: 0.85rem; color: var(--muted); }
+.pending ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.pending li { padding: 6px 10px; border-radius: 8px; background: var(--surface); font-size: 0.95rem; }

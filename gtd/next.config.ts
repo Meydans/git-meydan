@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // One service-worker version per build, so every deploy re-caches the offline screen.
+  env: { SW_VERSION: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ?? `local-${Date.now()}` },
   async headers() {
     // The consent screen must never be framed (clickjacking on the approve button).
     return [
