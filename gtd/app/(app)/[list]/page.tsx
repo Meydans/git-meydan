@@ -59,6 +59,7 @@ export default async function ListPage({ params, searchParams }: PageProps<"/[li
 
       {list !== "done" && (
         <Capture
+          autoFocus={first(sp.capture) === "1"}
           status={captureStatus(list)}
           placeholder={list === "inbox" || list === "scheduled" ? "מה על הראש?" : `הוספה ל${listLabels[list]}`}
         />
