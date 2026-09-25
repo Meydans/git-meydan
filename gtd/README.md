@@ -10,7 +10,7 @@ It is a separate Vercel project whose Root Directory is `gtd/`.
 - [x] Stage 3: Minimal UI (Hebrew, RTL)
 - [x] Stage 4: MCP server with OAuth
 - [x] Offline 1: installable app (PWA)
-- [ ] Offline 2: offline capture queue
+- [x] Offline 2: offline capture queue
 - [ ] Offline 3: offline reading of synced lists
 
 ## Data model
@@ -53,8 +53,26 @@ Pages read the database on the server, and edits go through Server Actions. The 
 
 - `app/manifest.ts`: Hebrew/RTL, `standalone` display, starts at `/inbox`. It has `any` and `maskable` icons and two home-screen shortcuts: quick capture (`/inbox?capture=1`, which focuses the capture box) and Next actions.
 - Icons are generated from one design: `app/icon.svg` (favicon), `app/apple-icon.png`, and `public/icons/*`.
-- `public/sw.js`: precaches the offline page, caches content-hashed `/_next/static` assets, and falls back to `/offline` when a navigation fails without a network. Bump `VERSION` to replace the cache. It is served with `no-store` so updates reach installed apps. The service worker is registered only in production builds.
+- `/sw.js` is served by `app/sw.js/route.ts` from `lib/sw-source.ts`, with a version per build (the commit SHA on Vercel). Each deploy therefore installs a fresh worker. The worker:
+  - precaches the offline screen together with its scripts and styles
+  - caches content-hashed `/_next/static` assets
+  - falls back to `/offline` when a navigation fails without a network
+  - It is served with `no-store` so updates reach installed apps, and is registered only in production builds.
 - On Android/Chrome, an "Install app" item appears in the menu whenever the browser offers installation (`beforeinstallprompt`).
+
+### Offline capture
+
+Every capture goes through a local queue, online or not. `lib/offline-queue.ts` writes it to IndexedDB first, then sends it to `POST /api/capture`, so nothing typed is lost to a dead connection.
+
+- **Idempotent:** each item carries a UUID created on the device, which becomes the task id. Retries are acknowledged instead of creating duplicates. Capture order is kept, and a project deleted while an item was queued doesn't block it.
+- **Syncs when:**
+  - the network comes back (`online`)
+  - the app returns to the foreground
+  - every 30 seconds while the server is unreachable
+  - on Android, through **Background Sync**: the service worker sends the queue even if the app is closed
+- **Status:** a bar on every page shows items still waiting and why (offline, server unreachable, or signed out).
+- **Opening the app with no network** lands on `/offline`, which is a capture screen: items queue on the device and reach the inbox later.
+- `/api/capture` requires the browser session and JSON (SameSite=Lax cookie), so other sites can't post to it.
 
 ## API
 

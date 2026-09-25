@@ -1,3 +1,4 @@
+import { PendingCaptures } from "@/components/pending-captures";
 import { Sidebar } from "@/components/sidebar";
 import { todayInIsrael } from "@/lib/labels";
 import { allProjects, listCounts } from "@/lib/queries";
@@ -11,7 +12,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="shell">
       <Sidebar counts={counts} overdue={overdue} activeProjects={activeProjects} />
-      <main className="content">{children}</main>
+      <main className="content">
+        <PendingCaptures />
+        {children}
+      </main>
     </div>
   );
 }

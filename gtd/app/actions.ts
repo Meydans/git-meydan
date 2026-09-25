@@ -58,12 +58,6 @@ export async function logout() {
   redirect("/login");
 }
 
-export async function createTask(formData: FormData) {
-  await requireSession();
-  await db.insert(tasks).values(taskFields(formData));
-  refresh();
-}
-
 export async function updateTask(formData: FormData) {
   await requireSession();
   await db.update(tasks).set(taskFields(formData)).where(eq(tasks.id, formId(formData)));
