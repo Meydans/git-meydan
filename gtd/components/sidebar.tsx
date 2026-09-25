@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { FolderKanban, LogOut, Menu, X } from "lucide-react";
 import { logout } from "@/app/actions";
+import { clearOfflinePages } from "@/components/offline-status";
 import { InstallButton } from "@/components/pwa";
 import { listIcons } from "@/components/icons";
 import { listLabels, lists, type ListKey } from "@/lib/lists";
@@ -69,7 +70,7 @@ export function Sidebar({ counts, overdue, activeProjects }: Props) {
 
         <div className="sidebar-foot">
           <InstallButton />
-          <form action={logout}>
+          <form action={logout} onSubmit={() => void clearOfflinePages()}>
             <button className="nav-item">
               <LogOut size={20} />
               <span>יציאה</span>

@@ -11,7 +11,7 @@ It is a separate Vercel project whose Root Directory is `gtd/`.
 - [x] Stage 4: MCP server with OAuth
 - [x] Offline 1: installable app (PWA)
 - [x] Offline 2: offline capture queue
-- [ ] Offline 3: offline reading of synced lists
+- [x] Offline 3: offline reading of synced lists
 
 ## Data model
 
@@ -56,8 +56,9 @@ Pages read the database on the server, and edits go through Server Actions. The 
 - `/sw.js` is served by `app/sw.js/route.ts` from `lib/sw-source.ts`, with a version per build (the commit SHA on Vercel). Each deploy therefore installs a fresh worker. The worker:
   - precaches the offline screen together with its scripts and styles
   - caches content-hashed `/_next/static` assets
-  - falls back to `/offline` when a navigation fails without a network
+  - serves pages network-first and keeps copies of app pages for offline reading (see below)
   - It is served with `no-store` so updates reach installed apps, and is registered only in production builds.
+  - The route is static, so it runs at build time, and it parses the generated worker: a syntax error fails `next build` instead of silently turning off offline support.
 - On Android/Chrome, an "Install app" item appears in the menu whenever the browser offers installation (`beforeinstallprompt`).
 
 ### Offline capture
@@ -73,6 +74,17 @@ Every capture goes through a local queue, online or not. `lib/offline-queue.ts` 
 - **Status:** a bar on every page shows items still waiting and why (offline, server unreachable, or signed out).
 - **Opening the app with no network** lands on `/offline`, which is a capture screen: items queue on the device and reach the inbox later.
 - `/api/capture` requires the browser session and JSON (SameSite=Lax cookie), so other sites can't post to it.
+
+### Offline reading
+
+- **Saved pages:** every app page you open online (lists, projects, project and task pages) is saved on the device, network-first. Without a network you get the last saved copy. An unsaved URL with filters falls back to the saved list, and a page never opened falls back to the offline capture screen.
+- **Background refresh:** while online, the app asks the service worker to refresh all seven main lists, at most every 10 minutes, so they're current even if you only looked at the inbox. A new service worker does the same when it installs.
+- **Read-only snapshots:** a page served from the cache is marked, and shows "offline view, as of <time>". Edit controls are disabled, since they need the server. Capture keeps working through the queue.
+- **Scope and privacy:**
+  - Saved pages belong to one build (their HTML references that build's scripts), and a deploy replaces them.
+  - At most 80 pages are kept.
+  - Login, OAuth and API responses are never cached.
+  - **Logging out deletes the saved pages**, and so does any response that redirects to the login page (an expired session).
 
 ## API
 

@@ -471,3 +471,24 @@ button.danger { color: var(--danger); background: transparent; border-color: tra
 .pending-note { margin: 4px 0 8px; font-size: 0.85rem; color: var(--muted); }
 .pending ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
 .pending li { padding: 6px 10px; border-radius: 8px; background: var(--surface); font-size: 0.95rem; }
+
+/* ---------- Offline reading ---------- */
+.snapshot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.snapshot svg { flex: none; }
+/* A snapshot is read-only: edits need the server. Capture stays on, it goes through the queue. */
+html[data-offline] .card form button,
+html[data-offline] .detail-form,
+html[data-offline] .detail-form button,
+html[data-offline] .danger-zone,
+html[data-offline] .edit-project,
+html[data-offline] .new-project { pointer-events: none; opacity: 0.45; }

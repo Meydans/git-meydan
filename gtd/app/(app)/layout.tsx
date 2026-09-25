@@ -1,3 +1,4 @@
+import { OfflineStatus } from "@/components/offline-status";
 import { PendingCaptures } from "@/components/pending-captures";
 import { Sidebar } from "@/components/sidebar";
 import { todayInIsrael } from "@/lib/labels";
@@ -13,6 +14,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="shell">
       <Sidebar counts={counts} overdue={overdue} activeProjects={activeProjects} />
       <main className="content">
+        <OfflineStatus renderedAt={new Date().toISOString()} />
         <PendingCaptures />
         {children}
       </main>
