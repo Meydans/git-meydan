@@ -124,6 +124,17 @@ curl -H "Authorization: Bearer $API_TOKEN" -H "Content-Type: application/json" \
 
 There is also a `weekly_review` prompt, and server instructions that explain the GTD lists and contexts to the model.
 
+### Task links and calendar events
+
+- Every task and project in a tool result has a `url`, its canonical link: `https://<app>/tasks/{id}` (or `/projects/{id}`).
+- The server instructions tell Claude that whenever it creates, updates or syncs a calendar event for a task (with any calendar tool), it puts the task's url at the start of the event description and in the event's location or URL field.
+- The link's origin is `APP_URL` if set, otherwise Vercel's production domain, otherwise the request's host. Links in calendar events therefore never point at a preview deployment.
+- Opening a link:
+  - On Android the installed app handles it (`handle_links: "preferred"`, reusing an open window).
+  - Signed out, you land on the task right after logging in; `next` is limited to same-site paths.
+  - A deleted task shows a friendly not-found page.
+  - The task page also has a "copy link" button, which uses the share sheet on phones.
+
 ### Auth
 
 - **OAuth 2.1**, for claude.ai (web and mobile) and Claude Desktop. The app is its own authorization server:

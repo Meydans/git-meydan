@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { projects, tasks } from "@/db/schema";
 import { toggleLine } from "@/lib/notes";
+import { safePath } from "@/lib/safe-path";
 import { checkPassword, endSession, requireSession, startSession } from "@/lib/session";
 import { idParam, projectCreate, taskCreate, taskStatusValue } from "@/lib/validation";
 import { z } from "zod";
@@ -36,10 +37,8 @@ const projectFields = (formData: FormData) =>
 
 const formId = (formData: FormData) => idParam.parse(formData.get("id"));
 
-// Only same-site paths, so a crafted form can't redirect elsewhere.
 function returnTo(formData: FormData, fallback: string) {
-  const value = formData.get("returnTo");
-  return typeof value === "string" && value.startsWith("/") && !value.startsWith("//") ? value : fallback;
+  return safePath(formData.get("returnTo"), fallback);
 }
 
 function refresh() {
@@ -47,10 +46,13 @@ function refresh() {
 }
 
 export async function login(formData: FormData) {
+  const next = safePath(formData.get("next"));
   const password = formData.get("password");
-  if (typeof password !== "string" || !checkPassword(password)) redirect("/login?error=1");
+  if (typeof password !== "string" || !checkPassword(password)) {
+    redirect(`/login?error=1${next === "/" ? "" : `&next=${encodeURIComponent(next)}`}`);
+  }
   await startSession();
-  redirect("/");
+  redirect(next);
 }
 
 export async function logout() {
