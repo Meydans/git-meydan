@@ -1,6 +1,7 @@
-import type { McpServer } from "@modelcontextprotocol/server";
+import type { McpServer, ServerContext } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { projectStatus, taskContext, taskStatus } from "@/db/schema";
+import { appOrigin, withLinks } from "@/lib/links";
 import { lists } from "@/lib/lists";
 import * as service from "@/lib/service";
 
@@ -26,10 +27,12 @@ const projectFields = {
 
 type ToolResult = { content: { type: "text"; text: string }[]; isError?: boolean };
 
-// Tool results are JSON text; a missing row becomes a tool error the model can react to.
-async function run(fn: () => Promise<unknown>): Promise<ToolResult> {
+// Tool results are JSON text with a `url` on every task and project; a missing row
+// becomes a tool error the model can react to.
+async function run(ctx: ServerContext, fn: () => Promise<unknown>): Promise<ToolResult> {
   try {
-    return { content: [{ type: "text", text: JSON.stringify(await fn(), null, 1) }] };
+    const result = withLinks(await fn(), appOrigin(ctx.http?.req));
+    return { content: [{ type: "text", text: JSON.stringify(result, null, 1) }] };
   } catch (error) {
     if (error instanceof service.NotFound) return { content: [{ type: "text", text: error.message }], isError: true };
     if ((error as { cause?: { code?: string } })?.cause?.code === "23503") {
@@ -46,7 +49,9 @@ const destructive = { readOnlyHint: false, destructiveHint: true, idempotentHint
 export const instructions = `This server is the user's personal GTD (Getting Things Done) system. Task and project text is usually Hebrew; keep the user's language when creating or editing items.
 Lists: inbox (captured, unprocessed), next (next physical actions), waiting (waiting on someone), someday (maybe later), done. "scheduled" is a view of open tasks that have a due date.
 Contexts: @phone, @computer, @errand, @home. Every active project should have at least one task in "next".
-Start with gtd_overview to see today's date, counts, overdue items and stuck projects. New thoughts go to the inbox unless the user says otherwise.`;
+Start with gtd_overview to see today's date, counts, overdue items and stuck projects. New thoughts go to the inbox unless the user says otherwise.
+Every task and project in tool results has a "url": its canonical link, which opens it directly in the app (on the user's phone it opens the installed app).
+Calendar events: whenever you create, update or sync a calendar event for a task (with any calendar tool), always embed that task's url. Put it on its own line at the start of the event description (e.g. "משימה ב-GTD: <url>"), and also set it as the event's location or URL field when the calendar tool has one. Use the task title as the event title. For an event covering several tasks, list each task's url. If the event fixes when the task will be done and the task has no due date, offer to set dueDate to the event's date.`;
 
 export function registerTools(server: McpServer) {
   server.registerTool(
@@ -57,7 +62,7 @@ export function registerTools(server: McpServer) {
       inputSchema: z.object({}),
       annotations: readOnly,
     },
-    () => run(() => service.overview()),
+    (_args, ctx) => run(ctx, () => service.overview()),
   );
 
   server.registerTool(
@@ -74,13 +79,13 @@ export function registerTools(server: McpServer) {
       }),
       annotations: readOnly,
     },
-    ({ list, context, projectId, query, limit }) => run(() => service.findTasks(list, { context, projectId, q: query }, limit)),
+    ({ list, context, projectId, query, limit }, ctx) => run(ctx, () => service.findTasks(list, { context, projectId, q: query }, limit)),
   );
 
   server.registerTool(
     "get_task",
     { title: "Get task", description: "Full details of one task, including its notes.", inputSchema: z.object({ id }), annotations: readOnly },
-    ({ id }) => run(() => service.getTask(id)),
+    ({ id }, ctx) => run(ctx, () => service.getTask(id)),
   );
 
   server.registerTool(
@@ -105,7 +110,7 @@ export function registerTools(server: McpServer) {
       }),
       annotations: write,
     },
-    ({ tasks }) => run(() => service.createTasks(tasks)),
+    ({ tasks }, ctx) => run(ctx, () => service.createTasks(tasks)),
   );
 
   server.registerTool(
@@ -124,8 +129,8 @@ export function registerTools(server: McpServer) {
       }),
       annotations: { ...write, idempotentHint: true },
     },
-    ({ id, ...changes }) =>
-      run(async () => {
+    ({ id, ...changes }, ctx) =>
+      run(ctx, async () => {
         if (Object.keys(changes).length === 0) return service.getTask(id);
         return service.updateTask(id, changes);
       }),
@@ -139,7 +144,7 @@ export function registerTools(server: McpServer) {
       inputSchema: z.object({ id }),
       annotations: destructive,
     },
-    ({ id }) => run(() => service.deleteTask(id)),
+    ({ id }, ctx) => run(ctx, () => service.deleteTask(id)),
   );
 
   server.registerTool(
@@ -150,13 +155,13 @@ export function registerTools(server: McpServer) {
       inputSchema: z.object({ status: projectFields.status.optional().describe("Omit for all projects") }),
       annotations: readOnly,
     },
-    ({ status }) => run(() => service.findProjects(status)),
+    ({ status }, ctx) => run(ctx, () => service.findProjects(status)),
   );
 
   server.registerTool(
     "get_project",
     { title: "Get project", description: "One project with all of its tasks.", inputSchema: z.object({ id }), annotations: readOnly },
-    ({ id }) => run(() => service.getProject(id)),
+    ({ id }, ctx) => run(ctx, () => service.getProject(id)),
   );
 
   server.registerTool(
@@ -172,7 +177,7 @@ export function registerTools(server: McpServer) {
       }),
       annotations: write,
     },
-    ({ nextActions, ...project }) => run(() => service.createProject(project, nextActions)),
+    ({ nextActions, ...project }, ctx) => run(ctx, () => service.createProject(project, nextActions)),
   );
 
   server.registerTool(
@@ -188,7 +193,7 @@ export function registerTools(server: McpServer) {
       }),
       annotations: { ...write, idempotentHint: true },
     },
-    ({ id, ...changes }) => run(() => (Object.keys(changes).length ? service.updateProject(id, changes) : service.getProject(id))),
+    ({ id, ...changes }, ctx) => run(ctx, () => (Object.keys(changes).length ? service.updateProject(id, changes) : service.getProject(id))),
   );
 
   server.registerTool(
@@ -199,7 +204,7 @@ export function registerTools(server: McpServer) {
       inputSchema: z.object({ id }),
       annotations: destructive,
     },
-    ({ id }) => run(() => service.deleteProject(id)),
+    ({ id }, ctx) => run(ctx, () => service.deleteProject(id)),
   );
 
   server.registerPrompt(

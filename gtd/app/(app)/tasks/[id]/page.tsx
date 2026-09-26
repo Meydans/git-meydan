@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { ArrowRight, Trash2 } from "lucide-react";
 import { deleteTask, updateTask } from "@/app/actions";
+import { CopyLink } from "@/components/copy-link";
 import { DueDateField } from "@/components/due-date-field";
 import { contextIcons, listIcons } from "@/components/icons";
 import { db } from "@/db";
@@ -10,6 +11,7 @@ import { taskContext, taskStatus, tasks } from "@/db/schema";
 import { contextLabels, taskStatusLabels, todayInIsrael } from "@/lib/labels";
 import { allProjects } from "@/lib/queries";
 import { requireSession } from "@/lib/session";
+import { safePath } from "@/lib/safe-path";
 import { idParam } from "@/lib/validation";
 
 export default async function TaskPage({ params, searchParams }: PageProps<"/tasks/[id]">) {
@@ -20,14 +22,17 @@ export default async function TaskPage({ params, searchParams }: PageProps<"/tas
   if (!task) notFound();
 
   const { from } = await searchParams;
-  const back = typeof from === "string" && from.startsWith("/") && !from.startsWith("//") ? from : `/${task.status}`;
+  const back = safePath(from, `/${task.status}`);
   const selectable = projects.filter((p) => p.status !== "done" || p.id === task.projectId);
 
   return (
     <div className="detail">
-      <Link href={back} className="back">
-        <ArrowRight size={18} /> חזרה
-      </Link>
+      <div className="detail-top">
+        <Link href={back} className="back">
+          <ArrowRight size={18} /> חזרה
+        </Link>
+        <CopyLink path={`/tasks/${task.id}`} title={task.title} />
+      </div>
 
       <form action={updateTask} className="detail-form">
         <input type="hidden" name="id" value={task.id} />

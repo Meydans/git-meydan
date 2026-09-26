@@ -492,3 +492,9 @@ html[data-offline] .detail-form button,
 html[data-offline] .danger-zone,
 html[data-offline] .edit-project,
 html[data-offline] .new-project { pointer-events: none; opacity: 0.45; }
+
+/* ---------- Task links ---------- */
+.detail-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.detail-top .back { margin-bottom: 0; }
+.link-button { padding: 4px 12px; font-size: 0.85rem; border-radius: 999px; color: var(--muted); background: transparent; }
+.link-button:hover { color: var(--text); }
