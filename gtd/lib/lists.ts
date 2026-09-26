@@ -1,7 +1,8 @@
 import type { Task } from "@/db/schema";
 
-// The GTD lists shown in the sidebar. "scheduled" is a view over due dates, not a status.
-export const lists = ["inbox", "next", "waiting", "scheduled", "someday", "done"] as const;
+// The GTD lists shown in the sidebar. "scheduled" (due dates) and "deferred" (future start dates)
+// are views, not statuses.
+export const lists = ["inbox", "next", "waiting", "scheduled", "deferred", "someday", "done"] as const;
 export type ListKey = (typeof lists)[number];
 
 export const listLabels: Record<ListKey, string> = {
@@ -9,6 +10,7 @@ export const listLabels: Record<ListKey, string> = {
   next: "הפעולות הבאות",
   waiting: "ממתין ל…",
   scheduled: "מתוזמן",
+  deferred: "נדחה להמשך",
   someday: "אולי / מתישהו",
   done: "הושלם",
 };
@@ -18,6 +20,7 @@ export const listHints: Record<ListKey, string> = {
   next: "הפעולה הפיזית הבאה שאפשר לעשות עכשיו.",
   waiting: "דברים שמחכים למישהו אחר.",
   scheduled: "משימות פתוחות עם תאריך יעד.",
+  deferred: "משימות עם תאריך התחלה עתידי. הן יחזרו לרשימה שלהן ביום ההתחלה.",
   someday: "רעיונות שאולי תחזור אליהם. לא עכשיו.",
   done: "מה שכבר נסגר.",
 };
@@ -26,5 +29,5 @@ export const isList = (value: string): value is ListKey => (lists as readonly st
 
 // The status a task captured from this list should get.
 export function captureStatus(list: ListKey): Task["status"] {
-  return list === "scheduled" || list === "done" ? "inbox" : list;
+  return list === "scheduled" || list === "deferred" || list === "done" ? "inbox" : list;
 }

@@ -1,5 +1,6 @@
 import {
   CalendarCheck,
+  CalendarClock,
   CircleArrowLeft,
   CircleCheckBig,
   CircleHelp,
@@ -20,6 +21,7 @@ export const listIcons: Record<ListKey, LucideIcon> = {
   next: CircleArrowLeft,
   waiting: Coffee,
   scheduled: CalendarCheck,
+  deferred: CalendarClock,
   someday: CircleHelp,
   done: CircleCheckBig,
 };

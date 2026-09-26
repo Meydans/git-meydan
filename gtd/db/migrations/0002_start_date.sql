@@ -1,0 +1,2 @@
+ALTER TABLE "tasks" ADD COLUMN "start_date" date;--> statement-breakpoint
+ALTER TABLE "tasks" ADD CONSTRAINT "tasks_start_before_due" CHECK ("tasks"."start_date" is null or "tasks"."due_date" is null or "tasks"."start_date" <= "tasks"."due_date");

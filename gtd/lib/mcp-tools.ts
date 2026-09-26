@@ -3,18 +3,23 @@ import { z } from "zod";
 import { projectStatus, taskContext, taskStatus } from "@/db/schema";
 import { appOrigin, withLinks } from "@/lib/links";
 import { lists } from "@/lib/lists";
+import { DATE_ORDER_MESSAGE, PG_CHECK, PG_FOREIGN_KEY, pgErrorCode } from "@/lib/pg";
 import * as service from "@/lib/service";
 
 const id = z.uuid();
 const status = z.enum(taskStatus.enumValues);
 const context = z.enum(taskContext.enumValues);
 const dueDate = z.iso.date().describe("Calendar date, YYYY-MM-DD, in the user's timezone (Asia/Jerusalem)");
+const startDate = z.iso
+  .date()
+  .describe("Start (defer) date, YYYY-MM-DD. The task stays hidden from its list until this day; must be on or before dueDate. null = available now");
 
 const taskFields = {
   title: z.string().trim().min(1).max(500),
   status: status.describe("inbox = captured, not yet clarified; next = the next physical action; waiting = delegated or blocked on someone; someday = maybe later; done = completed"),
   context: context.nullable().describe("Where or with what the action can be done. null clears it"),
   projectId: id.nullable().describe("Project this task belongs to. null detaches it"),
+  startDate: startDate.nullable(),
   dueDate: dueDate.nullable(),
   notes: z.string().max(10_000).nullable().describe('Free text. Lines like "- [ ] item" render as a checklist in the app'),
 };
@@ -35,9 +40,9 @@ async function run(ctx: ServerContext, fn: () => Promise<unknown>): Promise<Tool
     return { content: [{ type: "text", text: JSON.stringify(result, null, 1) }] };
   } catch (error) {
     if (error instanceof service.NotFound) return { content: [{ type: "text", text: error.message }], isError: true };
-    if ((error as { cause?: { code?: string } })?.cause?.code === "23503") {
-      return { content: [{ type: "text", text: "projectId does not reference an existing project" }], isError: true };
-    }
+    const code = pgErrorCode(error);
+    if (code === PG_FOREIGN_KEY) return { content: [{ type: "text", text: "projectId does not reference an existing project" }], isError: true };
+    if (code === PG_CHECK) return { content: [{ type: "text", text: DATE_ORDER_MESSAGE }], isError: true };
     throw error;
   }
 }
@@ -49,6 +54,7 @@ const destructive = { readOnlyHint: false, destructiveHint: true, idempotentHint
 export const instructions = `This server is the user's personal GTD (Getting Things Done) system. Task and project text is usually Hebrew; keep the user's language when creating or editing items.
 Lists: inbox (captured, unprocessed), next (next physical actions), waiting (waiting on someone), someday (maybe later), done. "scheduled" is a view of open tasks that have a due date.
 Contexts: @phone, @computer, @errand, @home. Every active project should have at least one task in "next".
+Start dates: a task may have a startDate (defer date). Until that day it is hidden from its list (and from counts) and appears only in "deferred" and, if it has a due date, in "scheduled". On the start date it comes back to its list by itself. Use it for "not before" dates and tickler-style follow-ups (e.g. a waiting item to chase next week). startDate must be on or before dueDate.
 Start with gtd_overview to see today's date, counts, overdue items and stuck projects. New thoughts go to the inbox unless the user says otherwise.
 Every task and project in tool results has a "url": its canonical link, which opens it directly in the app (on the user's phone it opens the installed app).
 Calendar events: whenever you create, update or sync a calendar event for a task (with any calendar tool), always embed that task's url. Put it on its own line at the start of the event description (e.g. "משימה ב-GTD: <url>"), and also set it as the event's location or URL field when the calendar tool has one. Use the task title as the event title. For an event covering several tasks, list each task's url. If the event fixes when the task will be done and the task has no due date, offer to set dueDate to the event's date.`;
@@ -58,7 +64,7 @@ export function registerTools(server: McpServer) {
     "gtd_overview",
     {
       title: "GTD overview",
-      description: "Snapshot of the whole system: today's date, how many tasks are in each list, overdue and due-today tasks, inbox items waiting to be processed, and active projects that have no next action. Use first, and for daily or weekly reviews.",
+      description: "Snapshot of the whole system: today's date, how many available tasks are in each list (plus how many are deferred), overdue and due-today tasks, tasks whose start date is today, inbox items waiting to be processed, and active projects that have no next action. Use first, and for daily or weekly reviews.",
       inputSchema: z.object({}),
       annotations: readOnly,
     },
@@ -69,17 +75,22 @@ export function registerTools(server: McpServer) {
     "list_tasks",
     {
       title: "List tasks",
-      description: "List tasks in one GTD list, optionally filtered by context, project or a text search over title and notes. Without a list, returns all open (not done) tasks.",
+      description: "List tasks in one GTD list, optionally filtered by context, project or a text search over title and notes. Without a list, returns all open (not done) tasks. Tasks with a future start date are left out unless includeDeferred is true or list is \"deferred\".",
       inputSchema: z.object({
-        list: z.enum([...lists, "open"]).default("open").describe('A GTD list, "scheduled" (open tasks with a due date), or "open" (every task not done)'),
+        list: z
+          .enum([...lists, "open"])
+          .default("open")
+          .describe('A GTD list, "scheduled" (open tasks with a due date), "deferred" (open tasks whose start date is in the future), or "open" (every task not done)'),
         context: context.optional(),
         projectId: id.optional(),
         query: z.string().trim().min(1).max(200).optional().describe("Case-insensitive substring match on title and notes"),
         limit: z.number().int().min(1).max(200).default(50),
+        includeDeferred: z.boolean().default(false).describe("Also include tasks whose start date hasn't arrived yet (hidden from lists by default)"),
       }),
       annotations: readOnly,
     },
-    ({ list, context, projectId, query, limit }, ctx) => run(ctx, () => service.findTasks(list, { context, projectId, q: query }, limit)),
+    ({ list, context, projectId, query, limit, includeDeferred }, ctx) =>
+      run(ctx, () => service.findTasks(list, { context, projectId, q: query, includeDeferred }, limit)),
   );
 
   server.registerTool(
@@ -92,7 +103,7 @@ export function registerTools(server: McpServer) {
     "create_tasks",
     {
       title: "Create tasks",
-      description: "Create one or more tasks. Status defaults to inbox, which is right for quick capture; set status, context, project and due date when the user has already clarified the item.",
+      description: "Create one or more tasks. Status defaults to inbox, which is right for quick capture; set status, context, project, start date and due date when the user has already clarified the item. Use startDate for things that can't or shouldn't be done before a certain day.",
       inputSchema: z.object({
         tasks: z
           .array(
@@ -101,6 +112,7 @@ export function registerTools(server: McpServer) {
               status: taskFields.status.default("inbox"),
               context: taskFields.context.optional(),
               projectId: taskFields.projectId.optional(),
+              startDate: taskFields.startDate.optional(),
               dueDate: taskFields.dueDate.optional(),
               notes: taskFields.notes.optional(),
             }),
@@ -117,13 +129,14 @@ export function registerTools(server: McpServer) {
     "update_task",
     {
       title: "Update task",
-      description: 'Change any fields of a task: move it between lists (e.g. status "done" to complete it), set or clear its context, project, due date or notes, or rename it. Only the fields you pass change; pass null to clear an optional field.',
+      description: 'Change any fields of a task: move it between lists (e.g. status "done" to complete it), set or clear its context, project, start date, due date or notes, or rename it. Only the fields you pass change; pass null to clear an optional field.',
       inputSchema: z.object({
         id,
         title: taskFields.title.optional(),
         status: taskFields.status.optional(),
         context: taskFields.context.optional(),
         projectId: taskFields.projectId.optional(),
+        startDate: taskFields.startDate.optional(),
         dueDate: taskFields.dueDate.optional(),
         notes: taskFields.notes.optional(),
       }),

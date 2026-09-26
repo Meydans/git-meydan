@@ -11,6 +11,7 @@ export type QueuedCapture = {
   title: string;
   status: Task["status"];
   projectId?: string;
+  startDate?: string; // defer date, YYYY-MM-DD
   capturedAt: string;
 };
 

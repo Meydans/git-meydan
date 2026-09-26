@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { CalendarDays, Check } from "lucide-react";
+import { CalendarClock, CalendarDays, Check } from "lucide-react";
 import { setTaskStatus, toggleChecklistItem } from "@/app/actions";
 import { contextIcons } from "@/components/icons";
 import type { Project, Task } from "@/db/schema";
-import { contextLabels, dueTone, projectHue, relativeDue } from "@/lib/labels";
+import { contextLabels, dueTone, projectHue, relativeDue, relativeStart } from "@/lib/labels";
 import { parseNotes } from "@/lib/notes";
 
 type Props = { task: Task; project?: Project; today: string; from: string; hideProject?: boolean };
@@ -18,9 +18,10 @@ export function TaskCard({ task, project, today, from, hideProject }: Props) {
   const checked = checks.filter((l) => l.kind === "check" && l.checked).length;
   const ContextIcon = task.context ? contextIcons[task.context] : null;
   const href = `/tasks/${task.id}?from=${encodeURIComponent(from)}`;
+  const deferred = !done && task.startDate !== null && task.startDate > today;
 
   return (
-    <li className={`card${done ? " card-done" : ""}`}>
+    <li className={`card${done ? " card-done" : ""}${deferred ? " card-deferred" : ""}`}>
       <form action={setTaskStatus}>
         <input type="hidden" name="id" value={task.id} />
         <input type="hidden" name="status" value={done ? "next" : "done"} />
@@ -58,12 +59,18 @@ export function TaskCard({ task, project, today, from, hideProject }: Props) {
           </div>
         )}
 
-        {(ContextIcon || task.dueDate || checks.length > 0) && (
+        {(ContextIcon || task.dueDate || deferred || checks.length > 0) && (
           <div className="chips">
             {ContextIcon && task.context && (
               <span className={`chip ctx ctx-${task.context.slice(1)}`}>
                 <ContextIcon size={13} />
                 {contextLabels[task.context]}
+              </span>
+            )}
+            {deferred && (
+              <span className="chip deferred">
+                <CalendarClock size={13} />
+                {relativeStart(task.startDate!, today)}
               </span>
             )}
             {task.dueDate && (

@@ -18,7 +18,20 @@ It is a separate Vercel project whose Root Directory is `gtd/`.
 `db/schema.ts`:
 
 - **projects**: `id`, `name`, `outcome` (the desired result, per GTD), `status` (`active` | `someday` | `done`), timestamps
-- **tasks**: `id`, `title`, `project_id` (optional; set to null when its project is deleted), `status` (`inbox` | `next` | `waiting` | `someday` | `done`), `context` (`@phone` | `@computer` | `@errand` | `@home` | null), `due_date`, `notes`, timestamps
+- **tasks**: `id`, `title`, `project_id` (optional; set to null when its project is deleted), `status` (`inbox` | `next` | `waiting` | `someday` | `done`), `context` (`@phone` | `@computer` | `@errand` | `@home` | null), `start_date` (optional defer date), `due_date`, `notes`, timestamps. A check constraint keeps `start_date <= due_date`.
+
+### Start (defer) dates
+
+A task with a `start_date` in the future is hidden from its list (inbox, next, waiting or someday) and from the sidebar counts until that day in Israel time. Then it comes back by itself. Tasks without a start date are available immediately.
+
+Deferred tasks appear in:
+- the **Deferred** view (`/deferred`), grouped by start date
+- **Scheduled**, if they have a due date
+- their project page
+
+Everywhere they appear they are marked "starts on…".
+
+You can set the start date on the task page (with presets, and bounded by the due date so the browser blocks start > due), in quick capture (the calendar button, which also works through the offline queue), through the REST API (`startDate`), and through MCP. There, `list_tasks` leaves deferred tasks out unless `includeDeferred` is set or `list` is `"deferred"`, and `gtd_overview` reports deferred counts and tasks starting today. A start date after the due date returns 400 from the API and a tool error from MCP, and the task page shows an inline message.
 
 ## Database setup
 
@@ -92,14 +105,14 @@ Every request needs `Authorization: Bearer $API_TOKEN`. Bodies and responses are
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| `GET` | `/api/tasks` | Filters: `?status=`, `?context=` (URL-encode `@` as `%40`), `?projectId=` |
+| `GET` | `/api/tasks` | Filters: `?status=`, `?context=` (URL-encode `@` as `%40`), `?projectId=`. Returns deferred tasks too |
 | `POST` | `/api/tasks` | `title` required; `status` defaults to `inbox` |
 | `GET` / `PATCH` / `DELETE` | `/api/tasks/:id` | `PATCH` takes any subset of fields; send `null` to clear one |
 | `GET` | `/api/projects` | Filter: `?status=` |
 | `POST` | `/api/projects` | `name` required; `status` defaults to `active` |
 | `GET` / `PATCH` / `DELETE` | `/api/projects/:id` | Deleting a project keeps its tasks and clears their `projectId` |
 
-Task fields: `title`, `projectId`, `status`, `context`, `dueDate` (`YYYY-MM-DD`), `notes`.
+Task fields: `title`, `projectId`, `status`, `context`, `startDate` and `dueDate` (`YYYY-MM-DD`), `notes`.
 Project fields: `name`, `outcome`, `status`.
 Unknown fields and invalid values return `400` with per-field `details`; a missing or malformed id returns `404`.
 

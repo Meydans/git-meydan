@@ -1,4 +1,5 @@
-import { date, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { check, date, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const taskStatus = pgEnum("task_status", ["inbox", "next", "waiting", "someday", "done"]);
 export const taskContext = pgEnum("task_context", ["@phone", "@computer", "@errand", "@home"]);
@@ -21,16 +22,22 @@ export const projects = pgTable("projects", {
   ...timestamps,
 });
 
-export const tasks = pgTable("tasks", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  title: text("title").notNull(),
-  projectId: uuid("project_id").references(() => projects.id, { onDelete: "set null" }),
-  status: taskStatus("status").notNull().default("inbox"),
-  context: taskContext("context"),
-  dueDate: date("due_date", { mode: "string" }),
-  notes: text("notes"),
-  ...timestamps,
-});
+export const tasks = pgTable(
+  "tasks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    title: text("title").notNull(),
+    projectId: uuid("project_id").references(() => projects.id, { onDelete: "set null" }),
+    status: taskStatus("status").notNull().default("inbox"),
+    context: taskContext("context"),
+    // Defer date: the task stays out of the working lists until this day. Null = available now.
+    startDate: date("start_date", { mode: "string" }),
+    dueDate: date("due_date", { mode: "string" }),
+    notes: text("notes"),
+    ...timestamps,
+  },
+  (t) => [check("tasks_start_before_due", sql`${t.startDate} is null or ${t.dueDate} is null or ${t.startDate} <= ${t.dueDate}`)],
+);
 
 export type Project = typeof projects.$inferSelect;
 export type NewProject = typeof projects.$inferInsert;

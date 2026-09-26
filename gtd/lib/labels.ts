@@ -71,3 +71,11 @@ export function projectHue(id: string) {
   for (const ch of id) hash = (hash * 31 + ch.charCodeAt(0)) % 360;
   return hash;
 }
+
+// "מתחיל מחר", "מתחיל ביום שלישי", or "מתחיל ב-12/10/2026" for a future start date.
+export function relativeStart(startDate: string, today: string) {
+  const diff = daysBetween(today, startDate);
+  if (diff === 1) return "מתחיל מחר";
+  if (diff < 7) return `מתחיל ב${weekday.format(new Date(startDate))}`;
+  return `מתחיל ב-${formatDate(startDate)}`;
+}

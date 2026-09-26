@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { projects, tasks, type NewProject, type NewTask } from "@/db/schema";
 import { todayInIsrael } from "./labels";
 import type { ListKey } from "./lists";
-import { listCounts, listTasks, projectsWithCounts, type TaskFilters } from "./queries";
+import { isAvailable, listCounts, listTasks, projectsWithCounts, type TaskFilters } from "./queries";
 
 export class NotFound extends Error {}
 
@@ -86,23 +86,30 @@ export async function deleteProject(id: string) {
 export async function overview() {
   const today = todayInIsrael();
   const open = and(ne(tasks.status, "done"), isNotNull(tasks.dueDate));
-  const [{ counts }, overdue, dueToday, inbox, allProjects] = await Promise.all([
+  const [{ counts }, overdue, dueToday, startingToday, inbox, allProjects] = await Promise.all([
     listCounts(today),
     db.select().from(tasks).where(and(open, lt(tasks.dueDate, today))).orderBy(asc(tasks.dueDate)),
     db.select().from(tasks).where(and(open, eq(tasks.dueDate, today))),
-    db.select({ id: tasks.id, title: tasks.title, createdAt: tasks.createdAt }).from(tasks).where(eq(tasks.status, "inbox")).orderBy(asc(tasks.createdAt)).limit(50),
+    db.select().from(tasks).where(and(ne(tasks.status, "done"), eq(tasks.startDate, today))),
+    db
+      .select({ id: tasks.id, title: tasks.title, createdAt: tasks.createdAt })
+      .from(tasks)
+      .where(and(eq(tasks.status, "inbox"), isAvailable(today)))
+      .orderBy(asc(tasks.createdAt))
+      .limit(50),
     findProjects("active"),
   ]);
   const [{ oldestInboxDays }] = await db
     .select({ oldestInboxDays: sql<number | null>`floor(extract(epoch from now() - min(${tasks.createdAt})) / 86400)`.mapWith(Number) })
     .from(tasks)
-    .where(eq(tasks.status, "inbox"));
+    .where(and(eq(tasks.status, "inbox"), isAvailable(today)));
   return {
     today,
     timezone: "Asia/Jerusalem",
     counts,
     overdue,
     dueToday,
+    startingToday,
     inbox: { items: inbox, oldestItemAgeDays: oldestInboxDays },
     activeProjectsWithoutNextAction: allProjects.filter((p) => !p.hasNextAction).map(({ id, name, outcome }) => ({ id, name, outcome })),
   };

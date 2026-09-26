@@ -15,6 +15,7 @@ const body = z.object({
         title: z.string().trim().min(1).max(500),
         status: z.enum(taskStatus.enumValues).default("inbox"),
         projectId: z.uuid().optional(),
+        startDate: z.iso.date().optional(),
         capturedAt: z.iso.datetime(),
       }),
     )
@@ -48,6 +49,7 @@ export async function POST(request: Request) {
         title: i.title,
         status: i.status,
         projectId: i.projectId && existing.has(i.projectId) ? i.projectId : null,
+        startDate: i.startDate ?? null,
         // Keep capture order, but never trust a clock that runs ahead of the server.
         createdAt: new Date(Math.min(Date.parse(i.capturedAt), now)),
         updatedAt: sql`now()`,

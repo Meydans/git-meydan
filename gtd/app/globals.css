@@ -201,6 +201,13 @@ button.danger { color: var(--danger); background: transparent; border-color: tra
 .hint { margin: 4px 0 0; color: var(--muted); font-size: 0.9rem; }
 
 /* ---------- Capture ---------- */
+.capture-wrap { margin-bottom: 14px; }
+.capture-wrap .capture { margin-bottom: 0; }
+.capture-date-toggle { color: var(--muted); align-self: center; }
+.capture-date-toggle.on { color: var(--accent); }
+.capture-date { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 0.9rem; color: var(--muted); }
+.capture-date input { width: auto; }
+.capture-note { margin: 6px 4px 0; font-size: 0.85rem; color: var(--l-scheduled); }
 .capture {
   position: relative;
   display: flex;
@@ -498,3 +505,11 @@ html[data-offline] .new-project { pointer-events: none; opacity: 0.45; }
 .detail-top .back { margin-bottom: 0; }
 .link-button { padding: 4px 12px; font-size: 0.85rem; border-radius: 999px; color: var(--muted); background: transparent; }
 .link-button:hover { color: var(--text); }
+
+/* ---------- Start dates ---------- */
+.nav-deferred svg, .head-deferred .page-icon { color: var(--l-someday); }
+.chip.deferred { color: var(--l-scheduled); border-style: dashed; }
+.card-deferred { border-style: dashed; }
+.card-deferred .card-title { color: var(--muted); }
+.field-hint { font-size: 0.8rem; color: var(--muted); }
+.form-error { margin: 0; padding: 8px 12px; border-radius: 10px; background: var(--danger-soft); color: var(--danger); font-size: 0.9rem; }

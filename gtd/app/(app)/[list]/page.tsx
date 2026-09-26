@@ -11,6 +11,7 @@ import { allProjects, listTasks, type TaskFilters } from "@/lib/queries";
 import { requireSession } from "@/lib/session";
 import { idParam, taskFilters } from "@/lib/validation";
 
+// Scheduled groups by due date; Deferred groups by start date (always in the future there).
 const buckets = [
   { key: "overdue", label: "באיחור", test: (d: number) => d < 0 },
   { key: "today", label: "היום", test: (d: number) => d === 0 },
@@ -57,7 +58,7 @@ export default async function ListPage({ params, searchParams }: PageProps<"/[li
         </div>
       </header>
 
-      {list !== "done" && (
+      {list !== "done" && list !== "deferred" && (
         <Capture
           autoFocus={first(sp.capture) === "1"}
           status={captureStatus(list)}
@@ -74,9 +75,9 @@ export default async function ListPage({ params, searchParams }: PageProps<"/[li
           <Icon size={40} strokeWidth={1.5} />
           <p>{filters.context || filters.projectId || filters.q ? "אין תוצאות לסינון הזה" : "הרשימה ריקה"}</p>
         </div>
-      ) : list === "scheduled" ? (
+      ) : list === "scheduled" || list === "deferred" ? (
         buckets.map((b) => {
-          const group = rows.filter((t) => b.test(daysBetween(today, t.dueDate!)));
+          const group = rows.filter((t) => b.test(daysBetween(today, (list === "deferred" ? t.startDate : t.dueDate)!)));
           return (
             group.length > 0 && (
               <section key={b.key} className={`bucket bucket-${b.key}`}>
