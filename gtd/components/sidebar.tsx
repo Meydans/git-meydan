@@ -3,19 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { FolderKanban, LogOut, Menu, X } from "lucide-react";
+import { ClipboardCheck, FolderKanban, LogOut, Menu, X } from "lucide-react";
 import { logout } from "@/app/actions";
 import { clearOfflinePages } from "@/components/offline-status";
 import { InstallButton } from "@/components/pwa";
 import { listIcons } from "@/components/icons";
 import { listLabels, lists, type ListKey } from "@/lib/lists";
 
-type Props = { counts: Record<ListKey, number>; overdue: number; activeProjects: number };
+type Props = { counts: Record<ListKey, number>; overdue: number; activeProjects: number; reviewDue: number };
 
 // Hidden lists (done) don't need a count badge; open lists do.
 const showCount = (list: ListKey) => list !== "done";
 
-export function Sidebar({ counts, overdue, activeProjects }: Props) {
+export function Sidebar({ counts, overdue, activeProjects, reviewDue }: Props) {
   const pathname = usePathname();
   // Remember which page the drawer was opened on, so navigating closes it.
   const [openOn, setOpenOn] = useState<string | null>(null);
@@ -23,7 +23,13 @@ export function Sidebar({ counts, overdue, activeProjects }: Props) {
   const setOpen = (value: boolean) => setOpenOn(value ? pathname : null);
 
   const current = lists.find((l) => pathname === `/${l}`);
-  const title = current ? listLabels[current] : pathname.startsWith("/projects") ? "פרויקטים" : "GTD";
+  const title = current
+    ? listLabels[current]
+    : pathname.startsWith("/projects")
+      ? "פרויקטים"
+      : pathname.startsWith("/review")
+        ? "סקירה"
+        : "GTD";
 
   return (
     <>
@@ -65,6 +71,11 @@ export function Sidebar({ counts, overdue, activeProjects }: Props) {
             <FolderKanban size={20} />
             <span>פרויקטים</span>
             {activeProjects > 0 && <span className="badge">{activeProjects}</span>}
+          </Link>
+          <Link href="/review" className="nav-item nav-review" aria-current={pathname.startsWith("/review") ? "page" : undefined}>
+            <ClipboardCheck size={20} />
+            <span>סקירה</span>
+            {reviewDue > 0 && <span className="badge badge-review" title="פרויקטים שממתינים לסקירה">{reviewDue}</span>}
           </Link>
         </nav>
 

@@ -568,3 +568,36 @@ html[data-offline] .new-project { pointer-events: none; opacity: 0.45; }
 .subtask-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .subtask-panel h2 { display: flex; align-items: center; gap: 6px; font-size: 1rem; }
 .subtask-add { margin: 12px 0 0; box-shadow: none; }
+
+/* ---------- Project review ---------- */
+.nav-review svg { color: var(--warn); }
+.badge-review { background: var(--warn-soft); color: var(--warn); font-weight: 600; }
+.stalled-box { display: flex; align-items: center; gap: 8px; margin: 0; padding: 8px 12px; border-radius: 10px; background: var(--danger-soft); color: var(--danger); font-size: 0.9rem; font-weight: 500; }
+.review-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--muted); }
+.review-meta .chip { font-size: 0.8rem; }
+.cadence { display: inline-flex; align-items: center; gap: 6px; }
+.cadence label { display: inline-flex; align-items: center; gap: 6px; }
+.cadence select { width: auto; padding: 2px 8px; font-size: 0.85rem; }
+.review-line { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.review-queue { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.review-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 3px solid hsl(var(--hue) 55% var(--project-l));
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.review-card.is-stalled { border-color: color-mix(in srgb, var(--danger) 45%, var(--border)); border-top-color: var(--danger); }
+.review-card h2 { font-size: 1.1rem; }
+.review-card .capture-wrap, .review-card .capture { margin-bottom: 0; }
+.review-tasks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.review-tasks li { display: flex; align-items: center; gap: 8px; font-size: 0.92rem; }
+.review-tasks li a { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.review-tasks li.is-blocked a { color: var(--muted); }
+.review-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding-top: 10px; border-top: 1px solid var(--border); }
+.status-form { display: flex; gap: 6px; }
+.status-form select { width: auto; }

@@ -4,6 +4,7 @@ import { projectStatus, taskContext, taskStatus } from "@/db/schema";
 import { appOrigin, withLinks } from "@/lib/links";
 import { lists } from "@/lib/lists";
 import { taskRuleMessage } from "@/lib/pg";
+import { markProjectReviewed, reviewQueue } from "@/lib/review";
 import * as service from "@/lib/service";
 
 const id = z.uuid();
@@ -33,6 +34,7 @@ const projectFields = {
   outcome: z.string().max(2000).nullable().describe("The desired outcome: what 'done' looks like for this project"),
   status: z.enum(projectStatus.enumValues),
   sequential: z.boolean().describe("Tasks must be done in order: only the first open top-level task is actionable and shows in Next"),
+  reviewCadenceDays: z.number().int().min(1).max(365).describe("How often the project should be reviewed, in days (default 7)"),
 };
 
 type ToolResult = { content: { type: "text"; text: string }[]; isError?: boolean };
@@ -63,6 +65,7 @@ Start dates: a task may have a startDate (defer date). Until that day it is hidd
 Start with gtd_overview to see today's date, counts, overdue items and stuck projects. New thoughts go to the inbox unless the user says otherwise.
 Hierarchy: project -> task -> subtasks (one level; notes checklists are a lighter level below that). Lists show top-level tasks; subtasks come nested under their parent. Break a bigger task into subtasks with create_tasks (parentId).
 Sequential: a project or a parent task can be sequential. Then tasks are done in manual order (reorder_tasks): only the first open one is actionable and appears in Next; later ones are "blocked" until it's done. Mark something sequential when steps truly depend on each other.
+Project reviews: every active project has a review cadence (days). review_queue lists projects due for review or stalled (active with no available next action); after going over one with the user, call mark_project_reviewed. Project statuses: active, someday (on hold), done (completed), dropped (abandoned, kept in history; its tasks leave the working lists). Review status is metadata only: never create tasks or calendar events for reviews.
 Every task and project in tool results has a "url": its canonical link, which opens it directly in the app (on the user's phone it opens the installed app).
 Calendar events: whenever you create, update or sync a calendar event for a task (with any calendar tool), always embed that task's url. Put it on its own line at the start of the event description (e.g. "משימה ב-GTD: <url>"), and also set it as the event's location or URL field when the calendar tool has one. Use the task title as the event title. For an event covering several tasks, list each task's url. If the event fixes when the task will be done and the task has no due date, offer to set dueDate to the event's date.`;
 
@@ -71,7 +74,7 @@ export function registerTools(server: McpServer) {
     "gtd_overview",
     {
       title: "GTD overview",
-      description: "Snapshot of the whole system: today's date, how many available tasks are in each list (plus how many are deferred), overdue and due-today tasks, tasks whose start date is today, inbox items waiting to be processed, and active projects that have no next action. Use first, and for daily or weekly reviews.",
+      description: "Snapshot of the whole system: today's date, how many available tasks are in each list (plus how many are deferred), overdue and due-today tasks, tasks whose start date is today, inbox items waiting to be processed, stalled active projects (no available next action), and the project review queue. Use first, and for daily or weekly reviews.",
       inputSchema: z.object({}),
       annotations: readOnly,
     },
@@ -195,7 +198,7 @@ export function registerTools(server: McpServer) {
     "list_projects",
     {
       title: "List projects",
-      description: "Projects with their desired outcome, task counts per list, progress percentage, and whether they have a next action.",
+      description: "Projects with their desired outcome, task counts per list, progress percentage, and review health: isStalled (active with no available next action), isDueForReview, needsReview, daysSinceReview, nextReviewAt, reviewCadenceDays.",
       inputSchema: z.object({ status: projectFields.status.optional().describe("Omit for all projects") }),
       annotations: readOnly,
     },
@@ -223,6 +226,7 @@ export function registerTools(server: McpServer) {
         outcome: projectFields.outcome.optional(),
         status: projectFields.status.default("active"),
         sequential: projectFields.sequential.default(false),
+        reviewCadenceDays: projectFields.reviewCadenceDays.optional(),
         nextActions: z.array(z.string().trim().min(1).max(500)).max(20).default([]).describe('Titles of tasks to create in "next" for this project'),
       }),
       annotations: write,
@@ -234,17 +238,49 @@ export function registerTools(server: McpServer) {
     "update_project",
     {
       title: "Update project",
-      description: "Rename a project, change its desired outcome, or change its status (active, someday, done). Only the fields you pass change.",
+      description: "Rename a project, change its desired outcome, its review cadence, or its status (active, someday = on hold, done = completed, dropped = abandoned but kept in history). Only the fields you pass change.",
       inputSchema: z.object({
         id,
         name: projectFields.name.optional(),
         outcome: projectFields.outcome.optional(),
         status: projectFields.status.optional(),
         sequential: projectFields.sequential.optional(),
+        reviewCadenceDays: projectFields.reviewCadenceDays.optional(),
       }),
       annotations: { ...write, idempotentHint: true },
     },
     ({ id, ...changes }, ctx) => run(ctx, () => (Object.keys(changes).length ? service.updateProject(id, changes) : service.getProject(id))),
+  );
+
+  server.registerTool(
+    "review_queue",
+    {
+      title: "Project review queue",
+      description: "Active projects that need a review now: due by their review cadence, or stalled (no available next action) since their last review. Each comes with its open tasks. Use for weekly reviews; review metadata never appears in the daily task lists.",
+      inputSchema: z.object({}),
+      annotations: readOnly,
+    },
+    (_args, ctx) =>
+      run(ctx, async () => {
+        const queue = await reviewQueue();
+        return Promise.all(queue.map(async (p) => ({ ...p, openTasks: (await service.getProject(p.id)).tasks.filter((t) => t.status !== "done") })));
+      }),
+  );
+
+  server.registerTool(
+    "mark_project_reviewed",
+    {
+      title: "Mark project reviewed",
+      description: "Record that a project was reviewed now: it leaves the review queue until its cadence comes around again. If it's stalled at this moment, the stall counts as acknowledged until then. Make sure it has a next action (or a deliberate status) first.",
+      inputSchema: z.object({ id }),
+      annotations: { ...write, idempotentHint: true },
+    },
+    ({ id }, ctx) =>
+      run(ctx, async () => {
+        const project = await markProjectReviewed(id);
+        if (!project) throw new service.NotFound(`Project ${id} not found`);
+        return project;
+      }),
   );
 
   server.registerTool(
@@ -270,7 +306,7 @@ export function registerTools(server: McpServer) {
           role: "user",
           content: {
             type: "text",
-            text: "Let's do my GTD weekly review. Call gtd_overview first. Then, one step at a time and waiting for me between steps: 1) process the inbox item by item (next action, project, waiting, someday, or delete); 2) go over overdue and upcoming due dates; 3) for every active project without a next action, ask me for one; 4) review the waiting list for follow-ups; 5) skim someday for anything to activate. Make the changes with the tools as we agree on them.",
+            text: "Let's do my GTD weekly review. Call gtd_overview first. Then, one step at a time and waiting for me between steps: 1) process the inbox item by item (next action, project, waiting, someday, or delete); 2) go over overdue and upcoming due dates; 3) go through review_queue project by project: make sure each has a next action (ask me for one, or change its status: someday, done, or dropped), then mark_project_reviewed; 4) review the waiting list for follow-ups; 5) skim someday for anything to activate. Make the changes with the tools as we agree on them.",
           },
         },
       ],

@@ -19,6 +19,7 @@ export const projectStatusLabels: Record<Project["status"], string> = {
   active: "פעיל",
   someday: "אולי / מתישהו",
   done: "הושלם",
+  dropped: "בוטל",
 };
 
 const TZ = "Asia/Jerusalem";

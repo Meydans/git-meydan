@@ -1,9 +1,10 @@
 import { and, asc, eq, inArray, isNotNull, isNull, lt, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { projects, tasks, type NewProject, type NewTask, type Task } from "@/db/schema";
+import { projects, tasks, type NewProject, type NewTask, type Project, type Task } from "@/db/schema";
 import { todayInIsrael } from "./labels";
 import type { ListKey } from "./lists";
 import { isAvailable, listCounts, listTasks, projectsWithCounts, projectTasksOrdered, subtasksOf, type TaskFilters } from "./queries";
+import { projectHealth } from "./review";
 import { blockedIds, isOpenStatus } from "./sequence";
 
 export class NotFound extends Error {}
@@ -91,16 +92,25 @@ export async function deleteTask(id: string) {
   return task;
 }
 
-export async function findProjects(status?: "active" | "someday" | "done") {
-  const all = await projectsWithCounts();
+export async function findProjects(status?: Project["status"]) {
+  const [all, health] = await Promise.all([projectsWithCounts(), projectHealth()]);
+  const healthById = new Map(health.map((h) => [h.id, h]));
   return all
     .filter((p) => !status || p.status === status)
-    .map(({ byStatus, total, done, ...p }) => ({
-      ...p,
-      taskCounts: { ...byStatus, total },
-      progress: total ? Math.round((done / total) * 100) : 0,
-      hasNextAction: (byStatus.next ?? 0) > 0,
-    }));
+    .map(({ byStatus, total, done, ...p }) => {
+      const h = healthById.get(p.id)!;
+      return {
+        ...p,
+        taskCounts: { ...byStatus, total },
+        progress: total ? Math.round((done / total) * 100) : 0,
+        hasNextAction: !h.isStalled && p.status === "active",
+        isStalled: h.isStalled,
+        isDueForReview: h.isDueForReview,
+        needsReview: h.needsReview,
+        nextReviewAt: h.nextReviewAt,
+        daysSinceReview: h.daysSinceReview,
+      };
+    });
 }
 
 export async function getProject(id: string) {
@@ -164,6 +174,9 @@ export async function overview() {
     dueToday,
     startingToday,
     inbox: { items: inbox, oldestItemAgeDays: oldestInboxDays },
-    activeProjectsWithoutNextAction: allProjects.filter((p) => !p.hasNextAction).map(({ id, name, outcome }) => ({ id, name, outcome })),
+    activeProjectsWithoutNextAction: allProjects.filter((p) => p.isStalled).map(({ id, name, outcome }) => ({ id, name, outcome })),
+    reviewQueue: allProjects
+      .filter((p) => p.needsReview)
+      .map(({ id, name, isStalled, isDueForReview, daysSinceReview }) => ({ id, name, isStalled, isDueForReview, daysSinceReview })),
   };
 }

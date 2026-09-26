@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { eq } from "drizzle-orm";
-import { AlertTriangle, ArrowRight, ListOrdered, Pencil, Shuffle, Trash2 } from "lucide-react";
-import { deleteProject, setSequential, updateProject } from "@/app/actions";
+import { ArrowRight, ClipboardCheck, ListOrdered, Pencil, Shuffle, Trash2 } from "lucide-react";
+import { deleteProject, markReviewed, setSequential, updateProject } from "@/app/actions";
+import { ReviewMeta, StalledWarning } from "@/components/review-meta";
 import { Capture } from "@/components/capture";
 import { TaskCard } from "@/components/task-card";
-import { db } from "@/db";
-import { projects, projectStatus } from "@/db/schema";
+import { projectStatus } from "@/db/schema";
 import { projectHue, projectStatusLabels, todayInIsrael } from "@/lib/labels";
 import { projectTasksOrdered } from "@/lib/queries";
+import { healthOfProject } from "@/lib/review";
 import { blockedIds } from "@/lib/sequence";
 import { requireSession } from "@/lib/session";
 import { idParam } from "@/lib/validation";
@@ -17,10 +17,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
   await requireSession();
   const { id } = await params;
   if (!idParam.safeParse(id).success) notFound();
-  const [[project], projectTasks] = await Promise.all([
-    db.select().from(projects).where(eq(projects.id, id)),
-    projectTasksOrdered(id),
-  ]);
+  const [project, projectTasks] = await Promise.all([healthOfProject(id), projectTasksOrdered(id)]);
   if (!project) notFound();
 
   const today = todayInIsrael();
@@ -33,7 +30,6 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
 
   const doneCount = projectTasks.filter((t) => t.status === "done").length;
   const pct = projectTasks.length ? Math.round((doneCount / projectTasks.length) * 100) : 0;
-  const stuck = project.status === "active" && !projectTasks.some((t) => t.status === "next");
 
   return (
     <div style={{ "--hue": projectHue(project.id) } as React.CSSProperties}>
@@ -50,8 +46,17 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
         {project.outcome && <p className="outcome big">🎯 {project.outcome}</p>}
         <div className="progress"><span style={{ width: `${pct}%` }} /></div>
         <p className="hint">{doneCount} מתוך {projectTasks.length} משימות הושלמו</p>
-        {stuck && (
-          <p className="warn-box"><AlertTriangle size={16} /> לפרויקט פעיל אין פעולה הבאה. מה הצעד הפיזי הבא?</p>
+        {project.isStalled && <StalledWarning />}
+        {project.status === "active" && (
+          <div className="review-line">
+            <ReviewMeta project={project} />
+            <form action={markReviewed}>
+              <input type="hidden" name="id" value={project.id} />
+              <button className={project.needsReview ? "primary" : undefined}>
+                <ClipboardCheck size={15} /> סומן כנסקר
+              </button>
+            </form>
+          </div>
         )}
       </header>
 
