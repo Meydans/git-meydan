@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, date, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, date, doublePrecision, index, pgEnum, pgTable, text, timestamp, uuid, type AnyPgColumn } from "drizzle-orm/pg-core";
 
 export const taskStatus = pgEnum("task_status", ["inbox", "next", "waiting", "someday", "done"]);
 export const taskContext = pgEnum("task_context", ["@phone", "@computer", "@errand", "@home"]);
@@ -19,8 +19,15 @@ export const projects = pgTable("projects", {
   // GTD: a project is defined by its desired outcome, not just a name.
   outcome: text("outcome"),
   status: projectStatus("status").notNull().default("active"),
+  // Sequential projects surface only their first open task as actionable.
+  sequential: boolean("sequential").notNull().default(false),
   ...timestamps,
 });
+
+// Manual order within a project or under a parent. clock_timestamp() gives every new row
+// (even in one multi-row insert) a larger value, so new tasks land at the end; reordering
+// swaps values between neighbours.
+const nextPosition = sql`extract(epoch from clock_timestamp())`;
 
 export const tasks = pgTable(
   "tasks",
@@ -28,6 +35,12 @@ export const tasks = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     title: text("title").notNull(),
     projectId: uuid("project_id").references(() => projects.id, { onDelete: "set null" }),
+    // One level of subtasks. Depth, project inheritance and completing children are enforced by
+    // triggers (see migration 0003), so every writer gets the same rules.
+    parentId: uuid("parent_id").references((): AnyPgColumn => tasks.id, { onDelete: "cascade" }),
+    position: doublePrecision("position").notNull().default(nextPosition),
+    // For a parent task: its subtasks are done in order.
+    sequential: boolean("sequential").notNull().default(false),
     status: taskStatus("status").notNull().default("inbox"),
     context: taskContext("context"),
     // Defer date: the task stays out of the working lists until this day. Null = available now.
@@ -36,7 +49,12 @@ export const tasks = pgTable(
     notes: text("notes"),
     ...timestamps,
   },
-  (t) => [check("tasks_start_before_due", sql`${t.startDate} is null or ${t.dueDate} is null or ${t.startDate} <= ${t.dueDate}`)],
+  (t) => [
+    check("tasks_start_before_due", sql`${t.startDate} is null or ${t.dueDate} is null or ${t.startDate} <= ${t.dueDate}`),
+    check("tasks_not_own_parent", sql`${t.parentId} is null or ${t.parentId} <> ${t.id}`),
+    index("tasks_parent_idx").on(t.parentId),
+    index("tasks_project_position_idx").on(t.projectId, t.position),
+  ],
 );
 
 export type Project = typeof projects.$inferSelect;

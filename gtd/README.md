@@ -17,8 +17,8 @@ It is a separate Vercel project whose Root Directory is `gtd/`.
 
 `db/schema.ts`:
 
-- **projects**: `id`, `name`, `outcome` (the desired result, per GTD), `status` (`active` | `someday` | `done`), timestamps
-- **tasks**: `id`, `title`, `project_id` (optional; set to null when its project is deleted), `status` (`inbox` | `next` | `waiting` | `someday` | `done`), `context` (`@phone` | `@computer` | `@errand` | `@home` | null), `start_date` (optional defer date), `due_date`, `notes`, timestamps. A check constraint keeps `start_date <= due_date`.
+- **projects**: `id`, `name`, `outcome` (the desired result, per GTD), `status` (`active` | `someday` | `done`), `sequential`, timestamps
+- **tasks**: `id`, `title`, `project_id` (optional; set to null when its project is deleted), `status` (`inbox` | `next` | `waiting` | `someday` | `done`), `context` (`@phone` | `@computer` | `@errand` | `@home` | null), `start_date` (optional defer date), `due_date`, `notes`, `parent_id` (one level of subtasks), `position` (manual order), `sequential` (for a parent's subtasks), timestamps. A check constraint keeps `start_date <= due_date`.
 
 ### Start (defer) dates
 
@@ -41,6 +41,33 @@ You can set the start date on the task page (with presets, and bounded by the du
 
 On Vercel, `npm run build` applies pending migrations before building, so a deploy fails if a migration fails.
 Preview and production share one database, so preview deploys also apply migrations.
+
+### Subtasks and sequential work
+
+- **Hierarchy:** project → task → subtasks, one level deep. Notes checklists remain a lighter level below that. Triggers enforce the rules for every writer (UI, REST, MCP), in migration 0003:
+  - a subtask can't have subtasks, and a task that has subtasks can't become one
+  - a subtask always lives in its parent's project, and moving the parent moves it
+  - completing a parent completes its open subtasks; the UI asks first
+  - deleting a parent deletes its subtasks
+- **Progressive disclosure:** status lists show top-level tasks only. A parent card shows "done/total" with a progress bar, and its subtasks are collapsed until opened, with their own checkboxes. The date views (Scheduled, Deferred) also list dated subtasks, labeled with their parent.
+- **Manual order:** `position` is ordered within a project (top-level tasks) or under a parent. New tasks get an epoch-based position, so they land at the end. ↑/↓ swaps two neighbours, and MCP's `reorder_tasks` sets a whole order.
+- **Sequential:** a project, or a parent's subtasks, can be marked sequential.
+  - A task is **blocked** while an earlier open task (inbox, next or waiting) exists in that order. Someday and done items never block.
+  - Blocked tasks stay out of Next and its count, and are shown with 🔒 on project and task pages.
+  - Completing or reordering the first task surfaces the next one.
+  - The same rule is implemented once as SQL (for list filters) and once in JS (`lib/sequence.ts`).
+- **Project page:** one list in manual order, with a status chip per task, ↑/↓ controls, and a sequential toggle.
+- **Task page:**
+  - a link to the parent, and a parent picker (open top-level tasks of the same project)
+  - a subtask panel to add and reorder subtasks, with a sequential toggle
+  - a "waiting for X" note when the task is blocked
+- **MCP:**
+  - `parentId` and `sequential` on tasks, and `sequential` on projects
+  - list results nest `subtasks` under their parent
+  - `includeBlocked` on `list_tasks`
+  - `get_task` reports `blocked` and `blockedBy`
+  - `get_project` returns tasks in order with `blocked`
+  - new tool: `reorder_tasks`
 
 ## Web UI
 
@@ -132,6 +159,7 @@ curl -H "Authorization: Bearer $API_TOKEN" -H "Content-Type: application/json" \
 | `gtd_overview` | Today's date, counts per list, overdue and due-today tasks, the inbox, and active projects with no next action |
 | `list_tasks` | Tasks in a list (or all open ones), filtered by context, project or text |
 | `get_task` / `create_tasks` / `update_task` / `delete_task` | Task CRUD. `create_tasks` takes a batch and defaults to the inbox; `update_task` with `status: "done"` completes a task |
+| `reorder_tasks` | Sets the manual order of sibling tasks (one parent's subtasks, or one project's top-level tasks) |
 | `list_projects` / `get_project` | Projects with outcome, per-list counts, progress, and whether they have a next action |
 | `create_project` / `update_project` / `delete_project` | Project CRUD. `create_project` can create its first next actions in the same call |
 

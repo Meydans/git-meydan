@@ -1,11 +1,41 @@
-import { and, asc, eq, isNotNull, lt, ne, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, lt, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { projects, tasks, type NewProject, type NewTask } from "@/db/schema";
+import { projects, tasks, type NewProject, type NewTask, type Task } from "@/db/schema";
 import { todayInIsrael } from "./labels";
 import type { ListKey } from "./lists";
-import { isAvailable, listCounts, listTasks, projectsWithCounts, type TaskFilters } from "./queries";
+import { isAvailable, listCounts, listTasks, projectsWithCounts, projectTasksOrdered, subtasksOf, type TaskFilters } from "./queries";
+import { blockedIds, isOpenStatus } from "./sequence";
 
 export class NotFound extends Error {}
+export class InvalidRequest extends Error {}
+
+// Attaches each parent's subtasks (in manual order, with their blocked flag) to a list of tasks.
+async function withSubtasks<T extends Task>(rows: T[]) {
+  const children = await subtasksOf(rows.filter((t) => !t.parentId).map((t) => t.id));
+  return rows.map((task) => {
+    const mine = children.filter((c) => c.parentId === task.id);
+    if (mine.length === 0) return task;
+    const blocked = blockedIds(mine, task.sequential);
+    return { ...task, subtasks: mine.map((c) => ({ ...c, blocked: blocked.has(c.id) })) };
+  });
+}
+
+// The earlier open task a task is waiting for in its sequential parent or project, if any.
+export async function blockingTask(task: Task): Promise<Task | undefined> {
+  let siblings: Task[] = [];
+  let sequential = false;
+  if (task.parentId) {
+    const [parent] = await db.select({ sequential: tasks.sequential }).from(tasks).where(eq(tasks.id, task.parentId));
+    sequential = parent?.sequential ?? false;
+    if (sequential) siblings = await subtasksOf([task.parentId]);
+  } else if (task.projectId) {
+    const [project] = await db.select({ sequential: projects.sequential }).from(projects).where(eq(projects.id, task.projectId));
+    sequential = project?.sequential ?? false;
+    if (sequential) siblings = (await projectTasksOrdered(task.projectId)).filter((t) => !t.parentId);
+  }
+  if (!blockedIds(siblings, sequential).has(task.id)) return undefined;
+  return siblings.find((s) => isOpenStatus(s.status) && s.position < task.position);
+}
 
 // All open tasks (every status but done), grouped by list, for when no list is given.
 async function openTasks(filters: TaskFilters) {
@@ -16,13 +46,33 @@ async function openTasks(filters: TaskFilters) {
 
 export async function findTasks(list: ListKey | "open", filters: TaskFilters, limit: number) {
   const rows = list === "open" ? await openTasks(filters) : await listTasks(list, filters);
-  return { total: rows.length, tasks: rows.slice(0, limit) };
+  return { total: rows.length, tasks: await withSubtasks(rows.slice(0, limit)) };
 }
 
 export async function getTask(id: string) {
   const [task] = await db.select().from(tasks).where(eq(tasks.id, id));
   if (!task) throw new NotFound(`Task ${id} not found`);
-  return task;
+  const [[withChildren], blocker] = await Promise.all([withSubtasks([task]), blockingTask(task)]);
+  return { ...withChildren, blocked: !!blocker, blockedBy: blocker ? { id: blocker.id, title: blocker.title } : null };
+}
+
+// Puts the given tasks in this order. They must be siblings: subtasks of one parent, or
+// top-level tasks of one project. They take over their own existing positions, so the rest
+// of the list is untouched.
+export async function reorderTasks(ids: string[]) {
+  return db.transaction(async (tx) => {
+    const rows = await tx.select().from(tasks).where(inArray(tasks.id, ids));
+    if (rows.length !== ids.length) throw new NotFound("Some task ids were not found");
+    const [first] = rows;
+    const sameScope = rows.every((t) =>
+      first.parentId ? t.parentId === first.parentId : !t.parentId && t.projectId !== null && t.projectId === first.projectId,
+    );
+    if (!sameScope) throw new InvalidRequest("Tasks must be subtasks of the same parent, or top-level tasks of the same project");
+    const positions = rows.map((t) => t.position).sort((a, b) => a - b);
+    for (const [i, id] of ids.entries()) await tx.update(tasks).set({ position: positions[i] }).where(eq(tasks.id, id));
+    const scope = first.parentId ? eq(tasks.parentId, first.parentId) : and(eq(tasks.projectId, first.projectId!), isNull(tasks.parentId));
+    return tx.select().from(tasks).where(scope).orderBy(asc(tasks.position));
+  });
 }
 
 export async function createTasks(items: NewTask[]) {
@@ -56,8 +106,11 @@ export async function findProjects(status?: "active" | "someday" | "done") {
 export async function getProject(id: string) {
   const [project] = await db.select().from(projects).where(eq(projects.id, id));
   if (!project) throw new NotFound(`Project ${id} not found`);
-  const projectTasks = await db.select().from(tasks).where(eq(tasks.projectId, id)).orderBy(asc(tasks.createdAt));
-  return { ...project, tasks: projectTasks };
+  const all = await projectTasksOrdered(id);
+  const topLevel = all.filter((t) => !t.parentId);
+  const blocked = blockedIds(topLevel, project.sequential);
+  const tasksWithSubtasks = await withSubtasks(topLevel);
+  return { ...project, tasks: tasksWithSubtasks.map((t) => ({ ...t, blocked: blocked.has(t.id) })) };
 }
 
 export async function createProject(data: NewProject, nextActions: string[]) {

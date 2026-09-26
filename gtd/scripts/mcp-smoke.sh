@@ -14,6 +14,6 @@ check "discovery: protected resource metadata" "$B/api/mcp" "$(curl -s "$B/.well
 check "discovery: authorization server" "$B/oauth/token" "$(curl -s "$B/.well-known/oauth-authorization-server" | field .token_endpoint)"
 check "no token -> 401" 401 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$B/api/mcp" -H 'Content-Type: application/json' -d '{}')"
 check "initialize" gtd "$(rpc initialize '{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"smoke","version":"1"}}' | field .result.serverInfo.name)"
-check "tools/list has 11 tools" 11 "$(rpc tools/list '{}' | field .result.tools.length)"
+check "tools/list has 12 tools" 12 "$(rpc tools/list '{}' | field .result.tools.length)"
 check "gtd_overview returns today's date" "$(TZ=Asia/Jerusalem date +%F)" "$(rpc tools/call '{"name":"gtd_overview","arguments":{}}' | field '.result.content[0].text' | field .today)"
 echo; echo "passed=$pass failed=$fail"

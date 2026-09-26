@@ -3,7 +3,7 @@ import { z } from "zod";
 import { projectStatus, taskContext, taskStatus } from "@/db/schema";
 import { appOrigin, withLinks } from "@/lib/links";
 import { lists } from "@/lib/lists";
-import { DATE_ORDER_MESSAGE, PG_CHECK, PG_FOREIGN_KEY, pgErrorCode } from "@/lib/pg";
+import { taskRuleMessage } from "@/lib/pg";
 import * as service from "@/lib/service";
 
 const id = z.uuid();
@@ -18,7 +18,11 @@ const taskFields = {
   title: z.string().trim().min(1).max(500),
   status: status.describe("inbox = captured, not yet clarified; next = the next physical action; waiting = delegated or blocked on someone; someday = maybe later; done = completed"),
   context: context.nullable().describe("Where or with what the action can be done. null clears it"),
-  projectId: id.nullable().describe("Project this task belongs to. null detaches it"),
+  projectId: id.nullable().describe("Project this task belongs to. null detaches it. A subtask always takes its parent's project"),
+  parentId: id
+    .nullable()
+    .describe("Make this a subtask of another task (one level only: the parent can't itself be a subtask, and a task with subtasks can't become one). null makes it top-level"),
+  sequential: z.boolean().describe("For a parent task: its subtasks must be done in order, and only the first open one is actionable"),
   startDate: startDate.nullable(),
   dueDate: dueDate.nullable(),
   notes: z.string().max(10_000).nullable().describe('Free text. Lines like "- [ ] item" render as a checklist in the app'),
@@ -28,6 +32,7 @@ const projectFields = {
   name: z.string().trim().min(1).max(200),
   outcome: z.string().max(2000).nullable().describe("The desired outcome: what 'done' looks like for this project"),
   status: z.enum(projectStatus.enumValues),
+  sequential: z.boolean().describe("Tasks must be done in order: only the first open top-level task is actionable and shows in Next"),
 };
 
 type ToolResult = { content: { type: "text"; text: string }[]; isError?: boolean };
@@ -40,9 +45,9 @@ async function run(ctx: ServerContext, fn: () => Promise<unknown>): Promise<Tool
     return { content: [{ type: "text", text: JSON.stringify(result, null, 1) }] };
   } catch (error) {
     if (error instanceof service.NotFound) return { content: [{ type: "text", text: error.message }], isError: true };
-    const code = pgErrorCode(error);
-    if (code === PG_FOREIGN_KEY) return { content: [{ type: "text", text: "projectId does not reference an existing project" }], isError: true };
-    if (code === PG_CHECK) return { content: [{ type: "text", text: DATE_ORDER_MESSAGE }], isError: true };
+    if (error instanceof service.InvalidRequest) return { content: [{ type: "text", text: error.message }], isError: true };
+    const rule = taskRuleMessage(error);
+    if (rule) return { content: [{ type: "text", text: rule }], isError: true };
     throw error;
   }
 }
@@ -56,6 +61,8 @@ Lists: inbox (captured, unprocessed), next (next physical actions), waiting (wai
 Contexts: @phone, @computer, @errand, @home. Every active project should have at least one task in "next".
 Start dates: a task may have a startDate (defer date). Until that day it is hidden from its list (and from counts) and appears only in "deferred" and, if it has a due date, in "scheduled". On the start date it comes back to its list by itself. Use it for "not before" dates and tickler-style follow-ups (e.g. a waiting item to chase next week). startDate must be on or before dueDate.
 Start with gtd_overview to see today's date, counts, overdue items and stuck projects. New thoughts go to the inbox unless the user says otherwise.
+Hierarchy: project -> task -> subtasks (one level; notes checklists are a lighter level below that). Lists show top-level tasks; subtasks come nested under their parent. Break a bigger task into subtasks with create_tasks (parentId).
+Sequential: a project or a parent task can be sequential. Then tasks are done in manual order (reorder_tasks): only the first open one is actionable and appears in Next; later ones are "blocked" until it's done. Mark something sequential when steps truly depend on each other.
 Every task and project in tool results has a "url": its canonical link, which opens it directly in the app (on the user's phone it opens the installed app).
 Calendar events: whenever you create, update or sync a calendar event for a task (with any calendar tool), always embed that task's url. Put it on its own line at the start of the event description (e.g. "משימה ב-GTD: <url>"), and also set it as the event's location or URL field when the calendar tool has one. Use the task title as the event title. For an event covering several tasks, list each task's url. If the event fixes when the task will be done and the task has no due date, offer to set dueDate to the event's date.`;
 
@@ -75,7 +82,7 @@ export function registerTools(server: McpServer) {
     "list_tasks",
     {
       title: "List tasks",
-      description: "List tasks in one GTD list, optionally filtered by context, project or a text search over title and notes. Without a list, returns all open (not done) tasks. Tasks with a future start date are left out unless includeDeferred is true or list is \"deferred\".",
+      description: "List tasks in one GTD list, optionally filtered by context, project or a text search over title and notes. Without a list, returns all open (not done) tasks. Tasks with a future start date are left out unless includeDeferred is true or list is \"deferred\". Lists hold top-level tasks; a parent carries its subtasks in \"subtasks\" (with a blocked flag each).",
       inputSchema: z.object({
         list: z
           .enum([...lists, "open"])
@@ -86,16 +93,25 @@ export function registerTools(server: McpServer) {
         query: z.string().trim().min(1).max(200).optional().describe("Case-insensitive substring match on title and notes"),
         limit: z.number().int().min(1).max(200).default(50),
         includeDeferred: z.boolean().default(false).describe("Also include tasks whose start date hasn't arrived yet (hidden from lists by default)"),
+        includeBlocked: z
+          .boolean()
+          .default(false)
+          .describe("Also include Next tasks held back because an earlier task in their sequential project comes first (hidden by default)"),
       }),
       annotations: readOnly,
     },
-    ({ list, context, projectId, query, limit, includeDeferred }, ctx) =>
-      run(ctx, () => service.findTasks(list, { context, projectId, q: query, includeDeferred }, limit)),
+    ({ list, context, projectId, query, limit, includeDeferred, includeBlocked }, ctx) =>
+      run(ctx, () => service.findTasks(list, { context, projectId, q: query, includeDeferred, includeBlocked }, limit)),
   );
 
   server.registerTool(
     "get_task",
-    { title: "Get task", description: "Full details of one task, including its notes.", inputSchema: z.object({ id }), annotations: readOnly },
+    {
+      title: "Get task",
+      description: "Full details of one task: notes, its subtasks (in order, with blocked flags), and whether it is blocked by an earlier task in a sequential project or parent (blockedBy).",
+      inputSchema: z.object({ id }),
+      annotations: readOnly,
+    },
     ({ id }, ctx) => run(ctx, () => service.getTask(id)),
   );
 
@@ -112,6 +128,8 @@ export function registerTools(server: McpServer) {
               status: taskFields.status.default("inbox"),
               context: taskFields.context.optional(),
               projectId: taskFields.projectId.optional(),
+              parentId: taskFields.parentId.optional(),
+              sequential: taskFields.sequential.optional(),
               startDate: taskFields.startDate.optional(),
               dueDate: taskFields.dueDate.optional(),
               notes: taskFields.notes.optional(),
@@ -129,13 +147,15 @@ export function registerTools(server: McpServer) {
     "update_task",
     {
       title: "Update task",
-      description: 'Change any fields of a task: move it between lists (e.g. status "done" to complete it), set or clear its context, project, start date, due date or notes, or rename it. Only the fields you pass change; pass null to clear an optional field.',
+      description: 'Change any fields of a task: move it between lists (e.g. status "done" to complete it), set or clear its context, project, parent, start date, due date or notes, make its subtasks sequential, or rename it. Completing a parent (status "done") also completes its open subtasks. Only the fields you pass change; pass null to clear an optional field.',
       inputSchema: z.object({
         id,
         title: taskFields.title.optional(),
         status: taskFields.status.optional(),
         context: taskFields.context.optional(),
         projectId: taskFields.projectId.optional(),
+        parentId: taskFields.parentId.optional(),
+        sequential: taskFields.sequential.optional(),
         startDate: taskFields.startDate.optional(),
         dueDate: taskFields.dueDate.optional(),
         notes: taskFields.notes.optional(),
@@ -150,10 +170,21 @@ export function registerTools(server: McpServer) {
   );
 
   server.registerTool(
+    "reorder_tasks",
+    {
+      title: "Reorder tasks",
+      description: "Put tasks in a new manual order. Pass sibling ids in the order you want: subtasks of one parent, or top-level tasks of one project. Other tasks keep their place. In a sequential project or parent the first open task is the actionable one.",
+      inputSchema: z.object({ ids: z.array(id).min(2).max(200) }),
+      annotations: { ...write, idempotentHint: true },
+    },
+    ({ ids }, ctx) => run(ctx, () => service.reorderTasks(ids)),
+  );
+
+  server.registerTool(
     "delete_task",
     {
       title: "Delete task",
-      description: 'Permanently delete a task. To complete a task, use update_task with status "done" instead.',
+      description: 'Permanently delete a task (and its subtasks). To complete a task, use update_task with status "done" instead.',
       inputSchema: z.object({ id }),
       annotations: destructive,
     },
@@ -173,7 +204,12 @@ export function registerTools(server: McpServer) {
 
   server.registerTool(
     "get_project",
-    { title: "Get project", description: "One project with all of its tasks.", inputSchema: z.object({ id }), annotations: readOnly },
+    {
+      title: "Get project",
+      description: "One project with its top-level tasks in manual order (each with its subtasks and a blocked flag when the project is sequential).",
+      inputSchema: z.object({ id }),
+      annotations: readOnly,
+    },
     ({ id }, ctx) => run(ctx, () => service.getProject(id)),
   );
 
@@ -186,6 +222,7 @@ export function registerTools(server: McpServer) {
         name: projectFields.name,
         outcome: projectFields.outcome.optional(),
         status: projectFields.status.default("active"),
+        sequential: projectFields.sequential.default(false),
         nextActions: z.array(z.string().trim().min(1).max(500)).max(20).default([]).describe('Titles of tasks to create in "next" for this project'),
       }),
       annotations: write,
@@ -203,6 +240,7 @@ export function registerTools(server: McpServer) {
         name: projectFields.name.optional(),
         outcome: projectFields.outcome.optional(),
         status: projectFields.status.optional(),
+        sequential: projectFields.sequential.optional(),
       }),
       annotations: { ...write, idempotentHint: true },
     },
