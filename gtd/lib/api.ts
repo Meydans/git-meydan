@@ -1,6 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
-import { DATE_ORDER_MESSAGE, PG_CHECK, PG_FOREIGN_KEY, pgErrorCode } from "./pg";
+import { taskRuleMessage } from "./pg";
 import { idParam } from "./validation";
 
 export class HttpError extends Error {
@@ -31,10 +31,8 @@ function checkAuth(request: Request) {
 
 // Maps Postgres error codes we expect from user input to 400s.
 function fromPgError(error: unknown) {
-  const code = pgErrorCode(error);
-  if (code === PG_FOREIGN_KEY) return new HttpError(400, "projectId does not reference an existing project");
-  if (code === PG_CHECK) return new HttpError(400, DATE_ORDER_MESSAGE);
-  return null;
+  const message = taskRuleMessage(error);
+  return message ? new HttpError(400, message) : null;
 }
 
 type Handler<C> = (request: Request, context: C) => Promise<Response>;

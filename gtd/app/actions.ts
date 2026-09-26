@@ -1,12 +1,12 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, asc, desc, eq, gt, isNull, lt, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { projects, tasks } from "@/db/schema";
 import { toggleLine } from "@/lib/notes";
-import { PG_CHECK, pgErrorCode } from "@/lib/pg";
+import { taskRuleCode } from "@/lib/pg";
 import { safePath } from "@/lib/safe-path";
 import { checkPassword, endSession, requireSession, startSession } from "@/lib/session";
 import { idParam, projectCreate, taskCreate, taskStatusValue } from "@/lib/validation";
@@ -22,11 +22,19 @@ function formFields(formData: FormData, names: string[]) {
   );
 }
 
+// A checkbox only submits when checked; forms that show it also send "<name>-shown" so an
+// unchecked box means false rather than "not part of this form".
+function checkbox(formData: FormData, name: string) {
+  if (formData.has(name)) return true;
+  return formData.has(`${name}-shown`) ? false : undefined;
+}
+
 const taskFields = (formData: FormData) =>
   taskCreate.parse({
-    ...formFields(formData, ["projectId", "context", "startDate", "dueDate", "notes"]),
+    ...formFields(formData, ["projectId", "parentId", "context", "startDate", "dueDate", "notes"]),
     title: formData.get("title") ?? "",
     status: formData.get("status") || undefined,
+    sequential: checkbox(formData, "sequential"),
   });
 
 const projectFields = (formData: FormData) =>
@@ -34,6 +42,7 @@ const projectFields = (formData: FormData) =>
     ...formFields(formData, ["outcome"]),
     name: formData.get("name") ?? "",
     status: formData.get("status") || undefined,
+    sequential: checkbox(formData, "sequential"),
   });
 
 const formId = (formData: FormData) => idParam.parse(formData.get("id"));
@@ -67,8 +76,10 @@ export async function updateTask(formData: FormData) {
   try {
     await db.update(tasks).set(taskFields(formData)).where(eq(tasks.id, id));
   } catch (error) {
-    if (pgErrorCode(error) !== PG_CHECK) throw error;
-    redirect(`/tasks/${id}?dates=invalid&from=${encodeURIComponent(returnTo(formData, "/inbox"))}`);
+    // Date order, nesting and similar rules come back to the form as an inline message.
+    const rule = taskRuleCode(error);
+    if (!rule) throw error;
+    redirect(`/tasks/${id}?rule=${rule}&from=${encodeURIComponent(returnTo(formData, "/inbox"))}`);
   }
   refresh();
   redirect(returnTo(formData, "/inbox"));
@@ -78,6 +89,58 @@ export async function setTaskStatus(formData: FormData) {
   await requireSession();
   const status = taskStatusValue.parse(formData.get("status"));
   await db.update(tasks).set({ status }).where(eq(tasks.id, formId(formData)));
+  refresh();
+}
+
+// Moves a task one step up or down among its open siblings: the same parent's subtasks,
+// or the same project's top-level tasks. Swapping positions keeps everyone else in place.
+export async function moveTask(formData: FormData) {
+  await requireSession();
+  const id = formId(formData);
+  const direction = z.enum(["up", "down"]).parse(formData.get("direction"));
+  await db.transaction(async (tx) => {
+    const [task] = await tx.select().from(tasks).where(eq(tasks.id, id));
+    if (!task || (!task.parentId && !task.projectId)) return;
+    const scope = task.parentId ? eq(tasks.parentId, task.parentId) : and(eq(tasks.projectId, task.projectId!), isNull(tasks.parentId));
+    const [neighbour] = await tx
+      .select()
+      .from(tasks)
+      .where(
+        and(
+          scope,
+          ne(tasks.status, "done"),
+          direction === "up" ? lt(tasks.position, task.position) : gt(tasks.position, task.position),
+        ),
+      )
+      .orderBy(direction === "up" ? desc(tasks.position) : asc(tasks.position))
+      .limit(1);
+    if (!neighbour) return;
+    await tx.update(tasks).set({ position: neighbour.position }).where(eq(tasks.id, task.id));
+    await tx.update(tasks).set({ position: task.position }).where(eq(tasks.id, neighbour.id));
+  });
+  refresh();
+}
+
+export async function createSubtask(formData: FormData) {
+  await requireSession();
+  const parentId = idParam.parse(formData.get("parentId"));
+  const title = z.string().trim().min(1).max(500).parse(formData.get("title"));
+  try {
+    await db.insert(tasks).values({ title, parentId, status: "next" });
+  } catch (error) {
+    const rule = taskRuleCode(error);
+    if (!rule) throw error;
+    redirect(`/tasks/${parentId}?rule=${rule}`);
+  }
+  refresh();
+}
+
+export async function setSequential(formData: FormData) {
+  await requireSession();
+  const id = formId(formData);
+  const sequential = formData.get("sequential") === "true";
+  if (formData.get("kind") === "project") await db.update(projects).set({ sequential }).where(eq(projects.id, id));
+  else await db.update(tasks).set({ sequential }).where(eq(tasks.id, id));
   refresh();
 }
 

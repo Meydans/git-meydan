@@ -7,8 +7,11 @@ import { TaskCard } from "@/components/task-card";
 import type { Task } from "@/db/schema";
 import { daysBetween, todayInIsrael } from "@/lib/labels";
 import { captureStatus, isList, listHints, listLabels } from "@/lib/lists";
-import { allProjects, listTasks, type TaskFilters } from "@/lib/queries";
+import { allProjects, listTasks, subtasksOf, type TaskFilters } from "@/lib/queries";
 import { requireSession } from "@/lib/session";
+import { db } from "@/db";
+import { tasks } from "@/db/schema";
+import { inArray } from "drizzle-orm";
 import { idParam, taskFilters } from "@/lib/validation";
 
 // Scheduled groups by due date; Deferred groups by start date (always in the future there).
@@ -34,6 +37,14 @@ export default async function ListPage({ params, searchParams }: PageProps<"/[li
   };
 
   const [rows, projects] = await Promise.all([listTasks(list, filters), allProjects()]);
+  // Parents show their subtasks collapsed; subtasks listed on their own (date views) name their parent.
+  const parentIds = [...new Set(rows.flatMap((t) => (t.parentId ? [t.parentId] : [])))];
+  const [children, parents] = await Promise.all([
+    subtasksOf(rows.filter((t) => !t.parentId).map((t) => t.id)),
+    parentIds.length ? db.select({ id: tasks.id, title: tasks.title }).from(tasks).where(inArray(tasks.id, parentIds)) : [],
+  ]);
+  const childrenOf = (id: string) => children.filter((c) => c.parentId === id);
+  const parentTitle = new Map(parents.map((p) => [p.id, p.title]));
   const today = todayInIsrael();
   const projectById = new Map(projects.map((p) => [p.id, p]));
   const query = new URLSearchParams(Object.entries(sp).flatMap(([k, v]) => (typeof v === "string" ? [[k, v]] : []))).toString();
@@ -43,7 +54,15 @@ export default async function ListPage({ params, searchParams }: PageProps<"/[li
 
   const Icon = listIcons[list];
   const card = (task: Task) => (
-    <TaskCard key={task.id} task={task} project={task.projectId ? projectById.get(task.projectId) : undefined} today={today} from={from} />
+    <TaskCard
+      key={task.id}
+      task={task}
+      project={task.projectId ? projectById.get(task.projectId) : undefined}
+      today={today}
+      from={from}
+      subtasks={childrenOf(task.id)}
+      parentTitle={task.parentId ? parentTitle.get(task.parentId) : undefined}
+    />
   );
 
   return (

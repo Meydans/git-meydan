@@ -6,6 +6,8 @@ const nullableText = z.string().trim().nullable();
 export const taskCreate = z.strictObject({
   title: z.string().trim().min(1),
   projectId: z.uuid().nullable().optional(),
+  parentId: z.uuid().nullable().optional(),
+  sequential: z.boolean().optional(),
   status: z.enum(taskStatus.enumValues).optional(),
   context: z.enum(taskContext.enumValues).nullable().optional(),
   startDate: z.iso.date().nullable().optional(),
@@ -25,6 +27,7 @@ export const projectCreate = z.strictObject({
   name: z.string().trim().min(1),
   outcome: nullableText.optional(),
   status: z.enum(projectStatus.enumValues).optional(),
+  sequential: z.boolean().optional(),
 });
 
 export const projectUpdate = projectCreate.partial();
