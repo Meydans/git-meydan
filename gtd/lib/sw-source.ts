@@ -11,9 +11,9 @@ const OFFLINE_URL = "/offline";
 const SYNC_TAG = "gtd-capture";
 const MAX_PAGES = 80;
 // The main lists, refreshed in the background so they're current when the network is gone.
-const WARM_URLS = ["/inbox", "/next", "/waiting", "/scheduled", "/someday", "/done", "/projects"];
+const WARM_URLS = ["/inbox", "/next", "/waiting", "/scheduled", "/deferred", "/someday", "/done", "/projects"];
 // App pages worth keeping for offline reading. Everything else (login, OAuth, API) is never cached.
-const CACHEABLE = ["/inbox", "/next", "/waiting", "/scheduled", "/someday", "/done", "/projects", "/tasks"];
+const CACHEABLE = ["/inbox", "/next", "/waiting", "/scheduled", "/deferred", "/someday", "/done", "/projects", "/tasks"];
 const isCacheable = (path) => CACHEABLE.some((prefix) => path === prefix || path.startsWith(prefix + "/"));
 
 // Cache the offline screen together with the scripts and styles it needs to run.

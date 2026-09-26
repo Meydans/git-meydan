@@ -8,6 +8,7 @@ export const taskCreate = z.strictObject({
   projectId: z.uuid().nullable().optional(),
   status: z.enum(taskStatus.enumValues).optional(),
   context: z.enum(taskContext.enumValues).nullable().optional(),
+  startDate: z.iso.date().nullable().optional(),
   dueDate: z.iso.date().nullable().optional(),
   notes: nullableText.optional(),
 });

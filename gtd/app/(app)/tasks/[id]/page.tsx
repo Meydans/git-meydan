@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { ArrowRight, Trash2 } from "lucide-react";
 import { deleteTask, updateTask } from "@/app/actions";
 import { CopyLink } from "@/components/copy-link";
-import { DueDateField } from "@/components/due-date-field";
+import { TaskDates } from "@/components/task-dates";
 import { contextIcons, listIcons } from "@/components/icons";
 import { db } from "@/db";
 import { taskContext, taskStatus, tasks } from "@/db/schema";
@@ -21,7 +21,7 @@ export default async function TaskPage({ params, searchParams }: PageProps<"/tas
   const [[task], projects] = await Promise.all([db.select().from(tasks).where(eq(tasks.id, id)), allProjects()]);
   if (!task) notFound();
 
-  const { from } = await searchParams;
+  const { from, dates } = await searchParams;
   const back = safePath(from, `/${task.status}`);
   const selectable = projects.filter((p) => p.status !== "done" || p.id === task.projectId);
 
@@ -91,10 +91,8 @@ export default async function TaskPage({ params, searchParams }: PageProps<"/tas
           </select>
         </label>
 
-        <div className="field">
-          <span className="field-label">תאריך יעד</span>
-          <DueDateField defaultValue={task.dueDate} today={todayInIsrael()} />
-        </div>
+        {dates === "invalid" && <p className="form-error">תאריך ההתחלה חייב להיות לפני תאריך היעד או באותו יום.</p>}
+        <TaskDates startDate={task.startDate} dueDate={task.dueDate} today={todayInIsrael()} />
 
         <div className="detail-actions">
           <button className="primary">שמירה</button>

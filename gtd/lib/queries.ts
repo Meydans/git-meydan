@@ -1,9 +1,15 @@
-import { and, asc, count, desc, eq, ilike, isNotNull, ne, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, ilike, isNotNull, isNull, lte, ne, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { projects, tasks, type Task } from "@/db/schema";
+import { todayInIsrael } from "./labels";
 import type { ListKey } from "./lists";
 
-export type TaskFilters = { context?: Task["context"]; projectId?: string; q?: string };
+// includeDeferred: also return tasks whose start date is still in the future (hidden by default).
+export type TaskFilters = { context?: Task["context"]; projectId?: string; q?: string; includeDeferred?: boolean };
+
+// A task is available once its start (defer) date has arrived; no start date means available now.
+export const isAvailable = (today: string) => or(isNull(tasks.startDate), lte(tasks.startDate, today))!;
+export const isDeferred = (today: string) => gt(tasks.startDate, today);
 
 function filterConditions({ context, projectId, q }: TaskFilters): SQL[] {
   const conditions: SQL[] = [];
@@ -18,8 +24,16 @@ function filterConditions({ context, projectId, q }: TaskFilters): SQL[] {
 
 const byDueThenCreated = [sql`${tasks.dueDate} asc nulls last`, asc(tasks.createdAt)];
 
-export function listTasks(list: ListKey, filters: TaskFilters) {
+export function listTasks(list: ListKey, filters: TaskFilters, today = todayInIsrael()) {
   const conditions = filterConditions(filters);
+  if (list === "deferred") {
+    return db
+      .select()
+      .from(tasks)
+      .where(and(ne(tasks.status, "done"), isDeferred(today), ...conditions))
+      .orderBy(asc(tasks.startDate), asc(tasks.createdAt));
+  }
+  // Scheduled shows every open task with a due date, deferred or not: it's the calendar view.
   if (list === "scheduled") {
     return db
       .select()
@@ -35,16 +49,22 @@ export function listTasks(list: ListKey, filters: TaskFilters) {
       .orderBy(desc(tasks.updatedAt))
       .limit(100);
   }
+  const availability = filters.includeDeferred ? [] : [isAvailable(today)];
   return db
     .select()
     .from(tasks)
-    .where(and(eq(tasks.status, list), ...conditions))
+    .where(and(eq(tasks.status, list), ...availability, ...conditions))
     .orderBy(...byDueThenCreated);
 }
 
+// Counts per list as shown in the sidebar: open lists count only available tasks.
 export async function listCounts(today: string) {
-  const [byStatus, [scheduled]] = await Promise.all([
-    db.select({ status: tasks.status, n: count() }).from(tasks).groupBy(tasks.status),
+  const [byStatus, [scheduled], [deferred]] = await Promise.all([
+    db
+      .select({ status: tasks.status, n: count() })
+      .from(tasks)
+      .where(or(eq(tasks.status, "done"), isAvailable(today)))
+      .groupBy(tasks.status),
     db
       .select({
         n: count(),
@@ -52,8 +72,9 @@ export async function listCounts(today: string) {
       })
       .from(tasks)
       .where(and(ne(tasks.status, "done"), isNotNull(tasks.dueDate))),
+    db.select({ n: count() }).from(tasks).where(and(ne(tasks.status, "done"), isDeferred(today))),
   ]);
-  const counts: Record<ListKey, number> = { inbox: 0, next: 0, waiting: 0, someday: 0, done: 0, scheduled: scheduled.n };
+  const counts: Record<ListKey, number> = { inbox: 0, next: 0, waiting: 0, someday: 0, done: 0, scheduled: scheduled.n, deferred: deferred.n };
   for (const row of byStatus) counts[row.status] = row.n;
   return { counts, overdue: scheduled.overdue };
 }

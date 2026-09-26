@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { projects, tasks } from "@/db/schema";
 import { toggleLine } from "@/lib/notes";
+import { PG_CHECK, pgErrorCode } from "@/lib/pg";
 import { safePath } from "@/lib/safe-path";
 import { checkPassword, endSession, requireSession, startSession } from "@/lib/session";
 import { idParam, projectCreate, taskCreate, taskStatusValue } from "@/lib/validation";
@@ -23,7 +24,7 @@ function formFields(formData: FormData, names: string[]) {
 
 const taskFields = (formData: FormData) =>
   taskCreate.parse({
-    ...formFields(formData, ["projectId", "context", "dueDate", "notes"]),
+    ...formFields(formData, ["projectId", "context", "startDate", "dueDate", "notes"]),
     title: formData.get("title") ?? "",
     status: formData.get("status") || undefined,
   });
@@ -62,7 +63,13 @@ export async function logout() {
 
 export async function updateTask(formData: FormData) {
   await requireSession();
-  await db.update(tasks).set(taskFields(formData)).where(eq(tasks.id, formId(formData)));
+  const id = formId(formData);
+  try {
+    await db.update(tasks).set(taskFields(formData)).where(eq(tasks.id, id));
+  } catch (error) {
+    if (pgErrorCode(error) !== PG_CHECK) throw error;
+    redirect(`/tasks/${id}?dates=invalid&from=${encodeURIComponent(returnTo(formData, "/inbox"))}`);
+  }
   refresh();
   redirect(returnTo(formData, "/inbox"));
 }
