@@ -188,7 +188,26 @@ curl -H "Authorization: Bearer $API_TOKEN" -H "Content-Type: application/json" \
 | `review_queue` / `mark_project_reviewed` | The projects that need review, with their open tasks; marking one reviewed takes it off the queue |
 | `create_project` / `update_project` / `delete_project` | Project CRUD. `create_project` can create its first next actions in the same call |
 
-There is also a `weekly_review` prompt, and server instructions that explain the GTD lists and contexts to the model.
+There are also two prompts, `capture` (see Capture skill) and `weekly_review`, and server instructions that explain the GTD lists and contexts to the model.
+
+### Capture skill
+
+`skills/gtd-capture/SKILL.md` teaches Claude to turn free text into tasks that are already processed, instead of leaving everything in the inbox. For each item it decides:
+
+- the list (next, waiting with "ממתין ל:", someday, or inbox only when unclear)
+- a verb-first title and a context
+- the project (an existing one, or a new one with an outcome)
+- start and due dates, computed from today in Israel
+- subtasks, sequential when the order matters
+
+It checks for duplicates, writes everything in one or two `create_tasks` calls, and reports back with links.
+
+The same file serves two uses:
+
+- **As a skill:** zip the `skills/gtd-capture` folder and upload it as a custom skill in claude.ai. In Claude Code, copy it to `~/.claude/skills/gtd-capture/`.
+- **As the MCP prompt `capture`**, with an optional `text` argument. It works in any client connected to this server, with no install. `lib/capture-guide.ts` reads the file at runtime, and `next.config.ts` makes sure it ships with `/api/mcp`.
+
+Edit only `SKILL.md`: both uses pick up the change.
 
 ### Task links and calendar events
 
