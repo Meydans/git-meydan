@@ -101,7 +101,8 @@ export default async function TaskPage({ params, searchParams }: PageProps<"/tas
 
         <fieldset className="segmented">
           <legend>רשימה</legend>
-          {taskStatus.enumValues.map((s) => {
+          {/* A subtask is already clarified, so it never goes back to the inbox. */}
+          {taskStatus.enumValues.filter((s) => !(task.parentId && s === "inbox")).map((s) => {
             const Icon = listIcons[s];
             return (
               <label key={s} className={`seg seg-${s}`}>

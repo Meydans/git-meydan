@@ -10,7 +10,7 @@ import { taskRuleCode } from "@/lib/pg";
 import { safePath } from "@/lib/safe-path";
 import { checkPassword, endSession, requireSession, startSession } from "@/lib/session";
 import { markProjectReviewed } from "@/lib/review";
-import { idParam, projectCreate, projectStatusValue, reviewCadence, taskCreate, taskStatusValue } from "@/lib/validation";
+import { idParam, projectCreate, projectStatusValue, reviewCadence, taskContextValue, taskCreate, taskStatusValue } from "@/lib/validation";
 import { z } from "zod";
 
 // Form fields arrive as strings; an empty optional field means "no value".
@@ -84,6 +84,13 @@ export async function updateTask(formData: FormData) {
   }
   refresh();
   redirect(returnTo(formData, "/inbox"));
+}
+
+export async function setTaskContext(formData: FormData) {
+  await requireSession();
+  const context = taskContextValue.parse(formData.get("context"));
+  await db.update(tasks).set({ context }).where(eq(tasks.id, formId(formData)));
+  refresh();
 }
 
 export async function setTaskStatus(formData: FormData) {

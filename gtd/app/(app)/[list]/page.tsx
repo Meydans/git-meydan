@@ -31,7 +31,7 @@ export default async function ListPage({ params, searchParams }: PageProps<"/[li
   const sp = await searchParams;
   const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
   const filters: TaskFilters = {
-    context: taskFilters.shape.context.safeParse(first(sp.context)).data,
+    context: first(sp.context) === "none" ? "none" : taskFilters.shape.context.safeParse(first(sp.context)).data,
     projectId: idParam.safeParse(first(sp.project)).data,
     q: first(sp.q)?.trim() || undefined,
   };
@@ -51,6 +51,9 @@ export default async function ListPage({ params, searchParams }: PageProps<"/[li
   const from = `/${list}${query ? `?${query}` : ""}`;
   const contextCounts: Partial<Record<NonNullable<Task["context"]>, number>> = {};
   for (const t of rows) if (t.context) contextCounts[t.context] = (contextCounts[t.context] ?? 0) + 1;
+  // Next actions are filtered by context, so Next nudges toward giving each one a context.
+  const nudgeContext = list === "next";
+  const withoutContext = rows.filter((t) => !t.context).length;
 
   const Icon = listIcons[list];
   const card = (task: Task) => (
@@ -62,6 +65,7 @@ export default async function ListPage({ params, searchParams }: PageProps<"/[li
       from={from}
       subtasks={childrenOf(task.id)}
       parentTitle={task.parentId ? parentTitle.get(task.parentId) : undefined}
+      pickContext={nudgeContext && !task.context}
     />
   );
 
@@ -86,7 +90,11 @@ export default async function ListPage({ params, searchParams }: PageProps<"/[li
       )}
 
       <Suspense>
-        <FilterBar projects={projects.filter((p) => p.status !== "done")} contextCounts={contextCounts} />
+        <FilterBar
+          projects={projects.filter((p) => p.status !== "done")}
+          contextCounts={contextCounts}
+          withoutContext={nudgeContext ? withoutContext : undefined}
+        />
       </Suspense>
 
       {rows.length === 0 ? (

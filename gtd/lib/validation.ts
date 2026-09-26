@@ -43,3 +43,4 @@ export const projectFilters = z.object({
 export const idParam = z.uuid();
 
 export const taskStatusValue = z.enum(taskStatus.enumValues);
+export const taskContextValue = z.enum(taskContext.enumValues);

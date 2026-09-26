@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { ArrowDown, ArrowUp, CalendarClock, CalendarDays, Check, CornerDownLeft, ListTree, Lock } from "lucide-react";
-import { moveTask, toggleChecklistItem } from "@/app/actions";
+import { moveTask, setTaskContext, toggleChecklistItem } from "@/app/actions";
 import { DoneButton } from "@/components/done-button";
 import { contextIcons } from "@/components/icons";
-import type { Project, Task } from "@/db/schema";
+import { taskContext, type Project, type Task } from "@/db/schema";
 import { contextLabels, dueTone, projectHue, relativeDue, relativeStart, taskStatusLabels } from "@/lib/labels";
 import { parseNotes } from "@/lib/notes";
 import { blockedIds } from "@/lib/sequence";
@@ -19,6 +19,7 @@ type Props = {
   parentTitle?: string; // for subtasks shown on their own (date views)
   showStatus?: boolean; // project page: one list across statuses
   movable?: boolean; // project page: manual order arrows
+  pickContext?: boolean; // Next list: one-tap context for a task that has none
 };
 
 const MAX_NOTE_LINES = 6;
@@ -39,7 +40,29 @@ export function MoveButtons({ id }: { id: string }) {
   );
 }
 
-export function TaskCard({ task, project, today, from, hideProject, subtasks = [], blocked, parentTitle, showStatus, movable }: Props) {
+// Next actions are found by context, so a task without one gets a one-tap picker.
+function ContextPicker({ id }: { id: string }) {
+  return (
+    <div className="ctx-picker">
+      <span className="ctx-picker-label">איפה עושים את זה?</span>
+      {taskContext.enumValues.map((c) => {
+        const Icon = contextIcons[c];
+        return (
+          <form key={c} action={setTaskContext}>
+            <input type="hidden" name="id" value={id} />
+            <input type="hidden" name="context" value={c} />
+            <button className={`chip ctx ctx-${c.slice(1)}`} aria-label={`הקשר: ${contextLabels[c]}`}>
+              <Icon size={13} />
+              {contextLabels[c]}
+            </button>
+          </form>
+        );
+      })}
+    </div>
+  );
+}
+
+export function TaskCard({ task, project, today, from, hideProject, subtasks = [], blocked, parentTitle, showStatus, movable, pickContext }: Props) {
   const done = task.status === "done";
   const lines = task.notes ? parseNotes(task.notes).filter((l) => l.kind === "check" || l.text.trim()) : [];
   const shown = lines.slice(0, MAX_NOTE_LINES);
@@ -127,6 +150,8 @@ export function TaskCard({ task, project, today, from, hideProject, subtasks = [
             )}
           </div>
         )}
+
+        {pickContext && !done && <ContextPicker id={task.id} />}
 
         {subtasks.length > 0 && (
           <details className="subtasks">
