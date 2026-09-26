@@ -2,16 +2,20 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Search, X } from "lucide-react";
+import { CircleHelp, Search, X } from "lucide-react";
 import { contextIcons } from "@/components/icons";
 import type { Project, Task } from "@/db/schema";
 import { taskContext } from "@/db/schema";
 import { contextLabels } from "@/lib/labels";
 
-type Props = { projects: Pick<Project, "id" | "name">[]; contextCounts: Partial<Record<NonNullable<Task["context"]>, number>> };
+type Props = {
+  projects: Pick<Project, "id" | "name">[];
+  contextCounts: Partial<Record<NonNullable<Task["context"]>, number>>;
+  withoutContext?: number; // shows a "no context" filter (Next list)
+};
 
 // Filters live in the URL so a filtered list can be bookmarked and survives a refresh.
-export function FilterBar({ projects, contextCounts }: Props) {
+export function FilterBar({ projects, contextCounts, withoutContext }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -52,6 +56,13 @@ export function FilterBar({ projects, contextCounts }: Props) {
             </button>
           );
         })}
+        {withoutContext !== undefined && (withoutContext > 0 || context === "none") && (
+          <button className={`chip-toggle no-ctx${context === "none" ? " on" : ""}`} aria-pressed={context === "none"} onClick={() => update("context", context === "none" ? null : "none")}>
+            <CircleHelp size={14} />
+            ללא הקשר
+            <span className="chip-count">{withoutContext}</span>
+          </button>
+        )}
         {projects.length > 0 && (
           <select className="chip-select" value={projectId ?? ""} onChange={(e) => update("project", e.target.value || null)} aria-label="פרויקט">
             <option value="">כל הפרויקטים</option>

@@ -1,9 +1,9 @@
-import { and, asc, eq, inArray, isNotNull, isNull, lt, ne, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, lt, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { projects, tasks, type NewProject, type NewTask, type Project, type Task } from "@/db/schema";
 import { todayInIsrael } from "./labels";
 import type { ListKey } from "./lists";
-import { isAvailable, listCounts, listTasks, projectsWithCounts, projectTasksOrdered, subtasksOf, type TaskFilters } from "./queries";
+import { listCounts, listTasks, projectsWithCounts, projectTasksOrdered, subtasksOf, type TaskFilters } from "./queries";
 import { projectHealth } from "./review";
 import { blockedIds, isOpenStatus } from "./sequence";
 
@@ -154,18 +154,12 @@ export async function overview() {
     db.select().from(tasks).where(and(open, lt(tasks.dueDate, today))).orderBy(asc(tasks.dueDate)),
     db.select().from(tasks).where(and(open, eq(tasks.dueDate, today))),
     db.select().from(tasks).where(and(ne(tasks.status, "done"), eq(tasks.startDate, today))),
-    db
-      .select({ id: tasks.id, title: tasks.title, createdAt: tasks.createdAt })
-      .from(tasks)
-      .where(and(eq(tasks.status, "inbox"), isAvailable(today)))
-      .orderBy(asc(tasks.createdAt))
-      .limit(50),
+    // The same query as the Inbox list, so the items always match counts.inbox.
+    listTasks("inbox", {}, today),
     findProjects("active"),
   ]);
-  const [{ oldestInboxDays }] = await db
-    .select({ oldestInboxDays: sql<number | null>`floor(extract(epoch from now() - min(${tasks.createdAt})) / 86400)`.mapWith(Number) })
-    .from(tasks)
-    .where(and(eq(tasks.status, "inbox"), isAvailable(today)));
+  const oldest = Math.min(...inbox.map((t) => t.createdAt.getTime()));
+  const oldestInboxDays = inbox.length ? Math.floor((Date.now() - oldest) / 86_400_000) : null;
   return {
     today,
     timezone: "Asia/Jerusalem",
@@ -173,7 +167,7 @@ export async function overview() {
     overdue,
     dueToday,
     startingToday,
-    inbox: { items: inbox, oldestItemAgeDays: oldestInboxDays },
+    inbox: { items: inbox.slice(0, 50).map(({ id, title, createdAt }) => ({ id, title, createdAt })), oldestItemAgeDays: oldestInboxDays },
     activeProjectsWithoutNextAction: allProjects.filter((p) => p.isStalled).map(({ id, name, outcome }) => ({ id, name, outcome })),
     reviewQueue: allProjects
       .filter((p) => p.needsReview)

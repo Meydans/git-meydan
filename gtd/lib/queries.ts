@@ -8,7 +8,7 @@ import type { ListKey } from "./lists";
 // includeDeferred: also return tasks whose start date is still in the future (hidden by default).
 // includeBlocked: also return Next tasks held back by a sequential project or parent.
 export type TaskFilters = {
-  context?: Task["context"];
+  context?: Task["context"] | "none"; // "none": tasks with no context yet
   projectId?: string;
   q?: string;
   includeDeferred?: boolean;
@@ -27,7 +27,8 @@ export const isDeferred = (today: string) => gt(tasks.startDate, today);
 
 function filterConditions({ context, projectId, q }: TaskFilters): SQL[] {
   const conditions: SQL[] = [];
-  if (context) conditions.push(eq(tasks.context, context));
+  if (context === "none") conditions.push(isNull(tasks.context));
+  else if (context) conditions.push(eq(tasks.context, context));
   if (projectId) conditions.push(eq(tasks.projectId, projectId));
   if (q) {
     const pattern = `%${q.replace(/[\\%_]/g, "\\$&")}%`;

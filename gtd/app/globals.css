@@ -601,3 +601,11 @@ html[data-offline] .new-project { pointer-events: none; opacity: 0.45; }
 .review-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding-top: 10px; border-top: 1px solid var(--border); }
 .status-form { display: flex; gap: 6px; }
 .status-form select { width: auto; }
+
+/* Context nudge (Next list) */
+.chip-toggle.no-ctx { border-style: dashed; }
+.ctx-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.ctx-picker form { display: contents; }
+.ctx-picker-label { font-size: 0.78rem; color: var(--muted); }
+.ctx-picker .chip { cursor: pointer; border: 1px dashed currentColor; opacity: 0.75; font: inherit; font-size: 0.78rem; }
+.ctx-picker .chip:hover, .ctx-picker .chip:focus-visible { opacity: 1; border-style: solid; }

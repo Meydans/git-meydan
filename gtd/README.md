@@ -47,6 +47,7 @@ Preview and production share one database, so preview deploys also apply migrati
 
 - **Hierarchy:** project → task → subtasks, one level deep. Notes checklists remain a lighter level below that. Triggers enforce the rules for every writer (UI, REST, MCP), in migration 0003:
   - a subtask can't have subtasks, and a task that has subtasks can't become one
+  - a subtask is never in the inbox: created or moved there, it lands in Next (migration 0005; the task page doesn't offer Inbox for subtasks)
   - a subtask always lives in its parent's project, and moving the parent moves it
   - completing a parent completes its open subtasks; the UI asks first
   - deleting a parent deletes its subtasks
@@ -95,6 +96,7 @@ Hebrew, right-to-left. Sign in at `/login` with `APP_PASSWORD`, which sets an Ht
 
 - **Lists**, in a sidebar on desktop and a drawer on mobile, with counts: `/inbox`, `/next`, `/waiting`, `/scheduled`, `/someday`, `/done`.
   - Each list has a capture box that adds to that list, a search box, and context and project filters, all kept in the URL.
+  - **Next** nudges toward contexts: a "ללא הקשר" filter chip with its count, and a one-tap context picker on each card that has no context.
   - **Scheduled** is a view, not a status. It shows every open task with a due date, grouped into overdue, today, tomorrow, this week, and later. Its sidebar badge counts overdue tasks.
 - **Task cards** show:
   - the project, colored consistently per project
@@ -178,7 +180,7 @@ curl -H "Authorization: Bearer $API_TOKEN" -H "Content-Type: application/json" \
 
 | Tool | What it does |
 | --- | --- |
-| `gtd_overview` | Today's date, counts per list, overdue and due-today tasks, the inbox, active projects with no next action, and the review queue |
+| `gtd_overview` | Today's date, counts per list (the inbox items come from the same query as the Inbox list, so they match its count), overdue and due-today tasks, the inbox, active projects with no next action, and the review queue |
 | `list_tasks` | Tasks in a list (or all open ones), filtered by context, project or text |
 | `get_task` / `create_tasks` / `update_task` / `delete_task` | Task CRUD. `create_tasks` takes a batch and defaults to the inbox; `update_task` with `status: "done"` completes a task |
 | `reorder_tasks` | Sets the manual order of sibling tasks (one parent's subtasks, or one project's top-level tasks) |
