@@ -1,6 +1,7 @@
 import type { McpServer, ServerContext } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { projectStatus, taskContext, taskStatus } from "@/db/schema";
+import { captureGuide } from "@/lib/capture-guide";
 import { appOrigin, withLinks } from "@/lib/links";
 import { lists } from "@/lib/lists";
 import { taskRuleMessage } from "@/lib/pg";
@@ -64,7 +65,7 @@ Contexts: @phone, @computer, @errand, @home. Every active project should have at
 Clarifying: a "next" task is one concrete physical action that can be done now, phrased verb-first ("להתקשר ל…", "לשלוח מייל…"). Whenever you put a task in "next" (creating or moving it), also set its context, inferred from the action: calling or arranging by phone -> @phone; writing, researching, documents, email, online forms -> @computer; buying, picking up, going somewhere -> @errand; things done at home -> @home. Ask only if it's truly unclear.
 Waiting vs next: if a task can't move until someone else answers, delivers or decides (an advisor, a lawyer, a family member), it belongs in "waiting", not "next": start its notes with "ממתין ל: <who/what>", and give it a startDate for when to follow up. A decision that needs outside input is waiting on that input; if the input requires an action of ours (booking the meeting, sending the question), that action is the next task. Point this out when you see such a task sitting in "next".
 Start dates: a task may have a startDate (defer date). Until that day it is hidden from its list (and from counts) and appears only in "deferred" and, if it has a due date, in "scheduled". On the start date it comes back to its list by itself. Use it for "not before" dates and tickler-style follow-ups (e.g. a waiting item to chase next week). startDate must be on or before dueDate.
-Start with gtd_overview to see today's date, counts, overdue items and stuck projects. New thoughts go to the inbox unless the user says otherwise.
+Start with gtd_overview to see today's date, counts, overdue items and stuck projects. When the user asks to add things, clarify each item right away when it's clear enough (list, context, project, dates; see the "capture" prompt for the full rules); only what can't be decided from what they wrote goes to the inbox.
 Hierarchy: project -> task -> subtasks (one level; notes checklists are a lighter level below that). Lists show top-level tasks; subtasks come nested under their parent. Break a bigger task into subtasks with create_tasks (parentId). Subtasks are already clarified, so they never sit in the inbox: one created without a status (or as inbox) is stored in "next"; in a sequential parent the later ones are simply blocked until their turn. Give subtasks a context like any next action.
 Sequential: a project or a parent task can be sequential. Then tasks are done in manual order (reorder_tasks): only the first open one is actionable and appears in Next; later ones are "blocked" until it's done. Mark something sequential when steps truly depend on each other.
 Project reviews: every active project has a review cadence (days). review_queue lists projects due for review or stalled (active with no available next action); after going over one with the user, call mark_project_reviewed. Project statuses: active, someday (on hold), done (completed), dropped (abandoned, kept in history; its tasks leave the working lists). Review status is metadata only: never create tasks or calendar events for reviews.
@@ -294,6 +295,28 @@ export function registerTools(server: McpServer) {
       annotations: destructive,
     },
     ({ id }, ctx) => run(ctx, () => service.deleteProject(id)),
+  );
+
+  server.registerPrompt(
+    "capture",
+    {
+      title: "Capture",
+      description: "Add things to do from free text, already processed: list, context, project, dates and subtasks.",
+      argsSchema: z.object({
+        text: z.string().optional().describe("What to capture: one item, a list, a brain dump or meeting notes"),
+      }),
+    },
+    ({ text }) => ({
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `Capture into my GTD system, following this guide:\n\n${captureGuide()}\n\n---\n\n${text?.trim() ? `What to capture:\n${text.trim()}` : "Ask me what to capture."}`,
+          },
+        },
+      ],
+    }),
   );
 
   server.registerPrompt(
