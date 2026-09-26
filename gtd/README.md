@@ -19,7 +19,7 @@ It is a separate Vercel project whose Root Directory is `gtd/`.
 `db/schema.ts`:
 
 - **projects**: `id`, `name`, `outcome` (the desired result, per GTD), `status` (`active` | `someday` | `done` | `dropped`), `sequential`, `review_cadence_days` (1–365, default 7), `last_reviewed_at`, `stall_acknowledged`, timestamps
-- **tasks**: `id`, `title`, `project_id` (optional; set to null when its project is deleted), `status` (`inbox` | `next` | `waiting` | `someday` | `done`), `context` (`@phone` | `@computer` | `@errand` | `@home` | null), `start_date` (optional defer date), `due_date`, `notes`, `parent_id` (one level of subtasks), `position` (manual order), `sequential` (for a parent's subtasks), timestamps. A check constraint keeps `start_date <= due_date`.
+- **tasks**: `id`, `title`, `project_id` (optional; set to null when its project is deleted), `status` (`inbox` | `next` | `waiting` | `someday` | `done`), `context` (`@focus` | `@quick` | `@out` | `@home` | null; by mode, not tool: 30+ min at a screen, ~10 min from the phone, going out, physical at home), `start_date` (optional defer date), `due_date`, `notes`, `parent_id` (one level of subtasks), `position` (manual order), `sequential` (for a parent's subtasks), timestamps. A check constraint keeps `start_date <= due_date`.
 
 ### Start (defer) dates
 
@@ -169,7 +169,7 @@ Unknown fields and invalid values return `400` with per-field `details`; a missi
 
 ```sh
 curl -H "Authorization: Bearer $API_TOKEN" -H "Content-Type: application/json" \
-  -d '{"title":"להתקשר לנגר","status":"next","context":"@phone"}' https://<host>/api/tasks
+  -d '{"title":"להתקשר לנגר","status":"next","context":"@quick"}' https://<host>/api/tasks
 ```
 
 `scripts/api-smoke.sh <base-url> <token>` runs the full CRUD flow against any instance and deletes the rows it creates.

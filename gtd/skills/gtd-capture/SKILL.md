@@ -43,16 +43,16 @@ A decision that depends on outside input is `waiting` on that input. If getting 
 
 ## 5. Context (required for `next` and for subtasks)
 
-Infer it from the verb and the place:
+A context says what mode the task needs, not which tool. A phone handles calls, email and payments anywhere, so what matters is attention and place:
 
 | Context | When |
 | --- | --- |
-| `@phone` | calling, arranging, booking or asking by phone (להתקשר, לתאם, לקבוע תור, לברר טלפונית) |
-| `@computer` | writing, email, research, documents, spreadsheets, online forms and purchases (לכתוב, לשלוח מייל, לבדוק באתר, למלא טופס, להזמין אונליין) |
-| `@errand` | going out: buying, picking up, dropping off (לקנות, לאסוף, להחזיר, לקפוץ ל…) |
-| `@home` | things done at home (לתקן, לסדר, לנקות, לצלם בבית) |
+| `@quick` | About 10 minutes from the phone, anywhere: a call, a message, a payment, booking or scheduling, a quick lookup (להתקשר, לתאם, לקבוע תור, לשלם, לשלוח הודעה, לברר) |
+| `@focus` | Real work at a screen, 30+ minutes: writing, research, documents, spreadsheets, comparing, planning (לכתוב, לנסח, לחקור, למלא מסמך, ליצור טבלה, להשוות) |
+| `@out` | Needs going out: buying, picking up, returning, an appointment somewhere (לקנות, לאסוף, להחזיר, לקפוץ ל…) |
+| `@home` | Physical work at home or at the car (לתקן, לסדר, לנקות, להרכיב) |
 
-If two contexts fit, pick where the first physical step happens. Ask only if it's truly unclear. `waiting`, `someday` and `inbox` items may have no context.
+Choose by the effort of the first physical step. For example, "לבדוק מחירים באתר" for five minutes is `@quick`, but a real market comparison is `@focus`. Ask only if it's truly unclear. `waiting`, `someday` and `inbox` items may have no context.
 
 ## 6. Projects
 
@@ -100,14 +100,14 @@ A short summary:
 
 **"צריך להתקשר מחר לרואה החשבון לגבי הדוח השנתי, לקנות נורות למרפסת, ולשאול את עו״ד כהן אם אפשר עסקה משולבת"**
 
-- "להתקשר לרואה החשבון לגבי הדוח השנתי": `next`, `@phone`, startDate is tomorrow. "מחר" is when to do it, not a deadline.
-- "לקנות נורות למרפסת": `next`, `@errand`.
-- "לשלוח לעו״ד כהן שאלה: האם אפשרית עסקה משולבת": `next`, `@computer`. The answer becomes a `waiting` item once the question is sent. Offer that, don't create it yet.
+- "להתקשר לרואה החשבון לגבי הדוח השנתי": `next`, `@quick`, startDate is tomorrow. "מחר" is when to do it, not a deadline.
+- "לקנות נורות למרפסת": `next`, `@out`.
+- "לשלוח לעו״ד כהן שאלה: האם אפשרית עסקה משולבת": `next`, `@quick`. The answer becomes a `waiting` item once the question is sent. Offer that, don't create it yet.
 
 **"לפצל את בדיקת שווי הדירה: לאתר מתווכים, לתאם פגישות, לקבל הערכות, להשוות"**
 
-The parent task gets `sequential: true`, and each subtask gets a context: לאתר מתווכים (`@computer`), לתאם פגישות (`@phone`), לקבל הערכות (`@phone`), להשוות בין ההערכות (`@computer`).
+The parent task gets `sequential: true`, and each subtask gets a context: לאתר מתווכים (`@quick`), לתאם פגישות (`@quick`), לקבל הערכות (`@quick`), להשוות בין ההערכות (`@focus`).
 
 **"רעיון: לעשות אלבום תמונות לסבתא ליום הולדת 80 בדצמבר"**
 
-This is an outcome with several steps and a real deadline. Ask one question: a project now, or `someday`? If it's a project, set its outcome to "אלבום מוכן ונמסר לסבתא". Its first next action is "לאסוף תמונות מהמשפחה" (`@phone`), with a dueDate on the birthday only if the user gave the date.
+This is an outcome with several steps and a real deadline. Ask one question: a project now, or `someday`? If it's a project, set its outcome to "אלבום מוכן ונמסר לסבתא". Its first next action is "לאסוף תמונות מהמשפחה" (`@quick`), with a dueDate on the birthday only if the user gave the date.

@@ -9,10 +9,10 @@ export const taskStatusLabels: Record<Task["status"], string> = {
 };
 
 export const contextLabels: Record<NonNullable<Task["context"]>, string> = {
-  "@phone": "טלפון",
-  "@computer": "מחשב",
-  "@errand": "סידורים",
-  "@home": "בית",
+  "@focus": "ריכוז",
+  "@quick": "קצר",
+  "@out": "בחוץ",
+  "@home": "בבית",
 };
 
 export const projectStatusLabels: Record<Project["status"], string> = {

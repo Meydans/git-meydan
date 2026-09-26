@@ -43,6 +43,13 @@
       "when": 1790450738288,
       "tag": "0005_subtask_status",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790452425694,
+      "tag": "0006_contexts_by_mode",
+      "breakpoints": true
     }
   ]
 }

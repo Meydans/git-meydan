@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { boolean, check, date, doublePrecision, index, integer, pgEnum, pgTable, text, timestamp, uuid, type AnyPgColumn } from "drizzle-orm/pg-core";
 
 export const taskStatus = pgEnum("task_status", ["inbox", "next", "waiting", "someday", "done"]);
-export const taskContext = pgEnum("task_context", ["@phone", "@computer", "@errand", "@home"]);
+export const taskContext = pgEnum("task_context", ["@focus", "@quick", "@out", "@home"]);
 export const projectStatus = pgEnum("project_status", ["active", "someday", "done", "dropped"]);
 
 const timestamps = {
