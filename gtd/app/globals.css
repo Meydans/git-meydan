@@ -23,9 +23,9 @@
   --l-someday: #6b7280;
   --l-done: #0f8a86;
 
-  --c-phone: #2f6fd6;
-  --c-computer: #8a4fd1;
-  --c-errand: #d0661b;
+  --c-quick: #2f6fd6;
+  --c-focus: #8a4fd1;
+  --c-out: #d0661b;
   --c-home: #2e8b57;
 
   --project-l: 38%;
@@ -57,9 +57,9 @@
     --l-someday: #a3aab5;
     --l-done: #3cc4bf;
 
-    --c-phone: #7aa9f5;
-    --c-computer: #c09af2;
-    --c-errand: #f3a066;
+    --c-quick: #7aa9f5;
+    --c-focus: #c09af2;
+    --c-out: #f3a066;
     --c-home: #6fd19b;
 
     --project-l: 72%;
@@ -323,9 +323,9 @@ button.danger { color: var(--danger); background: transparent; border-color: tra
   border: 1px solid var(--border);
   color: var(--muted);
 }
-.ctx-phone { --chip-color: var(--c-phone); }
-.ctx-computer { --chip-color: var(--c-computer); }
-.ctx-errand { --chip-color: var(--c-errand); }
+.ctx-quick { --chip-color: var(--c-quick); }
+.ctx-focus { --chip-color: var(--c-focus); }
+.ctx-out { --chip-color: var(--c-out); }
 .ctx-home { --chip-color: var(--c-home); }
 .chip.ctx { color: var(--chip-color); border-color: color-mix(in srgb, var(--chip-color) 45%, transparent); background: color-mix(in srgb, var(--chip-color) 8%, transparent); }
 .due-overdue { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); background: var(--danger-soft); font-weight: 600; }

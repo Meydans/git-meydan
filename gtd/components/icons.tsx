@@ -4,12 +4,12 @@ import {
   CircleArrowLeft,
   CircleCheckBig,
   CircleHelp,
+  Brain,
   Coffee,
   Inbox,
-  Laptop,
   House,
-  Phone,
-  ShoppingBag,
+  MapPin,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 import type { Task } from "@/db/schema";
@@ -27,8 +27,8 @@ export const listIcons: Record<ListKey, LucideIcon> = {
 };
 
 export const contextIcons: Record<NonNullable<Task["context"]>, LucideIcon> = {
-  "@phone": Phone,
-  "@computer": Laptop,
-  "@errand": ShoppingBag,
+  "@focus": Brain,
+  "@quick": Zap,
+  "@out": MapPin,
   "@home": House,
 };
