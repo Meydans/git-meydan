@@ -18,6 +18,9 @@ export type TaskFilters = {
 // Status lists show top-level tasks only; subtasks are shown under their parent.
 const topLevel = isNull(tasks.parentId);
 
+// Tasks of a dropped project leave every working list (they stay on the project's page).
+const notDropped = sql`not exists (select 1 from projects dp where dp.id = ${tasks.projectId} and dp.status = 'dropped')`;
+
 // A task is available once its start (defer) date has arrived; no start date means available now.
 export const isAvailable = (today: string) => or(isNull(tasks.startDate), lte(tasks.startDate, today))!;
 export const isDeferred = (today: string) => gt(tasks.startDate, today);
@@ -41,7 +44,7 @@ export function listTasks(list: ListKey, filters: TaskFilters, today = todayInIs
     return db
       .select()
       .from(tasks)
-      .where(and(ne(tasks.status, "done"), isDeferred(today), ...conditions))
+      .where(and(ne(tasks.status, "done"), isDeferred(today), notDropped, ...conditions))
       .orderBy(asc(tasks.startDate), asc(tasks.createdAt));
   }
   // Date views (deferred above, scheduled below) include subtasks, so no date is ever hidden.
@@ -50,7 +53,7 @@ export function listTasks(list: ListKey, filters: TaskFilters, today = todayInIs
     return db
       .select()
       .from(tasks)
-      .where(and(ne(tasks.status, "done"), isNotNull(tasks.dueDate), ...conditions))
+      .where(and(ne(tasks.status, "done"), isNotNull(tasks.dueDate), notDropped, ...conditions))
       .orderBy(...byDueThenCreated);
   }
   if (list === "done") {
@@ -66,7 +69,7 @@ export function listTasks(list: ListKey, filters: TaskFilters, today = todayInIs
   return db
     .select()
     .from(tasks)
-    .where(and(eq(tasks.status, list), topLevel, ...availability, ...sequence, ...conditions))
+    .where(and(eq(tasks.status, list), topLevel, notDropped, ...availability, ...sequence, ...conditions))
     .orderBy(...byDueThenCreated);
 }
 
@@ -88,7 +91,7 @@ export async function listCounts(today: string) {
     db
       .select({ status: tasks.status, n: count() })
       .from(tasks)
-      .where(and(topLevel, or(eq(tasks.status, "done"), and(isAvailable(today), or(ne(tasks.status, "next"), isUnblocked)))))
+      .where(and(topLevel, or(eq(tasks.status, "done"), and(notDropped, isAvailable(today), or(ne(tasks.status, "next"), isUnblocked)))))
       .groupBy(tasks.status),
     db
       .select({
@@ -96,8 +99,8 @@ export async function listCounts(today: string) {
         overdue: sql<number>`count(*) filter (where ${tasks.dueDate} < ${today})`.mapWith(Number),
       })
       .from(tasks)
-      .where(and(ne(tasks.status, "done"), isNotNull(tasks.dueDate))),
-    db.select({ n: count() }).from(tasks).where(and(ne(tasks.status, "done"), isDeferred(today))),
+      .where(and(ne(tasks.status, "done"), isNotNull(tasks.dueDate), notDropped)),
+    db.select({ n: count() }).from(tasks).where(and(ne(tasks.status, "done"), isDeferred(today), notDropped)),
   ]);
   const counts: Record<ListKey, number> = { inbox: 0, next: 0, waiting: 0, someday: 0, done: 0, scheduled: scheduled.n, deferred: deferred.n };
   for (const row of byStatus) counts[row.status] = row.n;

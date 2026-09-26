@@ -12,12 +12,13 @@ It is a separate Vercel project whose Root Directory is `gtd/`.
 - [x] Offline 1: installable app (PWA)
 - [x] Offline 2: offline capture queue
 - [x] Offline 3: offline reading of synced lists
+- [x] Project reviews: review cadence, stalled projects, and a review queue
 
 ## Data model
 
 `db/schema.ts`:
 
-- **projects**: `id`, `name`, `outcome` (the desired result, per GTD), `status` (`active` | `someday` | `done`), `sequential`, timestamps
+- **projects**: `id`, `name`, `outcome` (the desired result, per GTD), `status` (`active` | `someday` | `done` | `dropped`), `sequential`, `review_cadence_days` (1–365, default 7), `last_reviewed_at`, `stall_acknowledged`, timestamps
 - **tasks**: `id`, `title`, `project_id` (optional; set to null when its project is deleted), `status` (`inbox` | `next` | `waiting` | `someday` | `done`), `context` (`@phone` | `@computer` | `@errand` | `@home` | null), `start_date` (optional defer date), `due_date`, `notes`, `parent_id` (one level of subtasks), `position` (manual order), `sequential` (for a parent's subtasks), timestamps. A check constraint keeps `start_date <= due_date`.
 
 ### Start (defer) dates
@@ -69,6 +70,25 @@ Preview and production share one database, so preview deploys also apply migrati
   - `get_project` returns tasks in order with `blocked`
   - new tool: `reorder_tasks`
 
+### Project reviews
+
+Each project has a review cadence (default 7 days) and a last-review time. From them, every read derives (`lib/review.ts`):
+
+- **Stalled:** active, with no available next action, meaning no task in Next that is neither deferred nor blocked in a sequence.
+- **Due for review:** active, and never reviewed or reviewed longer ago than its cadence. Projects that existed before this feature start out due.
+- **Needs review:** due, or stalled in a way the last review didn't acknowledge. A project stalled at the moment it is reviewed leaves the queue until its next review date. A stall that starts after the review enters the queue right away. The acknowledgement clears once the project has a next action again.
+
+Where it shows:
+
+- **`/review`** is a queue of projects that need review, stalled first and then longest overdue. The sidebar item's badge shows how many there are.
+  - Each card shows the outcome, days since review, the cadence (editable), the open tasks, and a stalled warning.
+  - Inline actions on each card: add a next action, change the status, and mark it as reviewed. Marking it reviewed removes the card.
+- **`/projects`** flags stalled projects, and **`/projects/:id`** has the review line and a "mark reviewed" button.
+- **`dropped`** is a project status for abandoned projects. Their tasks are hidden from every list and count.
+- The daily lists never show reviews, and no review tasks or calendar events are created.
+- **REST:** `POST /api/projects/:id/review` marks a project as reviewed.
+- **MCP:** the new tools `review_queue` and `mark_project_reviewed`, health fields on `list_projects`, `reviewQueue` in `gtd_overview`, and `reviewCadenceDays` on create and update.
+
 ## Web UI
 
 Hebrew, right-to-left. Sign in at `/login` with `APP_PASSWORD`, which sets an HttpOnly session cookie for 30 days.
@@ -83,7 +103,8 @@ Hebrew, right-to-left. Sign in at `/login` with `APP_PASSWORD`, which sets an Ht
   - a notes preview
   - Note lines written as `- [ ] item` render as checklist items that can be ticked right on the card, with a progress chip.
 - **`/tasks/:id`**: a full edit page with list tabs, context chips, a project picker, and due-date presets.
-- **`/projects`**: cards per status with the outcome and a progress bar. Active projects with no next action are flagged.
+- **`/projects`**: cards per status with the outcome and a progress bar. Stalled projects are flagged.
+- **`/review`**: the project review queue (see Project reviews).
   - **`/projects/:id`** shows the project's tasks by list, with a capture box that adds next actions to that project.
 
 Pages read the database on the server, and edits go through Server Actions. The browser never sees `API_TOKEN`.
@@ -138,9 +159,10 @@ Every request needs `Authorization: Bearer $API_TOKEN`. Bodies and responses are
 | `GET` | `/api/projects` | Filter: `?status=` |
 | `POST` | `/api/projects` | `name` required; `status` defaults to `active` |
 | `GET` / `PATCH` / `DELETE` | `/api/projects/:id` | Deleting a project keeps its tasks and clears their `projectId` |
+| `POST` | `/api/projects/:id/review` | Marks the project as reviewed now; returns it with its review state |
 
 Task fields: `title`, `projectId`, `status`, `context`, `startDate` and `dueDate` (`YYYY-MM-DD`), `notes`.
-Project fields: `name`, `outcome`, `status`.
+Project fields: `name`, `outcome`, `status`, `sequential`, `reviewCadenceDays`.
 Unknown fields and invalid values return `400` with per-field `details`; a missing or malformed id returns `404`.
 
 ```sh
@@ -156,11 +178,12 @@ curl -H "Authorization: Bearer $API_TOKEN" -H "Content-Type: application/json" \
 
 | Tool | What it does |
 | --- | --- |
-| `gtd_overview` | Today's date, counts per list, overdue and due-today tasks, the inbox, and active projects with no next action |
+| `gtd_overview` | Today's date, counts per list, overdue and due-today tasks, the inbox, active projects with no next action, and the review queue |
 | `list_tasks` | Tasks in a list (or all open ones), filtered by context, project or text |
 | `get_task` / `create_tasks` / `update_task` / `delete_task` | Task CRUD. `create_tasks` takes a batch and defaults to the inbox; `update_task` with `status: "done"` completes a task |
 | `reorder_tasks` | Sets the manual order of sibling tasks (one parent's subtasks, or one project's top-level tasks) |
-| `list_projects` / `get_project` | Projects with outcome, per-list counts, progress, and whether they have a next action |
+| `list_projects` / `get_project` | Projects with outcome, per-list counts, progress, and review state (`isStalled`, `isDueForReview`, `needsReview`) |
+| `review_queue` / `mark_project_reviewed` | The projects that need review, with their open tasks; marking one reviewed takes it off the queue |
 | `create_project` / `update_project` / `delete_project` | Project CRUD. `create_project` can create its first next actions in the same call |
 
 There is also a `weekly_review` prompt, and server instructions that explain the GTD lists and contexts to the model.

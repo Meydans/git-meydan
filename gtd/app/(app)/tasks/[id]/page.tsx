@@ -38,7 +38,7 @@ export default async function TaskPage({ params, searchParams }: PageProps<"/tas
 
   const { from, rule } = await searchParams;
   const back = safePath(from, `/${task.status}`);
-  const selectable = projects.filter((p) => p.status !== "done" || p.id === task.projectId);
+  const selectable = projects.filter((p) => (p.status !== "done" && p.status !== "dropped") || p.id === task.projectId);
   const [parent] = task.parentId ? await db.select().from(tasks).where(eq(tasks.id, task.parentId)) : [];
 
   // Tasks this one could be nested under: open top-level tasks in the same project (or also

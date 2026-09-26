@@ -4,13 +4,15 @@ import { createProject } from "@/app/actions";
 import { projectStatus, type Project } from "@/db/schema";
 import { projectHue, projectStatusLabels } from "@/lib/labels";
 import { projectsWithCounts } from "@/lib/queries";
+import { projectHealth } from "@/lib/review";
 import { requireSession } from "@/lib/session";
 
 export default async function ProjectsPage({ searchParams }: PageProps<"/projects">) {
   await requireSession();
   const { status: raw } = await searchParams;
   const status = projectStatus.enumValues.find((s) => s === raw) ?? "active";
-  const all = await projectsWithCounts();
+  const [all, health] = await Promise.all([projectsWithCounts(), projectHealth()]);
+  const healthById = new Map(health.map((h) => [h.id, h]));
   const list = all.filter((p) => p.status === status);
   const tabCount = (s: Project["status"]) => all.filter((p) => p.status === s).length;
 
@@ -50,7 +52,8 @@ export default async function ProjectsPage({ searchParams }: PageProps<"/project
         <div className="project-grid">
           {list.map((p) => {
             const pct = p.total ? Math.round((p.done / p.total) * 100) : 0;
-            const stuck = p.status === "active" && !p.byStatus.next;
+            const h = healthById.get(p.id);
+            const stuck = !!h?.isStalled;
             return (
               <Link key={p.id} href={`/projects/${p.id}`} className="project-card" style={{ "--hue": projectHue(p.id) } as React.CSSProperties}>
                 <div className="project-card-head">
@@ -66,7 +69,7 @@ export default async function ProjectsPage({ searchParams }: PageProps<"/project
                   {p.byStatus.next ? <span>{p.byStatus.next} הבאות</span> : null}
                   {p.byStatus.waiting ? <span>{p.byStatus.waiting} ממתינות</span> : null}
                   {stuck && (
-                    <span className="warn"><AlertTriangle size={13} /> אין פעולה הבאה</span>
+                    <span className="warn" title="תקוע: אין פעולה הבאה זמינה"><AlertTriangle size={13} /> תקוע</span>
                   )}
                 </div>
               </Link>

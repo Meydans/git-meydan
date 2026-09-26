@@ -1,9 +1,9 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, date, doublePrecision, index, pgEnum, pgTable, text, timestamp, uuid, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { boolean, check, date, doublePrecision, index, integer, pgEnum, pgTable, text, timestamp, uuid, type AnyPgColumn } from "drizzle-orm/pg-core";
 
 export const taskStatus = pgEnum("task_status", ["inbox", "next", "waiting", "someday", "done"]);
 export const taskContext = pgEnum("task_context", ["@phone", "@computer", "@errand", "@home"]);
-export const projectStatus = pgEnum("project_status", ["active", "someday", "done"]);
+export const projectStatus = pgEnum("project_status", ["active", "someday", "done", "dropped"]);
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -21,8 +21,15 @@ export const projects = pgTable("projects", {
   status: projectStatus("status").notNull().default("active"),
   // Sequential projects surface only their first open task as actionable.
   sequential: boolean("sequential").notNull().default(false),
+  // Review governance (lib/review.ts): an active project is due for review when it was never
+  // reviewed or its last review is older than its cadence.
+  reviewCadenceDays: integer("review_cadence_days").notNull().default(7),
+  lastReviewedAt: timestamp("last_reviewed_at", { withTimezone: true }),
+  // Whether the project was stalled when last reviewed: a review acknowledges a stall until
+  // the next review is due, while a stall that starts after the review surfaces right away.
+  stallAcknowledged: boolean("stall_acknowledged").notNull().default(false),
   ...timestamps,
-});
+}, (p) => [check("projects_review_cadence_range", sql`${p.reviewCadenceDays} between 1 and 365`)]);
 
 // Manual order within a project or under a parent. clock_timestamp() gives every new row
 // (even in one multi-row insert) a larger value, so new tasks land at the end; reordering

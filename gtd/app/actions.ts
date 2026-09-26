@@ -9,7 +9,8 @@ import { toggleLine } from "@/lib/notes";
 import { taskRuleCode } from "@/lib/pg";
 import { safePath } from "@/lib/safe-path";
 import { checkPassword, endSession, requireSession, startSession } from "@/lib/session";
-import { idParam, projectCreate, taskCreate, taskStatusValue } from "@/lib/validation";
+import { markProjectReviewed } from "@/lib/review";
+import { idParam, projectCreate, projectStatusValue, reviewCadence, taskCreate, taskStatusValue } from "@/lib/validation";
 import { z } from "zod";
 
 // Form fields arrive as strings; an empty optional field means "no value".
@@ -171,6 +172,28 @@ export async function createProject(formData: FormData) {
 export async function updateProject(formData: FormData) {
   await requireSession();
   await db.update(projects).set(projectFields(formData)).where(eq(projects.id, formId(formData)));
+  refresh();
+}
+
+// ---------- Review governance ----------
+
+export async function markReviewed(formData: FormData) {
+  await requireSession();
+  await markProjectReviewed(formId(formData));
+  refresh();
+}
+
+export async function setProjectStatus(formData: FormData) {
+  await requireSession();
+  const status = projectStatusValue.parse(formData.get("status"));
+  await db.update(projects).set({ status }).where(eq(projects.id, formId(formData)));
+  refresh();
+}
+
+export async function setReviewCadence(formData: FormData) {
+  await requireSession();
+  const reviewCadenceDays = reviewCadence.parse(formData.get("reviewCadenceDays"));
+  await db.update(projects).set({ reviewCadenceDays }).where(eq(projects.id, formId(formData)));
   refresh();
 }
 

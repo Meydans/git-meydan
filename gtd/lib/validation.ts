@@ -28,7 +28,11 @@ export const projectCreate = z.strictObject({
   outcome: nullableText.optional(),
   status: z.enum(projectStatus.enumValues).optional(),
   sequential: z.boolean().optional(),
+  reviewCadenceDays: z.number().int().min(1).max(365).optional(),
 });
+
+export const projectStatusValue = z.enum(projectStatus.enumValues);
+export const reviewCadence = z.coerce.number().int().min(1).max(365);
 
 export const projectUpdate = projectCreate.partial();
 
