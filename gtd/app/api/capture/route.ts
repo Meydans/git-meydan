@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { projects, taskStatus, tasks } from "@/db/schema";
+import { projects, taskContext, taskStatus, tasks } from "@/db/schema";
 import { SESSION_COOKIE, isValidSession } from "@/lib/session";
 
 // Sync target for the offline capture queue. Authenticated by the browser session cookie
@@ -15,6 +15,7 @@ const body = z.object({
         title: z.string().trim().min(1).max(500),
         status: z.enum(taskStatus.enumValues).default("inbox"),
         projectId: z.uuid().optional(),
+        context: z.enum(taskContext.enumValues).nullish(),
         startDate: z.iso.date().optional(),
         capturedAt: z.iso.datetime(),
       }),
@@ -49,6 +50,7 @@ export async function POST(request: Request) {
         title: i.title,
         status: i.status,
         projectId: i.projectId && existing.has(i.projectId) ? i.projectId : null,
+        context: i.context ?? null,
         startDate: i.startDate ?? null,
         // Keep capture order, but never trust a clock that runs ahead of the server.
         createdAt: new Date(Math.min(Date.parse(i.capturedAt), now)),

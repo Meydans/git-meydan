@@ -58,7 +58,7 @@ Preview and production share one database, so preview deploys also apply migrati
   - Blocked tasks stay out of Next and its count, and are shown with 🔒 on project and task pages.
   - Completing or reordering the first task surfaces the next one.
   - The same rule is implemented once as SQL (for list filters) and once in JS (`lib/sequence.ts`).
-- **Project page:** one list in manual order, with a status chip per task, ↑/↓ controls, and a sequential toggle.
+- **Project page:** tasks in manual order, grouped into sections (see Web UI). A sequential parent is one box with its current step marked "עכשיו" and the later steps locked. ↑/↓ controls reorder, and a toggle switches the project between sequential and parallel.
 - **Task page:**
   - a link to the parent, and a parent picker (open top-level tasks of the same project)
   - a subtask panel to add and reorder subtasks, with a sequential toggle
@@ -106,6 +106,7 @@ Hebrew, right-to-left, in Rubik (self-hosted by `next/font`, so it works offline
 
 - **Lists**, in a sidebar on desktop and a drawer on mobile, with counts: `/inbox`, `/next`, `/waiting`, `/scheduled`, `/someday`, `/done`.
   - Each list has a capture box that adds to that list, a search box, and context and project filters, all kept in the URL.
+  - **Every capture box understands `@context`:** `להתקשר לשמאי @קצר` is saved as "להתקשר לשמאי" with the context `@quick` (`lib/quick-add.ts`). Both the English names (`@focus`, `@quick`, `@out`, `@home`) and the Hebrew labels (`@ריכוז`, `@קצר`, `@בחוץ`, `@בבית`) work. Any other `@word` stays in the title. The context travels through the offline capture queue.
   - **Next** nudges toward contexts: a "ללא הקשר" filter chip with its count, and a one-tap context picker on each card that has no context.
   - **Scheduled** is a view, not a status. It shows every open task with a due date, grouped into overdue, today, tomorrow, this week, and later. Its sidebar badge counts overdue tasks.
 - **Task cards** show:
@@ -126,7 +127,19 @@ Hebrew, right-to-left, in Rubik (self-hosted by `next/font`, so it works offline
   On phones, the status tabs become pills, the outcome is hidden, and the review badge shrinks to an amber dot.
 - **`/review`**: the weekly review in focus mode (see Project reviews).
 - **Phones (≤ 640px)**: a bottom tab bar with Inbox, Next, Projects and Review, and a "+" in the middle that opens a quick-capture sheet (into the inbox). The other lists stay in the drawer behind the top bar's menu.
-  - **`/projects/:id`** shows the project's tasks by list, with a capture box that adds next actions to that project.
+  - **`/projects/:id`**:
+    - **Header:** a breadcrumb, then the name, review badge and outcome, with "עריכה" (edit) and "סקור עכשיו" (review now). Review now opens the weekly review on this project, even when it isn't due.
+    - **Quick add:** a box that adds next actions to the project and understands `@context`.
+    - **Sections:**
+      - Next, with how many actions are available now and how many are queued in a sequence.
+      - Waiting, showing who it's waiting for, the follow-up date, and follow-up chips.
+      - Someday and Done, collapsed.
+    - **Side panel:** a progress bar and the review info (cadence, last reviewed, created).
+    - **Phones:**
+      - a top bar with back and a ⋯ menu (review now, edit)
+      - Tasks / Info tabs
+      - rows at least 48px tall with 22px checkboxes
+      - quick add pinned above the tab bar
 
 Pages read the database on the server, and edits go through Server Actions. The browser never sees `API_TOKEN`.
 `proxy.ts` sends signed-out visitors to `/login`, and every page and action also checks the session itself.

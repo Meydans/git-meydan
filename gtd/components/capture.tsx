@@ -6,6 +6,7 @@ import { CalendarClock, Plus } from "lucide-react";
 import type { Task } from "@/db/schema";
 import { formatDate, todayInIsrael } from "@/lib/labels";
 import { capture } from "@/lib/offline-queue";
+import { parseQuickAdd } from "@/lib/quick-add";
 
 type Props = { status: Task["status"]; projectId?: string; placeholder: string; autoFocus?: boolean };
 
@@ -22,12 +23,14 @@ export function Capture({ status, projectId, placeholder, autoFocus }: Props) {
     e.preventDefault();
     const text = title.trim();
     if (!text) return;
+    const parsed = parseQuickAdd(text);
     const deferredTo = startDate > todayInIsrael() ? startDate : "";
     setTitle("");
     setStartDate("");
     setShowDate(false);
     setNote(deferredTo ? `נשמר ב"נדחה להמשך" עד ${formatDate(deferredTo)}` : "");
-    if ((await capture({ title: text, status, projectId, startDate: startDate || undefined })) > 0) router.refresh();
+    const item = { title: parsed.title, status, projectId, context: parsed.context ?? undefined, startDate: startDate || undefined };
+    if ((await capture(item)) > 0) router.refresh();
   }
 
   return (

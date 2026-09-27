@@ -157,7 +157,8 @@ async function ProjectsStep({ projectId, today, nextStep }: { projectId?: string
   const queue = queueOf(health);
   const reviewedToday = health.filter((p) => p.status === "active" && !p.needsReview && p.daysSinceReview === 0);
   const done = reviewedToday.length;
-  const current = queue.find((p) => p.id === projectId) ?? queue[0];
+  // "Review now" from a project page may open a project that isn't due yet.
+  const current = queue.find((p) => p.id === projectId) ?? health.find((p) => p.id === projectId && p.status === "active") ?? queue[0];
 
   if (!current) {
     return (
@@ -173,8 +174,8 @@ async function ProjectsStep({ projectId, today, nextStep }: { projectId?: string
     );
   }
 
-  const position = queue.indexOf(current);
-  const after = queue[position + 1];
+  const position = queue.indexOf(current); // -1 when reviewing a project that isn't due
+  const after = position === -1 ? queue[0] : queue[position + 1];
   const then = after ? href("projects", after.id) : nextStep ? href(nextStep) : "/projects";
   const from = href("projects", current.id);
   const open = (await projectTasksOrdered(current.id)).filter((t) => t.status !== "done");
@@ -188,7 +189,7 @@ async function ProjectsStep({ projectId, today, nextStep }: { projectId?: string
       <div className="review-body">
         <aside className="review-queue-side">
           <p className="queue-caption">
-            פרויקטים לסקירה · {position + 1} מתוך {queue.length}
+            {position === -1 ? "סקירה יזומה · לא בתור" : `פרויקטים לסקירה · ${position + 1} מתוך ${queue.length}`}
           </p>
           <ul>
             {queue.map((p, i) => (
@@ -216,7 +217,7 @@ async function ProjectsStep({ projectId, today, nextStep }: { projectId?: string
         </aside>
 
         <main className="review-main">
-          <p className="queue-caption mobile-only">פרויקט {position + 1} מתוך {queue.length}</p>
+          <p className="queue-caption mobile-only">{position === -1 ? "סקירה יזומה" : `פרויקט ${position + 1} מתוך ${queue.length}`}</p>
           <div className="review-project-head" style={{ "--hue": projectHue(current.id) } as React.CSSProperties}>
             <h1>
               <span className="project-dot" />
