@@ -69,22 +69,29 @@ export function TriageItem({ task, from, today, index, total, blocked, subtaskCo
       {needsFollowUp && (
         <div className="follow-up">
           <span>אין תאריך מעקב. מתי לבדוק שוב?</span>
-          <div className="follow-up-chips">
-            {([[1, "מחר"], [7, "בעוד שבוע"]] as const).map(([days, label]) => (
-              <form key={days} action={setFollowUp}>
-                <input type="hidden" name="id" value={task.id} />
-                <input type="hidden" name="days" value={days} />
-                <button className={days === 7 ? "chip-amber on" : "chip-amber"}>{label}</button>
-              </form>
-            ))}
-            <form action={setFollowUp} className="follow-up-date">
-              <input type="hidden" name="id" value={task.id} />
-              <input type="date" name="date" min={today} aria-label="תאריך מעקב" required />
-              <button className="chip-amber">קבע</button>
-            </form>
-          </div>
+          <FollowUpChips id={task.id} today={today} />
         </div>
       )}
     </li>
+  );
+}
+
+// When to check a waiting item again: tomorrow, in a week, or a date (becomes its start date).
+export function FollowUpChips({ id, today }: { id: string; today: string }) {
+  return (
+    <div className="follow-up-chips">
+      {([[1, "מחר"], [7, "בעוד שבוע"]] as const).map(([days, label]) => (
+        <form key={days} action={setFollowUp}>
+          <input type="hidden" name="id" value={id} />
+          <input type="hidden" name="days" value={days} />
+          <button className={days === 7 ? "chip-amber on" : "chip-amber"}>{label}</button>
+        </form>
+      ))}
+      <form action={setFollowUp} className="follow-up-date">
+        <input type="hidden" name="id" value={id} />
+        <input type="date" name="date" min={today} aria-label="תאריך מעקב" required />
+        <button className="chip-amber">קבע</button>
+      </form>
+    </div>
   );
 }
