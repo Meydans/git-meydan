@@ -85,6 +85,10 @@
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
+/* Never pan sideways: off-canvas pieces (the closed drawer) sit past the screen edge, and some
+   phone browsers (iOS Safari) otherwise let the page scroll to them. "clip", not "hidden", so
+   sticky bars keep working. */
+html, body { overflow-x: clip; }
 body {
   margin: 0;
   background: var(--bg);
@@ -194,10 +198,12 @@ button.danger { color: var(--danger); background: transparent; border-color: tra
     z-index: 40;
     width: min(300px, 85vw);
     transform: translateX(100%);
-    transition: transform 0.2s ease;
+    /* Closed: fully hidden once it has slid out, so it can never peek in at the edge. */
+    visibility: hidden;
+    transition: transform 0.2s ease, visibility 0s linear 0.2s;
     box-shadow: 0 0 40px rgb(0 0 0 / 25%);
   }
-  .sidebar-open { transform: none; }
+  .sidebar-open { transform: none; visibility: visible; transition: transform 0.2s ease; }
   .sidebar-close { display: inline-flex; }
   .scrim { display: block; position: fixed; inset: 0; z-index: 30; background: rgb(0 0 0 / 40%); }
   .content { padding: 20px 16px 96px; }
