@@ -1064,6 +1064,24 @@ Return ONLY the category name in plain text, nothing else.
       return data;
     }
 
+    // Collapses rows that name the same item. The merged item stays on the
+    // shopping list if any copy was still needed.
+    function mergeDuplicateItems(items) {
+      const byName = new Map();
+      for (const item of items) {
+        const key = normalizeItemName(item.name);
+        const kept = byName.get(key);
+        if (!kept) {
+          byName.set(key, item);
+          continue;
+        }
+        kept.has = kept.has && item.has;
+        if (item.type === "mandatory") kept.type = "mandatory";
+        if (kept.category === "OTHER" && item.category && item.category !== "OTHER") kept.category = item.category;
+      }
+      return { items: [...byName.values()], removed: items.length - byName.size };
+    }
+
     async function loadMasterItems() {
       try {
         const list = getCurrentList();
@@ -1090,23 +1108,26 @@ Return ONLY the category name in plain text, nothing else.
           });
         });
 
+        const { items: uniqueItems, removed: duplicatesRemoved } = mergeDuplicateItems(nextItems);
+
         // AI Categorization for missing categories
-        const missingCats = nextItems.filter(i => i.category === "OTHER" || i.category === "");
+        const missingCats = uniqueItems.filter(i => i.category === "OTHER" || i.category === "");
         if (missingCats.length > 0) {
           setAppStatus(`Categorizing ${missingCats.length} items with AI...`);
           await categorizeItemsInBatch(missingCats);
-          setSourceDirty(list, data, true);
-        } else {
-          setSourceDirty(list, data, false);
         }
+        setSourceDirty(list, data, missingCats.length > 0 || duplicatesRemoved > 0);
 
-        data.items = nextItems;
+        data.items = uniqueItems;
         data.dirtyItemIds = new Set(); // fresh load = no local changes pending
         localStorage.setItem(list.cacheKey, JSON.stringify(data.items));
         renderListSwitcher();
         renderMasterList();
 
-        setAppStatus(`Loaded ${data.items.length} items. ${missingCats.length > 0 ? 'AI filled missing categories. Sync to save!' : ''}`);
+        const notes = [];
+        if (duplicatesRemoved > 0) notes.push(`Merged ${duplicatesRemoved} duplicate${duplicatesRemoved > 1 ? "s" : ""}.`);
+        if (missingCats.length > 0) notes.push("AI filled missing categories.");
+        setAppStatus(`Loaded ${data.items.length} items. ${notes.join(" ")}`);
         updateSyncButton();
       } catch (err) {
         setAppStatus(`Load failed: ${err.message}`);
@@ -1514,10 +1535,18 @@ The "order" array MUST contain all categories provided.
           values.push([item.name, item.type, item.has ? "checked" : "", item.category]);
         });
 
-        await sheetsFetch(`values/${list.sheetName}!A2:D${values.length + 1}?valueInputOption=RAW`, {
-          method: "PUT",
-          body: JSON.stringify({ values })
-        });
+        // Blank out rows left over from a longer previous list, otherwise they
+        // survive in the sheet and come back as ghost/duplicate items on load.
+        const existing = await sheetsFetch(`values/${list.sheetName}!A2:D`);
+        const existingRowCount = (existing.values || []).length;
+        while (values.length < existingRowCount) values.push(["", "", "", ""]);
+
+        if (values.length > 0) {
+          await sheetsFetch(`values/${list.sheetName}!A2:D${values.length + 1}?valueInputOption=RAW`, {
+            method: "PUT",
+            body: JSON.stringify({ values })
+          });
+        }
 
         setSourceDirty(list, data, false);
         data.dirtyItemIds.clear();
