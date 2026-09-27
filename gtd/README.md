@@ -95,7 +95,6 @@ Where it shows:
   - **Phones:** one task per card with a 2×2 grid of big buttons; swipe between cards, and "keep" moves on to the next card. The skip and mark-reviewed buttons stay pinned at the bottom.
 - **`/projects`** flags stalled projects and shows a banner when projects wait for review. The banner leads straight to the projects step. **`/projects/:id`** has the review line and a "mark reviewed" button.
 - **The sidebar item's badge** (and the tab bar's on phones) counts the projects in the review queue.
-- **`/projects`** flags stalled projects, and **`/projects/:id`** has the review line and a "mark reviewed" button.
 - **`dropped`** is a project status for abandoned projects. Their tasks are hidden from every list and count.
 - The daily lists never show reviews, and no review tasks or calendar events are created.
 - **REST:** `POST /api/projects/:id/review` marks a project as reviewed.
