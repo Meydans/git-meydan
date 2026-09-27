@@ -93,7 +93,7 @@ Where it shows:
     3. Is there a clear next action? If not, the project is stalled and you can add one right there.
   - **"סמן כנסקר והמשך"** (mark reviewed and continue) marks the project reviewed and moves to the next project, or to the next step after the last one. "דלג" (skip) moves on without marking it.
   - **Phones:** one task per card with a 2×2 grid of big buttons; swipe between cards, and "keep" moves on to the next card. The skip and mark-reviewed buttons stay pinned at the bottom.
-- **`/projects`** shows a banner when projects wait for review. It leads straight to the projects step.
+- **`/projects`** flags stalled projects and shows a banner when projects wait for review. The banner leads straight to the projects step. **`/projects/:id`** has the review line and a "mark reviewed" button.
 - **The sidebar item's badge** (and the tab bar's on phones) counts the projects in the review queue.
 - **`/projects`** flags stalled projects, and **`/projects/:id`** has the review line and a "mark reviewed" button.
 - **`dropped`** is a project status for abandoned projects. Their tasks are hidden from every list and count.
