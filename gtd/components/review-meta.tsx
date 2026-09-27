@@ -11,6 +11,17 @@ export function reviewedLabel(days: number | null) {
   return `נסקר לפני ${days} ימים`;
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// The short review state on a project card: never reviewed, due, or when the next review comes.
+export function reviewBadge(project: ProjectHealth, now = new Date()) {
+  if (project.status !== "active") return null;
+  if (project.daysSinceReview === null) return { text: "טרם נסקר", due: true };
+  if (project.isDueForReview) return { text: `לסקירה · ${reviewedLabel(project.daysSinceReview)}`, due: true };
+  const days = Math.max(1, Math.ceil((project.nextReviewAt!.getTime() - now.getTime()) / DAY_MS));
+  return { text: `${reviewedLabel(project.daysSinceReview)} · הבא ${days === 1 ? "מחר" : `בעוד ${days} ימים`}`, due: false };
+}
+
 export function StalledWarning() {
   return (
     <p className="stalled-box">

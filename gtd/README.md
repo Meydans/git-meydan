@@ -92,7 +92,7 @@ Where it shows:
 
 ## Web UI
 
-Hebrew, right-to-left. Sign in at `/login` with `APP_PASSWORD`, which sets an HttpOnly session cookie for 30 days.
+Hebrew, right-to-left, in Rubik (self-hosted by `next/font`, so it works offline). Colors are CSS tokens in `app/globals.css`. The dark theme follows the design handoff; the light theme is derived from it with the same hues and text kept at 4.5:1 contrast or better. The app follows the system theme. Sign in at `/login` with `APP_PASSWORD`, which sets an HttpOnly session cookie for 30 days.
 
 - **Lists**, in a sidebar on desktop and a drawer on mobile, with counts: `/inbox`, `/next`, `/waiting`, `/scheduled`, `/someday`, `/done`.
   - Each list has a capture box that adds to that list, a search box, and context and project filters, all kept in the URL.
@@ -105,7 +105,15 @@ Hebrew, right-to-left. Sign in at `/login` with `APP_PASSWORD`, which sets an Ht
   - a notes preview
   - Note lines written as `- [ ] item` render as checklist items that can be ticked right on the card, with a progress chip.
 - **`/tasks/:id`**: a full edit page with list tabs, context chips, a project picker, and due-date presets.
-- **`/projects`**: cards per status with the outcome and a progress bar. Stalled projects are flagged.
+- **`/projects`**: a card per project, two across on desktop and one column on phones. Each card shows:
+  - its review badge ("טרם נסקר", or when it was reviewed and when the next review is due)
+  - the outcome, two lines at most
+  - **the next action** with its context: the first actionable task in project order, or the first actionable subtask of a parent (`lib/next-action.ts`)
+  - a bar of done / next / waiting / someday with counts
+  - a soft hint when more than 3 next actions run in parallel with nothing done yet
+  - a stalled notice when there is no available next action
+
+  On phones, the status tabs become pills, the outcome is hidden, and the review badge shrinks to an amber dot.
 - **`/review`**: the project review queue (see Project reviews).
   - **`/projects/:id`** shows the project's tasks by list, with a capture box that adds next actions to that project.
 
