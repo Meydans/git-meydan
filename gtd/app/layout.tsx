@@ -1,6 +1,10 @@
 import type { Metadata, Viewport } from "next";
+import { Rubik } from "next/font/google";
 import { ServiceWorker } from "@/components/pwa";
 import "./globals.css";
+
+// Self-hosted at build time, so the font also works offline in the installed app.
+const rubik = Rubik({ subsets: ["hebrew", "latin"], variable: "--font-rubik", display: "swap" });
 
 export const metadata: Metadata = {
   title: "GTD",
@@ -11,14 +15,14 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#161a18" },
+    { media: "(prefers-color-scheme: light)", color: "#fafafa" },
+    { media: "(prefers-color-scheme: dark)", color: "#181a1a" },
   ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="he" dir="rtl">
+    <html lang="he" dir="rtl" className={rubik.variable}>
       <body>
         {children}
         <ServiceWorker />

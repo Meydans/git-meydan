@@ -18,8 +18,8 @@ export default function manifest(): Manifest {
     scope: "/",
     display: "standalone",
     orientation: "portrait",
-    background_color: "#f5f6f4",
-    theme_color: "#1f7a4d",
+    background_color: "#f4f5f4",
+    theme_color: "#2d7a45",
     categories: ["productivity"],
     // Task links (e.g. from calendar events) open in the installed app, reusing its window.
     handle_links: "preferred",
