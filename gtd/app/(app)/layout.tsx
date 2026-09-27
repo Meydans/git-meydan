@@ -1,6 +1,7 @@
 import { OfflineStatus } from "@/components/offline-status";
 import { PendingCaptures } from "@/components/pending-captures";
 import { Sidebar } from "@/components/sidebar";
+import { TabBar } from "@/components/tab-bar";
 import { todayInIsrael } from "@/lib/labels";
 import { allProjects, listCounts } from "@/lib/queries";
 import { reviewCount } from "@/lib/review";
@@ -19,6 +20,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <PendingCaptures />
         {children}
       </main>
+      <TabBar reviewDue={reviewDue} />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { projects, tasks } from "@/db/schema";
+import { addDays, todayInIsrael } from "@/lib/labels";
 import { toggleLine } from "@/lib/notes";
 import { taskRuleCode } from "@/lib/pg";
 import { safePath } from "@/lib/safe-path";
@@ -100,6 +101,21 @@ export async function setTaskStatus(formData: FormData) {
   refresh();
 }
 
+// Follow-up for a waiting item: its start date, so it leaves Waiting until the day to check
+// again. Takes a number of days from today or a date; never later than the due date.
+export async function setFollowUp(formData: FormData) {
+  await requireSession();
+  const id = formId(formData);
+  const days = z.coerce.number().int().min(1).max(365).optional().parse(formData.get("days") || undefined);
+  const date = z.iso.date().optional().parse(formData.get("date") || undefined);
+  const today = todayInIsrael();
+  let startDate = days ? addDays(today, days) : date && date > today ? date : addDays(today, 1);
+  const [task] = await db.select({ dueDate: tasks.dueDate }).from(tasks).where(eq(tasks.id, id));
+  if (task?.dueDate && startDate > task.dueDate) startDate = task.dueDate;
+  await db.update(tasks).set({ startDate }).where(eq(tasks.id, id));
+  refresh();
+}
+
 // Moves a task one step up or down among its open siblings: the same parent's subtasks,
 // or the same project's top-level tasks. Swapping positions keeps everyone else in place.
 export async function moveTask(formData: FormData) {
@@ -184,9 +200,18 @@ export async function updateProject(formData: FormData) {
 
 // ---------- Review governance ----------
 
+// From the weekly review, "mark reviewed & continue" also moves on (returnTo names where).
 export async function markReviewed(formData: FormData) {
   await requireSession();
   await markProjectReviewed(formId(formData));
+  refresh();
+  if (formData.has("returnTo")) redirect(returnTo(formData, "/review"));
+}
+
+export async function setProjectOutcome(formData: FormData) {
+  await requireSession();
+  const outcome = formFields(formData, ["outcome"]).outcome;
+  await db.update(projects).set({ outcome }).where(eq(projects.id, formId(formData)));
   refresh();
 }
 
