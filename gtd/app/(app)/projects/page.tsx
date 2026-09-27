@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, FolderKanban, Plus } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Clock, FolderKanban, Plus } from "lucide-react";
 import { createProject } from "@/app/actions";
 import { contextIcons } from "@/components/icons";
 import { reviewBadge } from "@/components/review-meta";
@@ -8,7 +8,7 @@ import { projectStatus, type Project } from "@/db/schema";
 import { contextLabels, projectHue, projectStatusLabels } from "@/lib/labels";
 import { projectFocus } from "@/lib/next-action";
 import { projectsWithCounts } from "@/lib/queries";
-import { projectHealth } from "@/lib/review";
+import { projectHealth, queueOf } from "@/lib/review";
 import { requireSession } from "@/lib/session";
 
 // More next actions than this, side by side and with nothing done yet, is a hint to pick one.
@@ -23,6 +23,8 @@ export default async function ProjectsPage({ searchParams }: PageProps<"/project
   const list = all.filter((p) => p.status === status);
   const focus = await projectFocus(status === "active" ? list : []);
   const tabCount = (s: Project["status"]) => all.filter((p) => p.status === s).length;
+  const queue = queueOf(health);
+  const neverReviewed = queue.every((p) => p.daysSinceReview === null);
 
   return (
     <>
@@ -42,6 +44,23 @@ export default async function ProjectsPage({ searchParams }: PageProps<"/project
           <button className="primary">יצירה</button>
         </form>
       </details>
+
+      {queue.length > 0 && (
+        <Link href="/review?step=projects" className="review-banner">
+          <Clock size={18} className="banner-icon" />
+          <span className="banner-text">
+            <strong>{queue.length === 1 ? "פרויקט אחד מחכה לסקירה" : `${queue.length} פרויקטים מחכים לסקירה`}</strong>
+            <span className="banner-detail">
+              {" · "}
+              {queue.map((p) => p.name).join(" · ")}
+              {neverReviewed ? " · עוד לא נסקרו מאז שנוצרו" : ""}
+            </span>
+          </span>
+          <span className="banner-cta">
+            התחל סקירה <ArrowLeft size={16} />
+          </span>
+        </Link>
+      )}
 
       <nav className="tabs">
         {projectStatus.enumValues.map((s) => (

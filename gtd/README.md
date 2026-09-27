@@ -81,9 +81,20 @@ Each project has a review cadence (default 7 days) and a last-review time. From 
 
 Where it shows:
 
-- **`/review`** is a queue of projects that need review, stalled first and then longest overdue. The sidebar item's badge shows how many there are.
-  - Each card shows the outcome, days since review, the cadence (editable), the open tasks, and a stalled warning.
-  - Inline actions on each card: add a next action, change the status, and mark it as reviewed. Marking it reviewed removes the card.
+- **`/review`** is the weekly review, full screen, without the sidebar or tab bar. It walks five steps: inbox → waiting → projects → someday → calendar.
+  - A stepper at the top (a 5-segment bar on phones) shows each step's count. Inbox, waiting and projects get a ✓ when nothing is left in them.
+  - Without a `?step=`, the review starts at the first step that has something in it.
+  - Every step triages tasks one click at a time: keep, done, to Next, waiting, or someday.
+  - A waiting item with no follow-up date asks when to check again: tomorrow, in a week, or a date. That becomes its start date (`setFollowUp`), so it leaves Waiting until that day.
+  - The someday step can reactivate a someday project. The calendar step lists what is due in the next 14 days, overdue included.
+  - **The projects step** has the queue on one side (stalled first, then longest overdue; projects reviewed today are listed too) and the current project on the other:
+    1. Is the outcome still right? Yes, or edit it in place.
+    2. Is every task in the right place?
+    3. Is there a clear next action? If not, the project is stalled and you can add one right there.
+  - **"סמן כנסקר והמשך"** (mark reviewed and continue) marks the project reviewed and moves to the next project, or to the next step after the last one. "דלג" (skip) moves on without marking it.
+  - **Phones:** one task per card with a 2×2 grid of big buttons; swipe between cards, and "keep" moves on to the next card. The skip and mark-reviewed buttons stay pinned at the bottom.
+- **`/projects`** shows a banner when projects wait for review. It leads straight to the projects step.
+- **The sidebar item's badge** (and the tab bar's on phones) counts the projects in the review queue.
 - **`/projects`** flags stalled projects, and **`/projects/:id`** has the review line and a "mark reviewed" button.
 - **`dropped`** is a project status for abandoned projects. Their tasks are hidden from every list and count.
 - The daily lists never show reviews, and no review tasks or calendar events are created.
@@ -114,7 +125,8 @@ Hebrew, right-to-left, in Rubik (self-hosted by `next/font`, so it works offline
   - a stalled notice when there is no available next action
 
   On phones, the status tabs become pills, the outcome is hidden, and the review badge shrinks to an amber dot.
-- **`/review`**: the project review queue (see Project reviews).
+- **`/review`**: the weekly review in focus mode (see Project reviews).
+- **Phones (≤ 640px)**: a bottom tab bar with Inbox, Next, Projects and Review, and a "+" in the middle that opens a quick-capture sheet (into the inbox). The other lists stay in the drawer behind the top bar's menu.
   - **`/projects/:id`** shows the project's tasks by list, with a capture box that adds next actions to that project.
 
 Pages read the database on the server, and edits go through Server Actions. The browser never sees `API_TOKEN`.
