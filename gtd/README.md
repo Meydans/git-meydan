@@ -119,7 +119,10 @@ Hebrew, right-to-left, in Rubik (self-hosted by `next/font`, so it works offline
 - **`/projects`**: a card per project, two across on desktop and one column on phones. Each card shows:
   - its review badge ("טרם נסקר", or when it was reviewed and when the next review is due)
   - the outcome, two lines at most
-  - **the next action** with its context: the first actionable task in project order, or the first actionable subtask of a parent (`lib/next-action.ts`)
+  - **the next action** with its context: the first actionable task in project order (`lib/next-action.ts`). When it's a parent with subtasks, the card shows the subtasks instead: the first one in a sequential parent, or every ready one in a parallel parent (3 shown folded, "ועוד N" for the rest).
+    - Folded, each action is one line cut with an ellipsis.
+    - Tapping the box opens it: full titles, their notes, and a link to each task.
+    - The card's title link covers the rest of the card, so tapping anywhere else still opens the project.
   - a bar of done / next / waiting / someday with counts
   - a soft hint when more than 3 next actions run in parallel with nothing done yet
   - a stalled notice when there is no available next action
