@@ -437,12 +437,32 @@ button.danger { color: var(--danger); background: transparent; border-color: tra
 .review-badge { flex: none; font-size: 0.75rem; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
 .review-badge.due { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 55%, transparent); }
 .outcome.clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.next-inset { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: var(--radius-sm); background: var(--surface-2); }
+/* The card's title link covers the whole card; the next-action box sits above that layer. */
+.project-card { position: relative; }
+.card-link::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.card-link:focus-visible { outline: none; }
+.project-card:has(.card-link:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.next-inset { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: var(--radius-sm); background: var(--surface-2); }
 .next-inset.stalled { flex-direction: row; align-items: center; gap: 8px; color: var(--danger); background: var(--danger-soft); font-size: 0.9rem; font-weight: 500; }
+.next-inset > summary { display: flex; flex-direction: column; gap: 4px; list-style: none; cursor: pointer; -webkit-tap-highlight-color: transparent; border-radius: 6px; }
+.next-inset > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.next-inset[open] .more-count { display: none; }
+.next-inset > summary::-webkit-details-marker { display: none; }
 .inset-label { font-size: 0.78rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.next-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.next-title { font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+.next-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; }
+/* Folded: one line per action, cut with an ellipsis. Open: the full titles. */
+.next-title { flex: 1; min-width: 0; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.next-inset[open] .next-title { white-space: normal; overflow-wrap: anywhere; }
+.next-inset:not([open]) .folded-extra { display: none; }
 .next-row .chip { flex: none; }
+.inset-more { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-top: -2px; font-size: 0.78rem; color: var(--muted); }
+.inset-more svg { transition: transform 0.15s; }
+.next-inset[open] .inset-more svg { transform: rotate(180deg); }
+.inset-details { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--border); }
+.inset-detail { display: flex; flex-direction: column; gap: 4px; }
+.inset-notes { margin: 0; font-size: 0.88rem; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+.inset-link { align-self: flex-start; font-size: 0.85rem; color: var(--accent); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 .status-bar { display: flex; gap: 3px; height: 6px; border-radius: 999px; overflow: hidden; background: var(--surface-2); }
 .status-bar span { flex-basis: 0; min-width: 6px; border-radius: 999px; }

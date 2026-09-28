@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { AlertTriangle, ArrowLeft, Clock, FolderKanban, Plus } from "lucide-react";
 import { createProject } from "@/app/actions";
-import { contextIcons } from "@/components/icons";
+import { NextActionBox } from "@/components/next-action-box";
 import { reviewBadge } from "@/components/review-meta";
 import { StatusBar, StatusKey } from "@/components/status-bar";
 import { projectStatus, type Project } from "@/db/schema";
-import { contextLabels, projectHue, projectStatusLabels } from "@/lib/labels";
+import { projectHue, projectStatusLabels } from "@/lib/labels";
 import { projectFocus } from "@/lib/next-action";
 import { projectsWithCounts } from "@/lib/queries";
 import { projectHealth, queueOf } from "@/lib/review";
@@ -81,19 +81,19 @@ export default async function ProjectsPage({ searchParams }: PageProps<"/project
             const h = healthById.get(p.id);
             const badge = h ? reviewBadge(h) : null;
             const f = focus.get(p.id);
-            const next = f?.nextAction;
-            const ContextIcon = next?.context ? contextIcons[next.context] : null;
             const tooMany = !!f && f.parallelNext > MANY_PARALLEL && p.done === 0;
             return (
-              <Link
+              <article
                 key={p.id}
-                href={`/projects/${p.id}`}
                 className={`project-card${badge?.due ? " needs-review" : ""}`}
                 style={{ "--hue": projectHue(p.id) } as React.CSSProperties}
               >
                 <div className="project-card-head">
                   <span className="project-dot" />
-                  <h2>{p.name}</h2>
+                  {/* The title link covers the whole card; the next-action box sits above it. */}
+                  <h2>
+                    <Link href={`/projects/${p.id}`} className="card-link">{p.name}</Link>
+                  </h2>
                   {badge && (
                     <span className={`review-badge${badge.due ? " due" : ""}`} title={badge.text}>
                       <span>{badge.text}</span>
@@ -102,19 +102,8 @@ export default async function ProjectsPage({ searchParams }: PageProps<"/project
                 </div>
                 {p.outcome && <p className="outcome clamp">{p.outcome}</p>}
                 {status === "active" &&
-                  (next ? (
-                    <div className="next-inset">
-                      <span className="inset-label">הפעולה הבאה{f.parent ? ` · ${f.parent.title}` : ""}</span>
-                      <div className="next-row">
-                        <span className="next-title">{next.title}</span>
-                        {ContextIcon && next.context && (
-                          <span className={`chip ctx ctx-${next.context.slice(1)}`}>
-                            <ContextIcon size={13} />
-                            {contextLabels[next.context]}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                  (f?.nextAction ? (
+                    <NextActionBox focus={f} from="/projects" />
                   ) : (
                     h?.isStalled && (
                       <div className="next-inset stalled">
@@ -124,7 +113,7 @@ export default async function ProjectsPage({ searchParams }: PageProps<"/project
                   ))}
                 <StatusBar counts={p.byStatus} />
                 {tooMany && <p className="soft-warn">{f.parallelNext} פעולות &quot;הבאות&quot; במקביל – לבחור אחת?</p>}
-              </Link>
+              </article>
             );
           })}
           <StatusKey />
