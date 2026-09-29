@@ -6,7 +6,7 @@ import { contextIcons } from "@/components/icons";
 import { taskContext, type Project, type Task } from "@/db/schema";
 import { contextLabels, dueTone, projectHue, relativeDue, relativeStart, taskStatusLabels } from "@/lib/labels";
 import { parseNotes } from "@/lib/notes";
-import { blockedIds } from "@/lib/sequence";
+import { blockedIds, readySubtasks } from "@/lib/sequence";
 
 type Props = {
   task: Task;
@@ -111,9 +111,7 @@ export function TaskCard({ task, project, today, from, hideProject, subtasks = [
   const openSubtasks = subtasks.length - subDone;
   const subBlocked = blockedIds(subtasks, task.sequential);
   // The subtasks to do now: in Next, not deferred, not waiting their turn in a sequence.
-  const ready = done
-    ? []
-    : subtasks.filter((s) => s.status === "next" && !subBlocked.has(s.id) && (s.startDate === null || s.startDate <= today));
+  const ready = readySubtasks(task, subtasks, "next", today);
   const isParent = subtasks.length > 0;
 
   return (

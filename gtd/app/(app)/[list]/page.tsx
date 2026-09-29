@@ -8,6 +8,7 @@ import type { Task } from "@/db/schema";
 import { daysBetween, todayInIsrael } from "@/lib/labels";
 import { captureStatus, isList, listHints, listLabels } from "@/lib/lists";
 import { allProjects, listTasks, subtasksOf, type TaskFilters } from "@/lib/queries";
+import { readySubtasks } from "@/lib/sequence";
 import { requireSession } from "@/lib/session";
 import { db } from "@/db";
 import { tasks } from "@/db/schema";
@@ -36,24 +37,43 @@ export default async function ListPage({ params, searchParams }: PageProps<"/[li
     q: first(sp.q)?.trim() || undefined,
   };
 
-  const [rows, projects] = await Promise.all([listTasks(list, filters), allProjects()]);
-  // Parents show their subtasks collapsed; subtasks listed on their own (date views) name their parent.
-  const parentIds = [...new Set(rows.flatMap((t) => (t.parentId ? [t.parentId] : [])))];
-  const [children, parents] = await Promise.all([
-    subtasksOf(rows.filter((t) => !t.parentId).map((t) => t.id)),
-    parentIds.length ? db.select({ id: tasks.id, title: tasks.title }).from(tasks).where(inArray(tasks.id, parentIds)) : [],
-  ]);
-  const childrenOf = (id: string) => children.filter((c) => c.parentId === id);
-  const parentTitle = new Map(parents.map((p) => [p.id, p.title]));
   const today = todayInIsrael();
+  // Status lists hold top-level tasks, but the actions to do are often subtasks. A context filter
+  // there also matches the ready subtasks of the listed tasks (see readySubtasks), and the chip
+  // counts include them. Date views already list subtasks on their own.
+  const statusList = list === "inbox" || list === "next" || list === "waiting" || list === "someday";
+  const [base, projects] = await Promise.all([
+    listTasks(list, statusList ? { ...filters, context: undefined } : filters),
+    allProjects(),
+  ]);
+  const topIds = base.filter((t) => !t.parentId).map((t) => t.id);
+  const children = await subtasksOf(topIds);
+  const childrenOf = (id: string) => children.filter((c) => c.parentId === id);
+  const ready = statusList ? base.flatMap((t) => readySubtasks(t, childrenOf(t.id), list, today)) : [];
+  const matches = (t: Task) => !filters.context || (filters.context === "none" ? !t.context : t.context === filters.context);
+  // A matching parent already shows its ready subtasks, so only subtasks of non-matching parents
+  // get cards of their own, right where their parent would be.
+  const rows = statusList
+    ? base.flatMap((t) => (matches(t) ? [t] : filters.context ? readySubtasks(t, childrenOf(t.id), list, today).filter(matches) : []))
+    : base;
+
+  // Subtasks listed on their own name their parent.
+  const known = new Map(base.map((t) => [t.id, t.title]));
+  const missing = [...new Set(rows.flatMap((t) => (t.parentId && !known.has(t.parentId) ? [t.parentId] : [])))];
+  const parents = missing.length ? await db.select({ id: tasks.id, title: tasks.title }).from(tasks).where(inArray(tasks.id, missing)) : [];
+  const parentTitle = new Map([...known, ...parents.map((p) => [p.id, p.title] as const)]);
   const projectById = new Map(projects.map((p) => [p.id, p]));
   const query = new URLSearchParams(Object.entries(sp).flatMap(([k, v]) => (typeof v === "string" ? [[k, v]] : []))).toString();
   const from = `/${list}${query ? `?${query}` : ""}`;
+  // Chip counts match what each filter would show: a subtask counts on its own only when its
+  // parent doesn't match the same context (otherwise it's inside the parent's card).
+  const contextOf = new Map(base.map((t) => [t.id, t.context]));
+  const counted = statusList ? [...base, ...ready.filter((s) => s.context !== contextOf.get(s.parentId!))] : rows;
   const contextCounts: Partial<Record<NonNullable<Task["context"]>, number>> = {};
-  for (const t of rows) if (t.context) contextCounts[t.context] = (contextCounts[t.context] ?? 0) + 1;
+  for (const t of counted) if (t.context) contextCounts[t.context] = (contextCounts[t.context] ?? 0) + 1;
   // Next actions are filtered by context, so Next nudges toward giving each one a context.
   const nudgeContext = list === "next";
-  const withoutContext = rows.filter((t) => !t.context).length;
+  const withoutContext = counted.filter((t) => !t.context).length;
 
   const Icon = listIcons[list];
   const card = (task: Task) => (

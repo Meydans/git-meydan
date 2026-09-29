@@ -107,6 +107,7 @@ Hebrew, right-to-left, in Rubik (self-hosted by `next/font`, so it works offline
 - **Lists**, in a sidebar on desktop and a drawer on mobile, with counts: `/inbox`, `/next`, `/waiting`, `/scheduled`, `/someday`, `/done`.
   - Each list has a capture box that adds to that list, a search box, and context and project filters, all kept in the URL.
   - **Every capture box understands `@context`:** `להתקשר לשמאי @קצר` is saved as "להתקשר לשמאי" with the context `@quick` (`lib/quick-add.ts`). Both the English names (`@focus`, `@quick`, `@out`, `@home`) and the Hebrew labels (`@ריכוז`, `@קצר`, `@בחוץ`, `@בבית`) work. Any other `@word` stays in the title. The context travels through the offline capture queue.
+  - **Context filters also match subtasks.** In Inbox, Next, Waiting and Someday, a filter also finds the ready subtasks of the listed tasks (not deferred, and not waiting their turn in a sequence). A matching subtask whose parent doesn't match gets a card of its own, linked to its parent and placed where the parent would be. A matching parent already shows its ready subtasks, so they don't appear twice. The chip counts match what each filter shows.
   - **Next** nudges toward contexts: a "ללא הקשר" filter chip with its count, and a one-tap context picker on each card that has no context.
   - **Scheduled** is a view, not a status. It shows every open task with a due date, grouped into overdue, today, tomorrow, this week, and later. Its sidebar badge counts overdue tasks.
 - **Task cards** show:
