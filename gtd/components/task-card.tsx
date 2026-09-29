@@ -24,6 +24,43 @@ type Props = {
 
 const MAX_NOTE_LINES = 6;
 
+// A task's notes: text lines, and "- [ ] item" lines as checkboxes that can be ticked in place.
+function Notes({ task, href }: { task: Task; href: string }) {
+  const lines = task.notes ? parseNotes(task.notes).filter((l) => l.kind === "check" || l.text.trim()) : [];
+  if (lines.length === 0) return null;
+  const shown = lines.slice(0, MAX_NOTE_LINES);
+  return (
+    <div className="notes">
+      {shown.map((line, i) =>
+        line.kind === "check" ? (
+          <form key={i} action={toggleChecklistItem} className="check-line">
+            <input type="hidden" name="id" value={task.id} />
+            <input type="hidden" name="line" value={line.index} />
+            <button className={`mini-check${line.checked ? " is-checked" : ""}`} aria-label={line.checked ? "ביטול סימון" : "סימון"}>
+              <Check size={11} strokeWidth={3} />
+            </button>
+            <span className={line.checked ? "struck" : undefined}>{line.text}</span>
+          </form>
+        ) : (
+          <p key={i}>{line.text}</p>
+        ),
+      )}
+      {lines.length > shown.length && <Link href={href} className="more">עוד…</Link>}
+    </div>
+  );
+}
+
+function ContextChip({ task }: { task: Task }) {
+  if (!task.context) return null;
+  const Icon = contextIcons[task.context];
+  return (
+    <span className={`chip ctx ctx-${task.context.slice(1)}`}>
+      <Icon size={13} />
+      {contextLabels[task.context]}
+    </span>
+  );
+}
+
 export function MoveButtons({ id }: { id: string }) {
   return (
     <div className="move">
@@ -65,7 +102,6 @@ function ContextPicker({ id }: { id: string }) {
 export function TaskCard({ task, project, today, from, hideProject, subtasks = [], blocked, parentTitle, showStatus, movable, pickContext }: Props) {
   const done = task.status === "done";
   const lines = task.notes ? parseNotes(task.notes).filter((l) => l.kind === "check" || l.text.trim()) : [];
-  const shown = lines.slice(0, MAX_NOTE_LINES);
   const checks = lines.filter((l) => l.kind === "check");
   const checked = checks.filter((l) => l.kind === "check" && l.checked).length;
   const ContextIcon = task.context ? contextIcons[task.context] : null;
@@ -74,6 +110,11 @@ export function TaskCard({ task, project, today, from, hideProject, subtasks = [
   const subDone = subtasks.filter((s) => s.status === "done").length;
   const openSubtasks = subtasks.length - subDone;
   const subBlocked = blockedIds(subtasks, task.sequential);
+  // The subtasks to do now: in Next, not deferred, not waiting their turn in a sequence.
+  const ready = done
+    ? []
+    : subtasks.filter((s) => s.status === "next" && !subBlocked.has(s.id) && (s.startDate === null || s.startDate <= today));
+  const isParent = subtasks.length > 0;
 
   return (
     <li className={`card${done ? " card-done" : ""}${deferred ? " card-deferred" : ""}${blocked ? " card-blocked" : ""}`}>
@@ -96,25 +137,16 @@ export function TaskCard({ task, project, today, from, hideProject, subtasks = [
           </Link>
         )}
 
-        {shown.length > 0 && (
-          <div className="notes">
-            {shown.map((line, i) =>
-              line.kind === "check" ? (
-                <form key={i} action={toggleChecklistItem} className="check-line">
-                  <input type="hidden" name="id" value={task.id} />
-                  <input type="hidden" name="line" value={line.index} />
-                  <button className={`mini-check${line.checked ? " is-checked" : ""}`} aria-label={line.checked ? "ביטול סימון" : "סימון"}>
-                    <Check size={11} strokeWidth={3} />
-                  </button>
-                  <span className={line.checked ? "struck" : undefined}>{line.text}</span>
-                </form>
-              ) : (
-                <p key={i}>{line.text}</p>
-              ),
-            )}
-            {lines.length > shown.length && <Link href={href} className="more">עוד…</Link>}
-          </div>
-        )}
+        {lines.length > 0 &&
+          (isParent ? (
+            // A parent only groups the work: its description stays folded, the next steps show.
+            <details className="notes-toggle">
+              <summary>תיאור</summary>
+              <Notes task={task} href={href} />
+            </details>
+          ) : (
+            <Notes task={task} href={href} />
+          ))}
 
         {(ContextIcon || task.dueDate || deferred || checks.length > 0 || showStatus || blocked) && (
           <div className="chips">
@@ -153,11 +185,32 @@ export function TaskCard({ task, project, today, from, hideProject, subtasks = [
 
         {pickContext && !done && <ContextPicker id={task.id} />}
 
+        {ready.length > 0 && (
+          <ul className="ready-subtasks" aria-label="הבאות לביצוע">
+            {ready.map((sub) => {
+              const subHref = `/tasks/${sub.id}?from=${encodeURIComponent(from)}`;
+              return (
+                <li key={sub.id} className="ready-subtask">
+                  <DoneButton id={sub.id} done={false} />
+                  <div className="ready-body">
+                    <div className="ready-head">
+                      <Link href={subHref} className="ready-title">{sub.title}</Link>
+                      <ContextChip task={sub} />
+                      {sub.dueDate && <span className={`chip due due-${dueTone(sub.dueDate, today)}`}>{relativeDue(sub.dueDate, today)}</span>}
+                    </div>
+                    <Notes task={sub} href={subHref} />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
         {subtasks.length > 0 && (
           <details className="subtasks">
             <summary>
               <ListTree size={14} />
-              <span>{subDone}/{subtasks.length} תתי־משימות{task.sequential ? " · ברצף" : ""}</span>
+              <span>{ready.length > 0 ? "כל תתי־המשימות" : "תתי־משימות"} {subDone}/{subtasks.length}{task.sequential ? " · ברצף" : ""}</span>
               <span className="subtask-progress" aria-hidden>
                 <span style={{ width: `${Math.round((subDone / subtasks.length) * 100)}%` }} />
               </span>

@@ -51,7 +51,7 @@ Preview and production share one database, so preview deploys also apply migrati
   - a subtask always lives in its parent's project, and moving the parent moves it
   - completing a parent completes its open subtasks; the UI asks first
   - deleting a parent deletes its subtasks
-- **Progressive disclosure:** status lists show top-level tasks only. A parent card shows "done/total" with a progress bar, and its subtasks are collapsed until opened, with their own checkboxes. The date views (Scheduled, Deferred) also list dated subtasks, labeled with their parent.
+- **Progressive disclosure:** status lists show top-level tasks only. A parent card shows the next steps to do right now, open and with their own checkboxes, context and notes: the first ready subtask of a sequential parent, or every ready one of a parallel parent. The parent's own description folds behind "תיאור", since it's the subtasks that get done. The full subtask list, with "done/total" and a progress bar, stays collapsed until opened. The date views (Scheduled, Deferred) also list dated subtasks, labeled with their parent.
 - **Manual order:** `position` is ordered within a project (top-level tasks) or under a parent. New tasks get an epoch-based position, so they land at the end. ↑/↓ swaps two neighbours, and MCP's `reorder_tasks` sets a whole order.
 - **Sequential:** a project, or a parent's subtasks, can be marked sequential.
   - A task is **blocked** while an earlier open task (inbox, next or waiting) exists in that order. Someday and done items never block.
