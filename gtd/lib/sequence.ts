@@ -35,3 +35,12 @@ export function blockedIds(siblings: Pick<Task, "id" | "status" | "position">[],
   }
   return blocked;
 }
+
+// The subtasks of a listed task that can be done now: in the same list, not deferred, and not
+// waiting their turn in a sequential parent. These show open on the parent's card, and a
+// context filter matches them on their own.
+export function readySubtasks(parent: Task, subtasks: Task[], status: Task["status"], today: string) {
+  if (parent.status === "done") return [];
+  const blocked = blockedIds(subtasks, parent.sequential);
+  return subtasks.filter((s) => s.status === status && !blocked.has(s.id) && (s.startDate === null || s.startDate <= today));
+}
