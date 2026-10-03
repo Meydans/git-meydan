@@ -10,12 +10,18 @@ import { InstallButton } from "@/components/pwa";
 import { listIcons } from "@/components/icons";
 import { listLabels, lists, type ListKey } from "@/lib/lists";
 
-type Props = { counts: Record<ListKey, number>; overdue: number; activeProjects: number; reviewDue: number };
+type Props = {
+  counts: Record<ListKey, number>;
+  overdue: number;
+  activeProjects: number;
+  reviewDue: number;
+  done: { today: number; week: boolean[] }; // completions today, and per day for the last 7
+};
 
 // Hidden lists (done) don't need a count badge; open lists do.
 const showCount = (list: ListKey) => list !== "done";
 
-export function Sidebar({ counts, overdue, activeProjects, reviewDue }: Props) {
+export function Sidebar({ counts, overdue, activeProjects, reviewDue, done }: Props) {
   const pathname = usePathname();
   // Remember which page the drawer was opened on, so navigating closes it.
   const [openOn, setOpenOn] = useState<string | null>(null);
@@ -78,6 +84,19 @@ export function Sidebar({ counts, overdue, activeProjects, reviewDue }: Props) {
             {reviewDue > 0 && <span className="badge badge-review" title="פרויקטים שממתינים לסקירה">{reviewDue}</span>}
           </Link>
         </nav>
+
+        <section className="today-card" aria-label="היום">
+          <span className="today-label">היום</span>
+          <div className="today-main">
+            <strong className="today-count">{done.today}</strong>
+            <span className="today-text">{done.today === 1 ? "משימה הושלמה" : "משימות הושלמו"}</span>
+          </div>
+          <div className="today-week" role="img" aria-label={`${done.week.filter(Boolean).length} מתוך 7 הימים האחרונים עם משימה שהושלמה`}>
+            {done.week.map((on, i) => (
+              <span key={i} className={on ? "on" : undefined} />
+            ))}
+          </div>
+        </section>
 
         <div className="sidebar-foot">
           <InstallButton />

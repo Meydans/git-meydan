@@ -54,6 +54,8 @@ export const tasks = pgTable(
     startDate: date("start_date", { mode: "string" }),
     dueDate: date("due_date", { mode: "string" }),
     notes: text("notes"),
+    // When the task was last completed; set and cleared by a trigger (migration 0007).
+    completedAt: timestamp("completed_at", { withTimezone: true }),
     ...timestamps,
   },
   (t) => [

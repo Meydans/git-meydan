@@ -24,6 +24,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="he" dir="rtl" className={rubik.variable}>
       <body>
+        {/* Theme "Shapes": a fixed, decorative layer behind everything (see globals.css). */}
+        <div className="bg-shapes" aria-hidden="true">
+          <span className="s s-ring" />
+          <span className="s s-square" />
+          <span className="s s-disc" />
+          <span className="s s-dot" />
+        </div>
         {children}
         <ServiceWorker />
       </body>
