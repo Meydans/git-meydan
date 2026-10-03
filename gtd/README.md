@@ -148,6 +148,23 @@ Hebrew, right-to-left, in Rubik (self-hosted by `next/font`, so it works offline
 Pages read the database on the server, and edits go through Server Actions. The browser never sees `API_TOKEN`.
 `proxy.ts` sends signed-out visitors to `/login`, and every page and action also checks the session itself.
 
+### Theme "Shapes"
+
+The visual layer from the design handoff (`FUN-THEME.md`). It only changes how things look, not layout or behavior.
+- **Background:** a fixed layer behind every page (`z-index: -1` in the root layout). It's a dot grid with four soft shapes at 12% opacity or less, two of them drifting slowly. On phones only the ring and the disc remain, at 60% size.
+- **Glass surfaces:** cards, lists, the quick-add bar, side panels, the sidebar and the top and bottom bars are translucent with a backdrop blur (10px on phones).
+- **Glow accents:**
+  - project color dots
+  - the green gradient on primary buttons and the "עכשיו" tag
+  - the done segment of progress bars, and ticked checkboxes
+  - a large percentage next to "התקדמות" on the project page
+- **Completing a task:**
+  - Five pieces of confetti pop at the checkbox. They're drawn by `<Celebrations />` in the app layout, so they survive the card leaving the list.
+  - A toast says "יפה! צעד אחד קדימה" or "ממשיכים ככה". When that completion leaves the project with no next action, it says "כל הפעולות הבאות הושלמו" (`completeTask`).
+- **"Today" card** at the bottom of the sidebar: tasks completed today, plus 7 bars for the last 7 days, from `tasks.completed_at`. Migration 0007 adds that column with a trigger that sets it when a task becomes done (the parent cascade included) and clears it when the task is reopened. Tasks that were already done take their last update time.
+- **Reduced motion:** with `prefers-reduced-motion`, no drift, confetti or toast animation.
+- **Light theme:** it uses its own glass and background values, derived from the dark spec.
+
 ## Installable app (PWA)
 
 - `app/manifest.ts`: Hebrew/RTL, `standalone` display, starts at `/inbox`. It has `any` and `maskable` icons and two home-screen shortcuts: quick capture (`/inbox?capture=1`, which focuses the capture box) and Next actions.

@@ -1,7 +1,7 @@
 import { and, asc, count, desc, eq, gt, ilike, inArray, isNotNull, isNull, lte, ne, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { projects, tasks, type Task } from "@/db/schema";
-import { todayInIsrael } from "./labels";
+import { addDays, todayInIsrael } from "./labels";
 import { isUnblocked } from "./sequence";
 import type { ListKey } from "./lists";
 
@@ -128,4 +128,20 @@ export async function projectsWithCounts() {
     const total = mine.reduce((sum, c) => sum + c.n, 0);
     return { ...project, byStatus, total, done: byStatus.done ?? 0 };
   });
+}
+
+// Completions per day (Israel time) for the sidebar's "today" card: today's count, and whether
+// anything was completed on each of the last 7 days (oldest first, today last).
+export async function completionWeek(today = todayInIsrael()) {
+  const rows = await db
+    .select({
+      day: sql<string>`to_char(${tasks.completedAt} at time zone 'Asia/Jerusalem', 'YYYY-MM-DD')`,
+      n: count(),
+    })
+    .from(tasks)
+    .where(and(eq(tasks.status, "done"), sql`${tasks.completedAt} > now() - interval '8 days'`))
+    .groupBy(sql`1`);
+  const byDay = new Map(rows.map((r) => [r.day, r.n]));
+  const days = Array.from({ length: 7 }, (_, i) => addDays(today, i - 6));
+  return { today: byDay.get(today) ?? 0, week: days.map((d) => (byDay.get(d) ?? 0) > 0) };
 }

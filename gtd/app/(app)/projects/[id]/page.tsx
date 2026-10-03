@@ -203,7 +203,10 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
 
         <aside className="project-side">
           <section className="side-card">
-            <h3>התקדמות</h3>
+            <div className="side-card-head">
+              <h3>התקדמות</h3>
+              <span className="progress-pct">{projectTasks.length ? Math.round(((byStatus.done ?? 0) / projectTasks.length) * 100) : 0}%</span>
+            </div>
             <StatusBar counts={byStatus} />
           </section>
           <section className="side-card">

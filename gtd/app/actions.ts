@@ -10,6 +10,7 @@ import { toggleLine } from "@/lib/notes";
 import { taskRuleCode } from "@/lib/pg";
 import { safePath } from "@/lib/safe-path";
 import { checkPassword, endSession, requireSession, startSession } from "@/lib/session";
+import { projectFocus } from "@/lib/next-action";
 import { markProjectReviewed } from "@/lib/review";
 import { idParam, projectCreate, projectStatusValue, reviewCadence, taskContextValue, taskCreate, taskStatusValue } from "@/lib/validation";
 import { z } from "zod";
@@ -99,6 +100,22 @@ export async function setTaskStatus(formData: FormData) {
   const status = taskStatusValue.parse(formData.get("status"));
   await db.update(tasks).set({ status }).where(eq(tasks.id, formId(formData)));
   refresh();
+}
+
+// Completing a task from a checkbox. Says whether that emptied its project's next actions,
+// so the toast can celebrate it.
+export async function completeTask(id: string): Promise<{ projectCleared: boolean }> {
+  await requireSession();
+  const taskId = idParam.parse(id);
+  const [before] = await db.select({ status: tasks.status }).from(tasks).where(eq(tasks.id, taskId));
+  const [task] = await db.update(tasks).set({ status: "done" }).where(eq(tasks.id, taskId)).returning();
+  refresh();
+  // Only finishing a next action can clear a project's next actions.
+  if (!task?.projectId || before?.status !== "next") return { projectCleared: false };
+  const [project] = await db.select().from(projects).where(eq(projects.id, task.projectId));
+  if (!project) return { projectCleared: false };
+  const focus = (await projectFocus([project])).get(project.id);
+  return { projectCleared: !focus?.nextAction };
 }
 
 // Follow-up for a waiting item: its start date, so it leaves Waiting until the day to check
