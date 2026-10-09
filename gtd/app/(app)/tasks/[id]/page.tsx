@@ -16,6 +16,8 @@ import { blockedIds } from "@/lib/sequence";
 import { blockingTask } from "@/lib/service";
 import { requireSession } from "@/lib/session";
 import { safePath } from "@/lib/safe-path";
+import { TextLink } from "@/components/linked-text";
+import { linksIn } from "@/lib/text-links";
 import { idParam } from "@/lib/validation";
 
 const ruleMessages: Record<string, string> = {
@@ -98,6 +100,15 @@ export default async function TaskPage({ params, searchParams }: PageProps<"/tas
           placeholder={"הערות. שורה שמתחילה ב־\"- [ ] \" הופכת לצ'קליסט."}
           aria-label="הערות"
         />
+        {/* Links in the notes, clickable (the editor itself is plain text). */}
+        {linksIn(task.notes).length > 0 && (
+          <div className="notes-links">
+            <span className="field-caption">קישורים</span>
+            {linksIn(task.notes).map((l) => (
+              <TextLink key={l.url} {...l} />
+            ))}
+          </div>
+        )}
 
         <fieldset className="segmented">
           <legend>רשימה</legend>

@@ -1058,3 +1058,12 @@ button.primary:hover, .button.primary:hover, .tab-capture:hover { background: li
   .toast-zone { bottom: calc(84px + env(safe-area-inset-bottom)); }
   .shell:has(.project-page) .toast-zone { bottom: calc(150px + env(safe-area-inset-bottom)); }
 }
+
+/* Links found in notes and outcomes: short labels with an icon, above stretched card links. */
+.text-link { position: relative; z-index: 2; display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 0 6px; border-radius: 6px; color: var(--l-next); background: color-mix(in srgb, var(--st-next) 14%, transparent); text-decoration: none; vertical-align: baseline; overflow-wrap: anywhere; }
+.text-link:hover, .text-link:focus-visible { text-decoration: underline; }
+.text-link svg { flex: none; }
+.link-folder { color: var(--l-waiting); background: color-mix(in srgb, var(--st-waiting) 16%, transparent); }
+.link-sheet { color: var(--accent); background: color-mix(in srgb, var(--st-done) 16%, transparent); }
+.notes-links { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: -8px; }
+.notes-links .text-link { padding: 4px 10px; }

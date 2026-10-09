@@ -6,6 +6,7 @@ import { contextIcons } from "@/components/icons";
 import { taskContext, type Project, type Task } from "@/db/schema";
 import { contextLabels, dueTone, projectHue, relativeDue, relativeStart, taskStatusLabels } from "@/lib/labels";
 import { parseNotes } from "@/lib/notes";
+import { LinkedText } from "@/components/linked-text";
 import { blockedIds, readySubtasks } from "@/lib/sequence";
 
 type Props = {
@@ -39,10 +40,10 @@ function Notes({ task, href }: { task: Task; href: string }) {
             <button className={`mini-check${line.checked ? " is-checked" : ""}`} aria-label={line.checked ? "ביטול סימון" : "סימון"}>
               <Check size={11} strokeWidth={3} />
             </button>
-            <span className={line.checked ? "struck" : undefined}>{line.text}</span>
+            <span className={line.checked ? "struck" : undefined}><LinkedText text={line.text} /></span>
           </form>
         ) : (
-          <p key={i}>{line.text}</p>
+          <p key={i}><LinkedText text={line.text} /></p>
         ),
       )}
       {lines.length > shown.length && <Link href={href} className="more">עוד…</Link>}
