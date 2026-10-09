@@ -4,6 +4,7 @@ import { setFollowUp, setTaskStatus } from "@/app/actions";
 import { contextIcons } from "@/components/icons";
 import { KeepButton } from "@/components/review-client";
 import type { Task } from "@/db/schema";
+import { LinkedText } from "@/components/linked-text";
 import { contextLabels, relativeDue } from "@/lib/labels";
 
 const TARGETS = [
@@ -48,9 +49,11 @@ export function TriageItem({ task, from, today, index, total, blocked, subtaskCo
         </div>
         {(wait || subtaskCount || task.dueDate) && (
           <p className="triage-sub">
-            {[wait, subtaskCount ? `${subtaskCount} תתי־משימות` : null, task.dueDate ? `יעד: ${relativeDue(task.dueDate, today)}` : null]
-              .filter(Boolean)
-              .join(" · ")}
+            <LinkedText
+              text={[wait, subtaskCount ? `${subtaskCount} תתי־משימות` : null, task.dueDate ? `יעד: ${relativeDue(task.dueDate, today)}` : null]
+                .filter(Boolean)
+                .join(" · ")}
+            />
           </p>
         )}
       </div>

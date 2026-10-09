@@ -116,6 +116,7 @@ Hebrew, right-to-left, in Rubik (self-hosted by `next/font`, so it works offline
   - relative due dates ("היום", "באיחור 2 ימים"), color-coded by urgency
   - a notes preview
   - Note lines written as `- [ ] item` render as checklist items that can be ticked right on the card, with a progress chip.
+  - **Clickable links:** web addresses in notes and project outcomes show as short links that open in a new tab (`lib/text-links.ts`). The label says what they are: "מסמך Google", "גיליון Google", "מצגת Google", "תיקייה ב-Drive", "קובץ ב-Drive", or the site's name. Only `http(s)` addresses become links. On the task page, where the notes are an editor, the links appear under it.
 - **`/tasks/:id`**: a full edit page with list tabs, context chips, a project picker, and due-date presets.
 - **`/projects`**: a card per project, two across on desktop and one column on phones. Each card shows:
   - its review badge ("טרם נסקר", or when it was reviewed and when the next review is due)

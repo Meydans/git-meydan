@@ -9,6 +9,7 @@ import { projectHue, projectStatusLabels } from "@/lib/labels";
 import { projectFocus } from "@/lib/next-action";
 import { projectsWithCounts } from "@/lib/queries";
 import { projectHealth, queueOf } from "@/lib/review";
+import { LinkedText } from "@/components/linked-text";
 import { requireSession } from "@/lib/session";
 
 // More next actions than this, side by side and with nothing done yet, is a hint to pick one.
@@ -100,7 +101,7 @@ export default async function ProjectsPage({ searchParams }: PageProps<"/project
                     </span>
                   )}
                 </div>
-                {p.outcome && <p className="outcome clamp">{p.outcome}</p>}
+                {p.outcome && <p className="outcome clamp"><LinkedText text={p.outcome} /></p>}
                 {status === "active" &&
                   (f?.nextAction ? (
                     <NextActionBox focus={f} from="/projects" />

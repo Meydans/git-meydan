@@ -6,6 +6,7 @@ import { MoveButtons } from "@/components/task-card";
 import { FollowUpChips, waitingFor } from "@/components/triage";
 import type { Task } from "@/db/schema";
 import { contextLabels, dueTone, formatDate, relativeDue, relativeStart } from "@/lib/labels";
+import { LinkedText } from "@/components/linked-text";
 import { blockedIds } from "@/lib/sequence";
 
 type RowProps = {
@@ -32,7 +33,7 @@ export function ProjectTaskRow({ task, today, from, current, blocked, movable, o
           {blocked && <Lock size={13} className="lock" aria-label="חסום" />}
           {task.title}
         </Link>
-        {wait && <span className="ptask-sub">{wait}</span>}
+        {wait && <span className="ptask-sub"><LinkedText text={wait} /></span>}
       </div>
       <div className="ptask-meta">
         {current && <span className="now-tag">עכשיו</span>}

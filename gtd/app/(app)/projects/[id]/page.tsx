@@ -14,6 +14,7 @@ import { projectTasksOrdered } from "@/lib/queries";
 import { healthOfProject } from "@/lib/review";
 import { blockedIds } from "@/lib/sequence";
 import { requireSession } from "@/lib/session";
+import { LinkedText } from "@/components/linked-text";
 import { idParam } from "@/lib/validation";
 
 const CADENCES = [1, 3, 7, 14, 30, 60, 90];
@@ -89,7 +90,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
           </h1>
           {project.outcome && (
             <p className="hero-outcome">
-              <span className="field-caption">תוצאה רצויה</span> {project.outcome}
+              <span className="field-caption">תוצאה רצויה</span> <LinkedText text={project.outcome} />
             </p>
           )}
         </div>

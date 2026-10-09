@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Check } from "lucide-react";
+import { LinkedText } from "@/components/linked-text";
 import { setProjectOutcome } from "@/app/actions";
 
 // "Keep" changes nothing. In the phone carousel (one task per card) it moves on to the next card.
@@ -44,7 +45,7 @@ export function OutcomeCheck({ projectId, outcome }: { projectId: string; outcom
         )}
       </div>
       {state === "ask" ? (
-        <p className="outcome">{outcome}</p>
+        <p className="outcome">{outcome && <LinkedText text={outcome} />}</p>
       ) : (
         <form action={async (fd) => { await setProjectOutcome(fd); setState("ok"); }} className="outcome-form">
           <input type="hidden" name="id" value={projectId} />

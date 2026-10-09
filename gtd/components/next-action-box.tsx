@@ -3,6 +3,7 @@ import { ChevronDown } from "lucide-react";
 import { contextIcons } from "@/components/icons";
 import type { Task } from "@/db/schema";
 import { contextLabels } from "@/lib/labels";
+import { LinkedText } from "@/components/linked-text";
 import type { ProjectFocus } from "@/lib/next-action";
 
 // Folded, a few actions show; the rest appear when the box is opened.
@@ -46,7 +47,7 @@ export function NextActionBox({ focus, from }: { focus: ProjectFocus; from: stri
       <div className="inset-details">
         {actions.map((t) => (
           <div key={t.id} className="inset-detail">
-            {t.notes && <p className="inset-notes">{t.notes}</p>}
+            {t.notes && <p className="inset-notes"><LinkedText text={t.notes} /></p>}
             <Link href={`/tasks/${t.id}?from=${encodeURIComponent(from)}`} className="inset-link">
               {actions.length > 1 ? `לפתוח את "${t.title}"` : "לפתוח את המשימה"} ←
             </Link>
