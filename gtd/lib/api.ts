@@ -1,5 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
+import { getSessionEmail } from "./auth/session";
 import { idParam } from "./validation";
 
 export class HttpError extends Error {
@@ -16,16 +17,19 @@ export const notFound = (what: string) => new HttpError(404, `${what} not found`
 
 const sha256 = (value: string) => createHash("sha256").update(value).digest();
 
-function checkAuth(request: Request) {
-  const expected = process.env.API_TOKEN;
-  if (!expected) throw new HttpError(500, "API_TOKEN is not configured");
-
+// Accepts a valid bearer token (scripts, MCP) or a signed-in session cookie (the web UI).
+async function checkAuth(request: Request) {
   const header = request.headers.get("authorization") ?? "";
-  const token = header.startsWith("Bearer ") ? header.slice("Bearer ".length) : "";
-  // Compare fixed-length hashes so the check doesn't leak the token length or prefix.
-  if (!timingSafeEqual(sha256(token), sha256(expected))) {
-    throw new HttpError(401, "Missing or invalid bearer token");
+  if (header.startsWith("Bearer ")) {
+    const expected = process.env.API_TOKEN;
+    if (!expected) throw new HttpError(500, "API_TOKEN is not configured");
+    // Compare fixed-length hashes so the check doesn't leak the token length or prefix.
+    if (!timingSafeEqual(sha256(header.slice("Bearer ".length)), sha256(expected))) {
+      throw new HttpError(401, "Missing or invalid bearer token");
+    }
+    return;
   }
+  if (!(await getSessionEmail())) throw new HttpError(401, "Not signed in");
 }
 
 // Maps Postgres error codes we expect from user input to 400s.
@@ -41,7 +45,7 @@ type Handler<C> = (request: Request, context: C) => Promise<Response>;
 export function handler<C>(fn: Handler<C>): Handler<C> {
   return async (request, context) => {
     try {
-      checkAuth(request);
+      await checkAuth(request);
       return await fn(request, context);
     } catch (error) {
       const httpError =

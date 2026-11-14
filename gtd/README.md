@@ -7,6 +7,7 @@ It is a separate Vercel project whose Root Directory is `gtd/`.
 
 - [x] Stage 1: DB schema + Drizzle migrations
 - [x] Stage 2: CRUD API routes for tasks and projects
+- [x] Sign-in: Google OAuth with an email allowlist (web UI and API)
 - [ ] Stage 3: Minimal UI (Hebrew, RTL)
 - [ ] Stage 4: MCP layer over the API
 
@@ -26,9 +27,24 @@ It is a separate Vercel project whose Root Directory is `gtd/`.
 On Vercel, `npm run build` applies pending migrations before building, so a deploy fails if a migration fails.
 Preview and production share one database, so preview deploys also apply migrations.
 
+## Sign-in
+
+The web UI is for allowlisted Google accounts only. Everything except `/login` and `/api/auth/*` redirects to `/login` when there is no valid session; `/api/*` answers `401`.
+
+- Sign-in is Google OAuth (authorization code with PKCE, `state` and `nonce`). The id token is verified against Google's keys, and the email must be verified and listed in `ALLOWED_EMAILS`.
+- The session is a signed, HttpOnly, SameSite=Lax cookie that lasts 7 days (`lib/auth/`). Removing an address from `ALLOWED_EMAILS` ends its sessions.
+- The proxy (`proxy.ts`) is only an optimistic check. Pages and route handlers verify the session again.
+- The API accepts either the session cookie or `Authorization: Bearer $API_TOKEN`, so scripts and the future MCP layer keep working.
+
+Setup:
+
+1. In Google Cloud Console, create an OAuth client of type **Web application**. Add `<APP_URL>/api/auth/callback` as an authorized redirect URI (and `http://localhost:3000/api/auth/callback` for local work).
+2. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL`, `SESSION_SECRET` (`openssl rand -hex 32`) and `ALLOWED_EMAILS` in the Vercel project's environment variables, and in `.env.local` for local work. To add another person, add their email to `ALLOWED_EMAILS` and redeploy.
+3. Keep `.env.local` out of git (it is already ignored).
+
 ## API
 
-Every request needs `Authorization: Bearer $API_TOKEN`. Bodies and responses are JSON with camelCase fields.
+Every request needs `Authorization: Bearer $API_TOKEN`, or a signed-in session cookie. Bodies and responses are JSON with camelCase fields.
 
 | Method | Path | Notes |
 | --- | --- | --- |
