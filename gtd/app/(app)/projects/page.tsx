@@ -1,0 +1,125 @@
+import Link from "next/link";
+import { AlertTriangle, ArrowLeft, Clock, FolderKanban, Plus } from "lucide-react";
+import { createProject } from "@/app/actions";
+import { NextActionBox } from "@/components/next-action-box";
+import { reviewBadge } from "@/components/review-meta";
+import { StatusBar, StatusKey } from "@/components/status-bar";
+import { projectStatus, type Project } from "@/db/schema";
+import { projectHue, projectStatusLabels } from "@/lib/labels";
+import { projectFocus } from "@/lib/next-action";
+import { projectsWithCounts } from "@/lib/queries";
+import { projectHealth, queueOf } from "@/lib/review";
+import { LinkedText } from "@/components/linked-text";
+import { requireSession } from "@/lib/session";
+
+// More next actions than this, side by side and with nothing done yet, is a hint to pick one.
+const MANY_PARALLEL = 3;
+
+export default async function ProjectsPage({ searchParams }: PageProps<"/projects">) {
+  await requireSession();
+  const { status: raw } = await searchParams;
+  const status = projectStatus.enumValues.find((s) => s === raw) ?? "active";
+  const [all, health] = await Promise.all([projectsWithCounts(), projectHealth()]);
+  const healthById = new Map(health.map((h) => [h.id, h]));
+  const list = all.filter((p) => p.status === status);
+  const focus = await projectFocus(status === "active" ? list : []);
+  const tabCount = (s: Project["status"]) => all.filter((p) => p.status === s).length;
+  const queue = queueOf(health);
+  const neverReviewed = queue.every((p) => p.daysSinceReview === null);
+
+  return (
+    <>
+      <header className="page-head">
+        <FolderKanban size={26} className="page-icon" />
+        <div>
+          <h1>פרויקטים</h1>
+          <p className="hint">כל תוצאה שדורשת יותר מפעולה אחת. לכל פרויקט פעיל צריכה להיות פעולה הבאה.</p>
+        </div>
+      </header>
+
+      <details className="new-project">
+        <summary className="button primary"><Plus size={16} /> פרויקט חדש</summary>
+        <form action={createProject} className="stack">
+          <input name="name" placeholder="שם הפרויקט" required />
+          <textarea name="outcome" rows={2} placeholder="התוצאה הרצויה: איך ייראה 'בוצע'?" />
+          <button className="primary">יצירה</button>
+        </form>
+      </details>
+
+      {queue.length > 0 && (
+        <Link href="/review?step=projects" className="review-banner">
+          <Clock size={18} className="banner-icon" />
+          <span className="banner-text">
+            <strong>{queue.length === 1 ? "פרויקט אחד מחכה לסקירה" : `${queue.length} פרויקטים מחכים לסקירה`}</strong>
+            <span className="banner-detail">
+              {" · "}
+              {queue.map((p) => p.name).join(" · ")}
+              {neverReviewed ? " · עוד לא נסקרו מאז שנוצרו" : ""}
+            </span>
+          </span>
+          <span className="banner-cta">
+            התחל סקירה <ArrowLeft size={16} />
+          </span>
+        </Link>
+      )}
+
+      <nav className="tabs">
+        {projectStatus.enumValues.map((s) => (
+          <Link key={s} href={s === "active" ? "/projects" : `/projects?status=${s}`} aria-current={s === status ? "page" : undefined}>
+            {projectStatusLabels[s]} <span className="head-count">{tabCount(s)}</span>
+          </Link>
+        ))}
+      </nav>
+
+      {list.length === 0 ? (
+        <div className="empty-state">
+          <FolderKanban size={40} strokeWidth={1.5} />
+          <p>אין פרויקטים כאן</p>
+        </div>
+      ) : (
+        <div className="project-grid">
+          {list.map((p) => {
+            const h = healthById.get(p.id);
+            const badge = h ? reviewBadge(h) : null;
+            const f = focus.get(p.id);
+            const tooMany = !!f && f.parallelNext > MANY_PARALLEL && p.done === 0;
+            return (
+              <article
+                key={p.id}
+                className={`project-card${badge?.due ? " needs-review" : ""}`}
+                style={{ "--hue": projectHue(p.id) } as React.CSSProperties}
+              >
+                <div className="project-card-head">
+                  <span className="project-dot" />
+                  {/* The title link covers the whole card; the next-action box sits above it. */}
+                  <h2>
+                    <Link href={`/projects/${p.id}`} className="card-link">{p.name}</Link>
+                  </h2>
+                  {badge && (
+                    <span className={`review-badge${badge.due ? " due" : ""}`} title={badge.text}>
+                      <span>{badge.text}</span>
+                    </span>
+                  )}
+                </div>
+                {p.outcome && <p className="outcome clamp"><LinkedText text={p.outcome} /></p>}
+                {status === "active" &&
+                  (f?.nextAction ? (
+                    <NextActionBox focus={f} from="/projects" />
+                  ) : (
+                    h?.isStalled && (
+                      <div className="next-inset stalled">
+                        <AlertTriangle size={15} /> אין פעולה הבאה זמינה: הפרויקט תקוע
+                      </div>
+                    )
+                  ))}
+                <StatusBar counts={p.byStatus} />
+                {tooMany && <p className="soft-warn">{f.parallelNext} פעולות &quot;הבאות&quot; במקביל – לבחור אחת?</p>}
+              </article>
+            );
+          })}
+          <StatusKey />
+        </div>
+      )}
+    </>
+  );
+}

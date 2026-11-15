@@ -42,14 +42,14 @@ export async function verifySessionToken(token: string | undefined): Promise<str
   return typeof email === "string" && isAllowed(email) ? email : null;
 }
 
-export const signOAuthState = (claims: { state: string; verifier: string; nonce: string }) =>
+export const signOAuthState = (claims: { state: string; verifier: string; nonce: string; next?: string }) =>
   sign("oauth", claims, OAUTH_SECONDS);
 
 export async function verifyOAuthState(token: string | undefined) {
   const payload = await verify("oauth", token);
   if (!payload) return null;
-  const { state, verifier, nonce } = payload;
+  const { state, verifier, nonce, next } = payload;
   return typeof state === "string" && typeof verifier === "string" && typeof nonce === "string"
-    ? { state, verifier, nonce }
+    ? { state, verifier, nonce, next: typeof next === "string" ? next : "/" }
     : null;
 }

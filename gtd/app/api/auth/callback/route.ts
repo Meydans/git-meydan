@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { safePath } from "../../../../lib/safe-path";
 import { isAllowed } from "../../../../lib/auth/allowlist";
 import { appUrl, emailFromCode } from "../../../../lib/auth/google";
 import { createSession } from "../../../../lib/auth/session";
@@ -28,5 +29,5 @@ export async function GET(request: Request) {
   if (!isAllowed(email)) return back("denied");
 
   await createSession(email);
-  return NextResponse.redirect(`${appUrl()}/`);
+  return NextResponse.redirect(`${appUrl()}${safePath(saved.next)}`);
 }

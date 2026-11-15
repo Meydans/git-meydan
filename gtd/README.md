@@ -7,16 +7,32 @@ It is a separate Vercel project whose Root Directory is `gtd/`.
 
 - [x] Stage 1: DB schema + Drizzle migrations
 - [x] Stage 2: CRUD API routes for tasks and projects
-- [x] Sign-in: Google OAuth with an email allowlist (web UI and API)
-- [ ] Stage 3: Minimal UI (Hebrew, RTL)
-- [ ] Stage 4: MCP layer over the API
+- [x] Stage 3: Minimal UI (Hebrew, RTL)
+- [x] Stage 4: MCP server with OAuth
+- [x] Offline 1: installable app (PWA)
+- [x] Offline 2: offline capture queue
+- [x] Offline 3: offline reading of synced lists
+- [x] Project reviews: review cadence, stalled projects, and a review queue
 
 ## Data model
 
 `db/schema.ts`:
 
-- **projects**: `id`, `name`, `outcome` (the desired result, per GTD), `status` (`active` | `someday` | `done`), timestamps
-- **tasks**: `id`, `title`, `project_id` (optional; set to null when its project is deleted), `status` (`inbox` | `next` | `waiting` | `someday` | `done`), `context` (`@phone` | `@computer` | `@errand` | `@home` | null), `due_date`, `notes`, timestamps
+- **projects**: `id`, `name`, `outcome` (the desired result, per GTD), `status` (`active` | `someday` | `done` | `dropped`), `sequential`, `review_cadence_days` (1–365, default 7), `last_reviewed_at`, `stall_acknowledged`, timestamps
+- **tasks**: `id`, `title`, `project_id` (optional; set to null when its project is deleted), `status` (`inbox` | `next` | `waiting` | `someday` | `done`), `context` (`@focus` | `@quick` | `@out` | `@home` | null; by mode, not tool: 30+ min at a screen, ~10 min from the phone, going out, physical at home), `start_date` (optional defer date), `due_date`, `notes`, `parent_id` (one level of subtasks), `position` (manual order), `sequential` (for a parent's subtasks), timestamps. A check constraint keeps `start_date <= due_date`.
+
+### Start (defer) dates
+
+A task with a `start_date` in the future is hidden from its list (inbox, next, waiting or someday) and from the sidebar counts until that day in Israel time. Then it comes back by itself. Tasks without a start date are available immediately.
+
+Deferred tasks appear in:
+- the **Deferred** view (`/deferred`), grouped by start date
+- **Scheduled**, if they have a due date
+- their project page
+
+Everywhere they appear they are marked "starts on…".
+
+You can set the start date on the task page (with presets, and bounded by the due date so the browser blocks start > due), in quick capture (the calendar button, which also works through the offline queue), through the REST API (`startDate`), and through MCP. There, `list_tasks` leaves deferred tasks out unless `includeDeferred` is set or `list` is `"deferred"`, and `gtd_overview` reports deferred counts and tasks starting today. A start date after the due date returns 400 from the API and a tool error from MCP, and the task page shows an inline message.
 
 ## Database setup
 
@@ -27,13 +43,71 @@ It is a separate Vercel project whose Root Directory is `gtd/`.
 On Vercel, `npm run build` applies pending migrations before building, so a deploy fails if a migration fails.
 Preview and production share one database, so preview deploys also apply migrations.
 
+### Subtasks and sequential work
+
+- **Hierarchy:** project → task → subtasks, one level deep. Notes checklists remain a lighter level below that. Triggers enforce the rules for every writer (UI, REST, MCP), in migration 0003:
+  - a subtask can't have subtasks, and a task that has subtasks can't become one
+  - a subtask is never in the inbox: created or moved there, it lands in Next (migration 0005; the task page doesn't offer Inbox for subtasks)
+  - a subtask always lives in its parent's project, and moving the parent moves it
+  - completing a parent completes its open subtasks; the UI asks first
+  - deleting a parent deletes its subtasks
+- **Progressive disclosure:** status lists show top-level tasks only. A parent card shows the next steps to do right now, open and with their own checkboxes, context and notes: the first ready subtask of a sequential parent, or every ready one of a parallel parent. The parent's own description folds behind "תיאור", since it's the subtasks that get done. The full subtask list, with "done/total" and a progress bar, stays collapsed until opened. The date views (Scheduled, Deferred) also list dated subtasks, labeled with their parent.
+- **Manual order:** `position` is ordered within a project (top-level tasks) or under a parent. New tasks get an epoch-based position, so they land at the end. ↑/↓ swaps two neighbours, and MCP's `reorder_tasks` sets a whole order.
+- **Sequential:** a project, or a parent's subtasks, can be marked sequential.
+  - A task is **blocked** while an earlier open task (inbox, next or waiting) exists in that order. Someday and done items never block.
+  - Blocked tasks stay out of Next and its count, and are shown with 🔒 on project and task pages.
+  - Completing or reordering the first task surfaces the next one.
+  - The same rule is implemented once as SQL (for list filters) and once in JS (`lib/sequence.ts`).
+- **Project page:** tasks in manual order, grouped into sections (see Web UI). A sequential parent is one box with its current step marked "עכשיו" and the later steps locked. ↑/↓ controls reorder, and a toggle switches the project between sequential and parallel.
+- **Task page:**
+  - a link to the parent, and a parent picker (open top-level tasks of the same project)
+  - a subtask panel to add and reorder subtasks, with a sequential toggle
+  - a "waiting for X" note when the task is blocked
+- **MCP:**
+  - `parentId` and `sequential` on tasks, and `sequential` on projects
+  - list results nest `subtasks` under their parent
+  - `includeBlocked` on `list_tasks`
+  - `get_task` reports `blocked` and `blockedBy`
+  - `get_project` returns tasks in order with `blocked`
+  - new tool: `reorder_tasks`
+
+### Project reviews
+
+Each project has a review cadence (default 7 days) and a last-review time. From them, every read derives (`lib/review.ts`):
+
+- **Stalled:** active, with no available next action, meaning no task in Next that is neither deferred nor blocked in a sequence.
+- **Due for review:** active, and never reviewed or reviewed longer ago than its cadence. Projects that existed before this feature start out due.
+- **Needs review:** due, or stalled in a way the last review didn't acknowledge. A project stalled at the moment it is reviewed leaves the queue until its next review date. A stall that starts after the review enters the queue right away. The acknowledgement clears once the project has a next action again.
+
+Where it shows:
+
+- **`/review`** is the weekly review, full screen, without the sidebar or tab bar. It walks five steps: inbox → waiting → projects → someday → calendar.
+  - A stepper at the top (a 5-segment bar on phones) shows each step's count. Inbox, waiting and projects get a ✓ when nothing is left in them.
+  - Without a `?step=`, the review starts at the first step that has something in it.
+  - Every step triages tasks one click at a time: keep, done, to Next, waiting, or someday.
+  - A waiting item with no follow-up date asks when to check again: tomorrow, in a week, or a date. That becomes its start date (`setFollowUp`), so it leaves Waiting until that day.
+  - The someday step can reactivate a someday project. The calendar step lists what is due in the next 14 days, overdue included.
+  - **The projects step** has the queue on one side (stalled first, then longest overdue; projects reviewed today are listed too) and the current project on the other:
+    1. Is the outcome still right? Yes, or edit it in place.
+    2. Is every task in the right place?
+    3. Is there a clear next action? If not, the project is stalled and you can add one right there.
+  - **"סמן כנסקר והמשך"** (mark reviewed and continue) marks the project reviewed and moves to the next project, or to the next step after the last one. "דלג" (skip) moves on without marking it.
+  - **Phones:** one task per card with a 2×2 grid of big buttons; swipe between cards, and "keep" moves on to the next card. The skip and mark-reviewed buttons stay pinned at the bottom.
+- **`/projects`** flags stalled projects and shows a banner when projects wait for review. The banner leads straight to the projects step. **`/projects/:id`** has the review line and a "mark reviewed" button.
+- **The sidebar item's badge** (and the tab bar's on phones) counts the projects in the review queue.
+- **`dropped`** is a project status for abandoned projects. Their tasks are hidden from every list and count.
+- The daily lists never show reviews, and no review tasks or calendar events are created.
+- **REST:** `POST /api/projects/:id/review` marks a project as reviewed.
+- **MCP:** the new tools `review_queue` and `mark_project_reviewed`, health fields on `list_projects`, `reviewQueue` in `gtd_overview`, and `reviewCadenceDays` on create and update.
+
 ## Sign-in
 
-The web UI is for allowlisted Google accounts only. Everything except `/login` and `/api/auth/*` redirects to `/login` when there is no valid session; `/api/*` answers `401`.
+The web UI is for allowlisted Google accounts only. Pages redirect to `/login` (remembering where you were going) when there is no valid session. `/api/*`, `/oauth/*` and the MCP endpoint do their own auth: a session cookie or `API_TOKEN` for the API, OAuth or `API_TOKEN` for MCP.
 
 - Sign-in is Google OAuth (authorization code with PKCE, `state` and `nonce`). The id token is verified against Google's keys, and the email must be verified and listed in `ALLOWED_EMAILS`.
 - The session is a signed, HttpOnly, SameSite=Lax cookie that lasts 7 days (`lib/auth/`). Removing an address from `ALLOWED_EMAILS` ends its sessions.
-- The proxy (`proxy.ts`) is only an optimistic check. Pages and route handlers verify the session again.
+- The proxy (`proxy.ts`) is only an optimistic check. Pages, Server Actions and route handlers verify the session again.
+- `SESSION_SECRET` also keys MCP OAuth tokens: rotating it signs everyone out and revokes them.
 - The API accepts either the session cookie or `Authorization: Bearer $API_TOKEN`, so scripts and the future MCP layer keep working.
 
 Setup:
@@ -42,29 +116,196 @@ Setup:
 2. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL`, `SESSION_SECRET` (`openssl rand -hex 32`) and `ALLOWED_EMAILS` in the Vercel project's environment variables, and in `.env.local` for local work. To add another person, add their email to `ALLOWED_EMAILS` and redeploy.
 3. Keep `.env.local` out of git (it is already ignored).
 
+## Web UI
+
+Hebrew, right-to-left, in Rubik (self-hosted by `next/font`, so it works offline). Colors are CSS tokens in `app/globals.css`. The dark theme follows the design handoff; the light theme is derived from it with the same hues and text kept at 4.5:1 contrast or better. The app follows the system theme. Sign in at `/login` with Google (see Sign-in below).
+
+- **Lists**, in a sidebar on desktop and a drawer on mobile, with counts: `/inbox`, `/next`, `/waiting`, `/scheduled`, `/someday`, `/done`.
+  - Each list has a capture box that adds to that list, a search box, and context and project filters, all kept in the URL.
+  - **Every capture box understands `@context`:** `להתקשר לשמאי @קצר` is saved as "להתקשר לשמאי" with the context `@quick` (`lib/quick-add.ts`). Both the English names (`@focus`, `@quick`, `@out`, `@home`) and the Hebrew labels (`@ריכוז`, `@קצר`, `@בחוץ`, `@בבית`) work. Any other `@word` stays in the title. The context travels through the offline capture queue.
+  - **Context filters also match subtasks.** In Inbox, Next, Waiting and Someday, a filter also finds the ready subtasks of the listed tasks (not deferred, and not waiting their turn in a sequence). A matching subtask whose parent doesn't match gets a card of its own, linked to its parent and placed where the parent would be. A matching parent already shows its ready subtasks, so they don't appear twice. The chip counts match what each filter shows.
+  - **Next** nudges toward contexts: a "ללא הקשר" filter chip with its count, and a one-tap context picker on each card that has no context.
+  - **Scheduled** is a view, not a status. It shows every open task with a due date, grouped into overdue, today, tomorrow, this week, and later. Its sidebar badge counts overdue tasks.
+- **Task cards** show:
+  - the project, colored consistently per project
+  - context chips
+  - relative due dates ("היום", "באיחור 2 ימים"), color-coded by urgency
+  - a notes preview
+  - Note lines written as `- [ ] item` render as checklist items that can be ticked right on the card, with a progress chip.
+  - **Clickable links:** web addresses in notes and project outcomes show as short links that open in a new tab (`lib/text-links.ts`). The label says what they are: "מסמך Google", "גיליון Google", "מצגת Google", "תיקייה ב-Drive", "קובץ ב-Drive", or the site's name. Only `http(s)` addresses become links. On the task page, where the notes are an editor, the links appear under it.
+- **`/tasks/:id`**: a full edit page with list tabs, context chips, a project picker, and due-date presets.
+- **`/projects`**: a card per project, two across on desktop and one column on phones. Each card shows:
+  - its review badge ("טרם נסקר", or when it was reviewed and when the next review is due)
+  - the outcome, two lines at most
+  - **the next action** with its context: the first actionable task in project order (`lib/next-action.ts`). When it's a parent with subtasks, the card shows the subtasks instead: the first one in a sequential parent, or every ready one in a parallel parent (3 shown folded, "ועוד N" for the rest).
+    - Folded, each action is one line cut with an ellipsis.
+    - Tapping the box opens it: full titles, their notes, and a link to each task.
+    - The card's title link covers the rest of the card, so tapping anywhere else still opens the project.
+  - a bar of done / next / waiting / someday with counts
+  - a soft hint when more than 3 next actions run in parallel with nothing done yet
+  - a stalled notice when there is no available next action
+
+  On phones, the status tabs become pills, the outcome is hidden, and the review badge shrinks to an amber dot.
+- **`/review`**: the weekly review in focus mode (see Project reviews).
+- **Phones (≤ 640px)**: a bottom tab bar with Inbox, Next, Projects and Review, and a "+" in the middle that opens a quick-capture sheet (into the inbox). The other lists stay in the drawer behind the top bar's menu.
+  - **`/projects/:id`**:
+    - **Header:** a breadcrumb, then the name, review badge and outcome, with "עריכה" (edit) and "סקור עכשיו" (review now). Review now opens the weekly review on this project, even when it isn't due.
+    - **Quick add:** a box that adds next actions to the project and understands `@context`.
+    - **Sections:**
+      - Next, with how many actions are available now and how many are queued in a sequence.
+      - Waiting, showing who it's waiting for, the follow-up date, and follow-up chips.
+      - Someday and Done, collapsed.
+    - **Side panel:** a progress bar and the review info (cadence, last reviewed, created).
+    - **Phones:**
+      - a top bar with back and a ⋯ menu (review now, edit)
+      - Tasks / Info tabs
+      - rows at least 48px tall with 22px checkboxes
+      - quick add pinned above the tab bar
+
+Pages read the database on the server, and edits go through Server Actions. The browser never sees `API_TOKEN`.
+`proxy.ts` sends signed-out visitors to `/login`, and every page and action also checks the session itself.
+
+### Theme "Shapes"
+
+The visual layer from the design handoff (`FUN-THEME.md`). It only changes how things look, not layout or behavior.
+- **Background:** a fixed layer behind every page (`z-index: -1` in the root layout). It's a dot grid with four soft shapes at 12% opacity or less, two of them drifting slowly. On phones only the ring and the disc remain, at 60% size.
+- **Glass surfaces:** cards, lists, the quick-add bar, side panels, the sidebar and the top and bottom bars are translucent with a backdrop blur (10px on phones).
+- **Glow accents:**
+  - project color dots
+  - the green gradient on primary buttons and the "עכשיו" tag
+  - the done segment of progress bars, and ticked checkboxes
+  - a large percentage next to "התקדמות" on the project page
+- **Completing a task:**
+  - Five pieces of confetti pop at the checkbox. They're drawn by `<Celebrations />` in the app layout, so they survive the card leaving the list.
+  - A toast says "יפה! צעד אחד קדימה" or "ממשיכים ככה". When that completion leaves the project with no next action, it says "כל הפעולות הבאות הושלמו" (`completeTask`).
+- **"Today" card** at the bottom of the sidebar: tasks completed today, plus 7 bars for the last 7 days, from `tasks.completed_at`. Migration 0007 adds that column with a trigger that sets it when a task becomes done (the parent cascade included) and clears it when the task is reopened. Tasks that were already done take their last update time.
+- **Reduced motion:** with `prefers-reduced-motion`, no drift, confetti or toast animation.
+- **Light theme:** it uses its own glass and background values, derived from the dark spec.
+
+## Installable app (PWA)
+
+- `app/manifest.ts`: Hebrew/RTL, `standalone` display, starts at `/inbox`. It has `any` and `maskable` icons and two home-screen shortcuts: quick capture (`/inbox?capture=1`, which focuses the capture box) and Next actions.
+- Icons are generated from one design: `app/icon.svg` (favicon), `app/apple-icon.png`, and `public/icons/*`.
+- `/sw.js` is served by `app/sw.js/route.ts` from `lib/sw-source.ts`, with a version per build (the commit SHA on Vercel). Each deploy therefore installs a fresh worker. The worker:
+  - precaches the offline screen together with its scripts and styles
+  - caches content-hashed `/_next/static` assets
+  - serves pages network-first and keeps copies of app pages for offline reading (see below)
+  - It is served with `no-store` so updates reach installed apps, and is registered only in production builds.
+  - The route is static, so it runs at build time, and it parses the generated worker: a syntax error fails `next build` instead of silently turning off offline support.
+- On Android/Chrome, an "Install app" item appears in the menu whenever the browser offers installation (`beforeinstallprompt`).
+
+### Offline capture
+
+Every capture goes through a local queue, online or not. `lib/offline-queue.ts` writes it to IndexedDB first, then sends it to `POST /api/capture`, so nothing typed is lost to a dead connection.
+
+- **Idempotent:** each item carries a UUID created on the device, which becomes the task id. Retries are acknowledged instead of creating duplicates. Capture order is kept, and a project deleted while an item was queued doesn't block it.
+- **Syncs when:**
+  - the network comes back (`online`)
+  - the app returns to the foreground
+  - every 30 seconds while the server is unreachable
+  - on Android, through **Background Sync**: the service worker sends the queue even if the app is closed
+- **Status:** a bar on every page shows items still waiting and why (offline, server unreachable, or signed out).
+- **Opening the app with no network** lands on `/offline`, which is a capture screen: items queue on the device and reach the inbox later.
+- `/api/capture` requires the browser session and JSON (SameSite=Lax cookie), so other sites can't post to it.
+
+### Offline reading
+
+- **Saved pages:** every app page you open online (lists, projects, project and task pages) is saved on the device, network-first. Without a network you get the last saved copy. An unsaved URL with filters falls back to the saved list, and a page never opened falls back to the offline capture screen.
+- **Background refresh:** while online, the app asks the service worker to refresh all seven main lists, at most every 10 minutes, so they're current even if you only looked at the inbox. A new service worker does the same when it installs.
+- **Read-only snapshots:** a page served from the cache is marked, and shows "offline view, as of <time>". Edit controls are disabled, since they need the server. Capture keeps working through the queue.
+- **Scope and privacy:**
+  - Saved pages belong to one build (their HTML references that build's scripts), and a deploy replaces them.
+  - At most 80 pages are kept.
+  - Login, OAuth and API responses are never cached.
+  - **Logging out deletes the saved pages**, and so does any response that redirects to the login page (an expired session).
+
 ## API
 
-Every request needs `Authorization: Bearer $API_TOKEN`, or a signed-in session cookie. Bodies and responses are JSON with camelCase fields.
+Every request needs `Authorization: Bearer $API_TOKEN`. Bodies and responses are JSON with camelCase fields.
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| `GET` | `/api/tasks` | Filters: `?status=`, `?context=` (URL-encode `@` as `%40`), `?projectId=` |
+| `GET` | `/api/tasks` | Filters: `?status=`, `?context=` (URL-encode `@` as `%40`), `?projectId=`. Returns deferred tasks too |
 | `POST` | `/api/tasks` | `title` required; `status` defaults to `inbox` |
 | `GET` / `PATCH` / `DELETE` | `/api/tasks/:id` | `PATCH` takes any subset of fields; send `null` to clear one |
 | `GET` | `/api/projects` | Filter: `?status=` |
 | `POST` | `/api/projects` | `name` required; `status` defaults to `active` |
 | `GET` / `PATCH` / `DELETE` | `/api/projects/:id` | Deleting a project keeps its tasks and clears their `projectId` |
+| `POST` | `/api/projects/:id/review` | Marks the project as reviewed now; returns it with its review state |
 
-Task fields: `title`, `projectId`, `status`, `context`, `dueDate` (`YYYY-MM-DD`), `notes`.
-Project fields: `name`, `outcome`, `status`.
+Task fields: `title`, `projectId`, `status`, `context`, `startDate` and `dueDate` (`YYYY-MM-DD`), `notes`.
+Project fields: `name`, `outcome`, `status`, `sequential`, `reviewCadenceDays`.
 Unknown fields and invalid values return `400` with per-field `details`; a missing or malformed id returns `404`.
 
 ```sh
 curl -H "Authorization: Bearer $API_TOKEN" -H "Content-Type: application/json" \
-  -d '{"title":"להתקשר לנגר","status":"next","context":"@phone"}' https://<host>/api/tasks
+  -d '{"title":"להתקשר לנגר","status":"next","context":"@quick"}' https://<host>/api/tasks
 ```
 
 `scripts/api-smoke.sh <base-url> <token>` runs the full CRUD flow against any instance and deletes the rows it creates.
+
+## MCP (Claude)
+
+`/api/mcp` is a remote MCP server (Streamable HTTP, built on `mcp-handler`) exposing the GTD system to Claude.
+
+| Tool | What it does |
+| --- | --- |
+| `gtd_overview` | Today's date, counts per list (the inbox items come from the same query as the Inbox list, so they match its count), overdue and due-today tasks, the inbox, active projects with no next action, and the review queue |
+| `list_tasks` | Tasks in a list (or all open ones), filtered by context, project or text |
+| `get_task` / `create_tasks` / `update_task` / `delete_task` | Task CRUD. `create_tasks` takes a batch and defaults to the inbox; `update_task` with `status: "done"` completes a task |
+| `reorder_tasks` | Sets the manual order of sibling tasks (one parent's subtasks, or one project's top-level tasks) |
+| `list_projects` / `get_project` | Projects with outcome, per-list counts, progress, and review state (`isStalled`, `isDueForReview`, `needsReview`) |
+| `review_queue` / `mark_project_reviewed` | The projects that need review, with their open tasks; marking one reviewed takes it off the queue |
+| `create_project` / `update_project` / `delete_project` | Project CRUD. `create_project` can create its first next actions in the same call |
+
+There are also two prompts, `capture` (see Capture skill) and `weekly_review`, and server instructions that explain the GTD lists and contexts to the model.
+
+### Capture skill
+
+`skills/gtd-capture/SKILL.md` teaches Claude to turn free text into tasks that are already processed, instead of leaving everything in the inbox. For each item it decides:
+
+- the list (next, waiting with "ממתין ל:", someday, or inbox only when unclear)
+- a verb-first title and a context
+- the project (an existing one, or a new one with an outcome)
+- start and due dates, computed from today in Israel
+- subtasks, sequential when the order matters
+
+It checks for duplicates, writes everything in one or two `create_tasks` calls, and reports back with links.
+
+The same file serves two uses:
+
+- **As a skill:** zip the `skills/gtd-capture` folder and upload it as a custom skill in claude.ai. In Claude Code, copy it to `~/.claude/skills/gtd-capture/`.
+- **As the MCP prompt `capture`**, with an optional `text` argument. It works in any client connected to this server, with no install. `lib/capture-guide.ts` reads the file at runtime, and `next.config.ts` makes sure it ships with `/api/mcp`.
+
+Edit only `SKILL.md`: both uses pick up the change.
+
+### Task links and calendar events
+
+- Every task and project in a tool result has a `url`, its canonical link: `https://<app>/tasks/{id}` (or `/projects/{id}`).
+- The server instructions tell Claude that whenever it creates, updates or syncs a calendar event for a task (with any calendar tool), it puts the task's url at the start of the event description and in the event's location or URL field.
+- The link's origin is `APP_URL` if set, otherwise Vercel's production domain, otherwise the request's host. Links in calendar events therefore never point at a preview deployment.
+- Opening a link:
+  - On Android the installed app handles it (`handle_links: "preferred"`, reusing an open window).
+  - Signed out, you land on the task right after logging in; `next` is limited to same-site paths.
+  - A deleted task shows a friendly not-found page.
+  - The task page also has a "copy link" button, which uses the share sheet on phones.
+
+### Auth
+
+- **OAuth 2.1**, for claude.ai (web and mobile) and Claude Desktop. The app is its own authorization server:
+  - discovery via `/.well-known/oauth-protected-resource/api/mcp` and `/.well-known/oauth-authorization-server`
+  - Dynamic Client Registration at `/oauth/register`, plus Client ID Metadata Documents (https `client_id`)
+  - `/oauth/authorize`: a Hebrew consent screen. It needs a Google sign-in first if you aren't already signed in, and can't be framed.
+  - `/oauth/token`: PKCE S256 is required, codes are single-use, and refresh tokens rotate
+  - Access tokens last 1 hour and refresh tokens 90 days. They are stored only as SHA-256 hashes and bound to this server's `/api/mcp` resource.
+  - **Rotating `SESSION_SECRET` revokes every OAuth token.**
+- **`API_TOKEN` as a bearer token** also works, for Claude Code and scripts.
+
+### Connecting
+
+- **claude.ai** (also syncs to the mobile app): Settings → Connectors → Add custom connector → `https://<host>/api/mcp`. Claude runs the OAuth flow; approve it on the consent screen.
+- **Claude Code**: `claude mcp add --transport http gtd https://<host>/api/mcp --header "Authorization: Bearer $API_TOKEN"`
+- **Checks**: `scripts/mcp-smoke.sh <base-url> <token>` runs discovery, the 401 challenge, `initialize`, `tools/list` and `gtd_overview`.
 
 ## Scripts
 

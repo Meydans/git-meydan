@@ -315,7 +315,8 @@
           </div>
 
           <!-- Add Item Form -->
-          <div class="flex flex-col sm:flex-row gap-3 mb-10 pb-10 border-b border-slate-800/50">
+          <div class="mb-10 pb-10 border-b border-slate-800/50">
+          <div class="flex flex-col sm:flex-row gap-3">
             <div class="flex-grow">
               <input id="newItemInput" type="text" placeholder="What else do we need?"
                 class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-medium" />
@@ -339,6 +340,8 @@
                 Add
               </button>
             </div>
+          </div>
+          <p id="addItemFeedback" class="hidden mt-3 px-4 py-2.5 rounded-xl text-sm font-medium border" dir="auto"></p>
           </div>
 
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -1061,6 +1064,24 @@ Return ONLY the category name in plain text, nothing else.
       return data;
     }
 
+    // Collapses rows that name the same item. The merged item stays on the
+    // shopping list if any copy was still needed.
+    function mergeDuplicateItems(items) {
+      const byName = new Map();
+      for (const item of items) {
+        const key = normalizeItemName(item.name);
+        const kept = byName.get(key);
+        if (!kept) {
+          byName.set(key, item);
+          continue;
+        }
+        kept.has = kept.has && item.has;
+        if (item.type === "mandatory") kept.type = "mandatory";
+        if (kept.category === "OTHER" && item.category && item.category !== "OTHER") kept.category = item.category;
+      }
+      return { items: [...byName.values()], removed: items.length - byName.size };
+    }
+
     async function loadMasterItems() {
       try {
         const list = getCurrentList();
@@ -1087,23 +1108,26 @@ Return ONLY the category name in plain text, nothing else.
           });
         });
 
+        const { items: uniqueItems, removed: duplicatesRemoved } = mergeDuplicateItems(nextItems);
+
         // AI Categorization for missing categories
-        const missingCats = nextItems.filter(i => i.category === "OTHER" || i.category === "");
+        const missingCats = uniqueItems.filter(i => i.category === "OTHER" || i.category === "");
         if (missingCats.length > 0) {
           setAppStatus(`Categorizing ${missingCats.length} items with AI...`);
           await categorizeItemsInBatch(missingCats);
-          setSourceDirty(list, data, true);
-        } else {
-          setSourceDirty(list, data, false);
         }
+        setSourceDirty(list, data, missingCats.length > 0 || duplicatesRemoved > 0);
 
-        data.items = nextItems;
+        data.items = uniqueItems;
         data.dirtyItemIds = new Set(); // fresh load = no local changes pending
         localStorage.setItem(list.cacheKey, JSON.stringify(data.items));
         renderListSwitcher();
         renderMasterList();
 
-        setAppStatus(`Loaded ${data.items.length} items. ${missingCats.length > 0 ? 'AI filled missing categories. Sync to save!' : ''}`);
+        const notes = [];
+        if (duplicatesRemoved > 0) notes.push(`Merged ${duplicatesRemoved} duplicate${duplicatesRemoved > 1 ? "s" : ""}.`);
+        if (missingCats.length > 0) notes.push("AI filled missing categories.");
+        setAppStatus(`Loaded ${data.items.length} items. ${notes.join(" ")}`);
         updateSyncButton();
       } catch (err) {
         setAppStatus(`Load failed: ${err.message}`);
@@ -1316,37 +1340,95 @@ Return ONLY the category name in plain text, nothing else.
       return "OTHER";
     }
 
+    const HEBREW_FINAL_LETTERS = { "ך": "כ", "ם": "מ", "ן": "נ", "ף": "פ", "ץ": "צ" };
+
+    // Reduces singular/plural variants to a common form: בטטה/בטטות, מלפפון/מלפפונים, tomato/tomatoes.
+    function stemWord(word) {
+      let w = word.replace(/[ךםןףץ]/g, ch => HEBREW_FINAL_LETTERS[ch]);
+      if (/[֐-׿]/.test(w)) {
+        if ((w.endsWith("ות") || w.endsWith("ימ")) && w.length >= 4) w = w.slice(0, -2);
+        else if (w.endsWith("ה") && w.length >= 3) w = w.slice(0, -1);
+      } else {
+        if (w.endsWith("s") && w.length > 3) w = w.slice(0, -1);
+        if (w.endsWith("e") && w.length > 3) w = w.slice(0, -1);
+      }
+      return w;
+    }
+
+    function normalizeItemName(name) {
+      return String(name)
+        .toLowerCase()
+        .replace(/["'`׳״.,\-]/g, " ")
+        .split(/\s+/)
+        .filter(Boolean)
+        .map(stemWord)
+        .join(" ");
+    }
+
+    const addItemFeedback = document.getElementById("addItemFeedback");
+    let addFeedbackTimer = null;
+
+    function showAddFeedback(message, kind) {
+      const styles = {
+        success: "bg-emerald-950/40 text-emerald-300 border-emerald-800/60",
+        info: "bg-amber-950/40 text-amber-300 border-amber-800/60",
+        pending: "bg-slate-800/60 text-slate-300 border-slate-700",
+        error: "bg-rose-950/40 text-rose-300 border-rose-800/60"
+      };
+      addItemFeedback.className = `mt-3 px-4 py-2.5 rounded-xl text-sm font-medium border ${styles[kind]}`;
+      addItemFeedback.textContent = message;
+      clearTimeout(addFeedbackTimer);
+      if (kind !== "pending") {
+        addFeedbackTimer = setTimeout(() => addItemFeedback.classList.add("hidden"), 6000);
+      }
+    }
+
+    function highlightItem(id) {
+      const el = masterList.querySelector(`[data-item-id="${CSS.escape(id)}"]`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-amber-400");
+      setTimeout(() => el.classList.remove("ring-2", "ring-amber-400"), 2500);
+    }
+
+    let isAddingItem = false;
+
     async function addItem() {
+      if (isAddingItem) return;
+
       const name = newItemInput.value.trim();
       const type = normalizeType(newItemType.value);
       const data = getCurrentData();
       const list = getCurrentList();
 
       if (!name) {
-        setAppStatus("Enter an item name first.");
+        showAddFeedback("Enter an item name first.", "error");
         return;
       }
 
-      // Check if item exists in current list's data
-      const existingItem = data.items.find((item) => item.name.toLowerCase() === name.toLowerCase());
+      const normalizedName = normalizeItemName(name);
+      const existingItem = data.items.find((item) => normalizeItemName(item.name) === normalizedName);
       if (existingItem) {
+        newItemInput.value = "";
         if (existingItem.has) {
           existingItem.has = false;
           setSourceDirty(list, data, true);
           localStorage.setItem(list.cacheKey, JSON.stringify(data.items));
-          newItemInput.value = "";
           renderListSwitcher();
           renderMasterList();
           updateSyncButton();
-          setAppStatus(`"${existingItem.name}" כבר קיים ברשימה, הורדנו את הסימון שלו והחזרנו לרשימה.`);
+          showAddFeedback(`"${existingItem.name}" כבר קיים ברשימה – הורדנו את הסימון והחזרנו אותו לרשימת הקניות.`, "info");
         } else {
-          setAppStatus(`"${existingItem.name}" כבר קיים ברשימה ואינו מסומן.`);
+          showAddFeedback(`"${existingItem.name}" כבר נמצא ברשימת הקניות – לא נוסף שוב.`, "info");
         }
+        highlightItem(existingItem.id);
         return;
       }
 
+      isAddingItem = true;
+      addItemBtn.disabled = true;
       try {
-        setAppStatus(`Categorizing "${name}"...`);
+        showAddFeedback(`Adding "${name}"...`, "pending");
         const catPrompt = `
 You are a grocery assistant. Categorize this item: "${name}".
 Pick the best category from: ${list.categories.join(", ")}.
@@ -1388,14 +1470,14 @@ Return ONLY the category name in plain text, nothing else.
         renderMasterList();
         updateSyncButton();
         
-        if (aiSuccess) {
-          setAppStatus(`Added "${name}" to ${category}. Sync to save to Google Sheets.`);
-        } else {
-          setAppStatus(`Added "${name}" to ${category} (guessed/offline). Sync to save.`);
-        }
+        showAddFeedback(`Added "${name}" to ${category}${aiSuccess ? "" : " (guessed offline)"}.`, "success");
+        highlightItem(newItem.id);
       } catch (err) {
         console.error(`[DEBUG] Error in addItem:`, err);
-        setAppStatus(`Failed to add: ${err.message}`);
+        showAddFeedback(`Failed to add: ${err.message}`, "error");
+      } finally {
+        isAddingItem = false;
+        addItemBtn.disabled = false;
       }
     }
 
@@ -1453,10 +1535,18 @@ The "order" array MUST contain all categories provided.
           values.push([item.name, item.type, item.has ? "checked" : "", item.category]);
         });
 
-        await sheetsFetch(`values/${list.sheetName}!A2:D${values.length + 1}?valueInputOption=RAW`, {
-          method: "PUT",
-          body: JSON.stringify({ values })
-        });
+        // Blank out rows left over from a longer previous list, otherwise they
+        // survive in the sheet and come back as ghost/duplicate items on load.
+        const existing = await sheetsFetch(`values/${list.sheetName}!A2:D`);
+        const existingRowCount = (existing.values || []).length;
+        while (values.length < existingRowCount) values.push(["", "", "", ""]);
+
+        if (values.length > 0) {
+          await sheetsFetch(`values/${list.sheetName}!A2:D${values.length + 1}?valueInputOption=RAW`, {
+            method: "PUT",
+            body: JSON.stringify({ values })
+          });
+        }
 
         setSourceDirty(list, data, false);
         data.dirtyItemIds.clear();

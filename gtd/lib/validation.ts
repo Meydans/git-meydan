@@ -6,8 +6,11 @@ const nullableText = z.string().trim().nullable();
 export const taskCreate = z.strictObject({
   title: z.string().trim().min(1),
   projectId: z.uuid().nullable().optional(),
+  parentId: z.uuid().nullable().optional(),
+  sequential: z.boolean().optional(),
   status: z.enum(taskStatus.enumValues).optional(),
   context: z.enum(taskContext.enumValues).nullable().optional(),
+  startDate: z.iso.date().nullable().optional(),
   dueDate: z.iso.date().nullable().optional(),
   notes: nullableText.optional(),
 });
@@ -24,7 +27,12 @@ export const projectCreate = z.strictObject({
   name: z.string().trim().min(1),
   outcome: nullableText.optional(),
   status: z.enum(projectStatus.enumValues).optional(),
+  sequential: z.boolean().optional(),
+  reviewCadenceDays: z.number().int().min(1).max(365).optional(),
 });
+
+export const projectStatusValue = z.enum(projectStatus.enumValues);
+export const reviewCadence = z.coerce.number().int().min(1).max(365);
 
 export const projectUpdate = projectCreate.partial();
 
@@ -33,3 +41,6 @@ export const projectFilters = z.object({
 });
 
 export const idParam = z.uuid();
+
+export const taskStatusValue = z.enum(taskStatus.enumValues);
+export const taskContextValue = z.enum(taskContext.enumValues);

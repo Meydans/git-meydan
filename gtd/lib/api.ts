@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { getSessionEmail } from "./auth/session";
+import { taskRuleMessage } from "./pg";
 import { idParam } from "./validation";
 
 export class HttpError extends Error {
@@ -34,9 +35,8 @@ async function checkAuth(request: Request) {
 
 // Maps Postgres error codes we expect from user input to 400s.
 function fromPgError(error: unknown) {
-  const code = (error as { cause?: { code?: string } })?.cause?.code;
-  if (code === "23503") return new HttpError(400, "projectId does not reference an existing project");
-  return null;
+  const message = taskRuleMessage(error);
+  return message ? new HttpError(400, message) : null;
 }
 
 type Handler<C> = (request: Request, context: C) => Promise<Response>;
