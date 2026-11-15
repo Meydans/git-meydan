@@ -1067,3 +1067,11 @@ button.primary:hover, .button.primary:hover, .tab-capture:hover { background: li
 .link-sheet { color: var(--accent); background: color-mix(in srgb, var(--st-done) 16%, transparent); }
 .notes-links { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: -8px; }
 .notes-links .text-link { padding: 4px 10px; }
+
+/* Finance shell: a plain top bar, no GTD sidebar. */
+.finance-shell { min-height: 100dvh; }
+.finance-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; max-width: 1120px; margin: 0 auto; padding: 14px 24px 0; }
+.finance-back { color: var(--muted); font-size: 0.9rem; }
+.finance-back:hover { color: var(--text); }
+.finance-logout { display: inline-flex; align-items: center; gap: 6px; margin-inline-start: auto; }
+.finance-shell .content { max-width: 1120px; }

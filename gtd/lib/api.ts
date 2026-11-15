@@ -1,6 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
-import { getSessionEmail } from "./auth/session";
+import { getGtdSessionEmail } from "./auth/session";
 import { taskRuleMessage } from "./pg";
 import { idParam } from "./validation";
 
@@ -30,7 +30,7 @@ async function checkAuth(request: Request) {
     }
     return;
   }
-  if (!(await getSessionEmail())) throw new HttpError(401, "Not signed in");
+  if (!(await getGtdSessionEmail())) throw new HttpError(401, "Not signed in");
 }
 
 // Maps Postgres error codes we expect from user input to 400s.

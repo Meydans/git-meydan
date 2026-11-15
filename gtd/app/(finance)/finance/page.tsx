@@ -1,14 +1,14 @@
 import { FinanceClient } from "@/components/finance/finance-client";
 import { financeConfigured } from "@/db/finance";
 import { listItems, listSnapshots } from "@/lib/finance/store";
-import { requireSession } from "@/lib/session";
+import { requireFinanceSession } from "@/lib/session";
 
 export const metadata = { title: "איפה אנחנו עומדים" };
 // Private data: never cache or prerender.
 export const dynamic = "force-dynamic";
 
 export default async function FinancePage() {
-  await requireSession();
+  await requireFinanceSession();
   if (!financeConfigured()) {
     return (
       <div className="fin-setup">

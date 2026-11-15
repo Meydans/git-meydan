@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { requireSession } from "@/lib/session";
+import { requireFinanceSession } from "@/lib/session";
 import {
   createItem,
   deleteItem,
@@ -21,27 +21,27 @@ import {
 const id = z.uuid();
 
 export async function addItem(): Promise<Item> {
-  await requireSession();
+  await requireFinanceSession();
   return createItem();
 }
 
 export async function patchItem(itemId: string, patch: unknown): Promise<void> {
-  await requireSession();
+  await requireFinanceSession();
   await updateItem(id.parse(itemId), itemPatch.parse(patch));
 }
 
 export async function removeItem(itemId: string): Promise<void> {
-  await requireSession();
+  await requireFinanceSession();
   await deleteItem(id.parse(itemId));
 }
 
 export async function importInventory(rows: unknown, backup: unknown): Promise<Item[]> {
-  const email = await requireSession();
+  const email = await requireFinanceSession();
   return replaceItems(importRows.parse(rows), backup ? summary.parse(backup) : null, email);
 }
 
 export async function takeSnapshot(sum: unknown): Promise<SnapshotInfo[]> {
-  const email = await requireSession();
+  const email = await requireFinanceSession();
   await saveSnapshot(summary.parse(sum), email);
   return listSnapshots();
 }

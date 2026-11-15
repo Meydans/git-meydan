@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
 import { authorizeKeys, checkAuthorizeRequest, consentToken, type AuthorizeParams } from "@/lib/oauth";
 import { currentOrigin } from "@/lib/origin";
-import { getSessionEmail } from "@/lib/session";
+import { getGtdSessionEmail, getSessionEmail } from "@/lib/session";
 import { approve, deny } from "./actions";
 
 export const metadata = { title: "GTD · אישור גישה" };
@@ -26,7 +26,9 @@ export default async function AuthorizePage({ searchParams }: PageProps<"/oauth/
     );
   }
 
-  const signedIn = !!(await getSessionEmail());
+  const signedIn = !!(await getGtdSessionEmail());
+  // Signed in, but the account is limited to finance: it may not connect anything to GTD.
+  const restricted = !signedIn && !!(await getSessionEmail());
   const clientName = check.client.name ?? "אפליקציה חיצונית";
   const redirectHost = new URL(check.redirectUri).host;
   const hidden = (
@@ -49,7 +51,8 @@ export default async function AuthorizePage({ searchParams }: PageProps<"/oauth/
         {hidden}
         <button className="primary" disabled={!signedIn}>אישור גישה</button>
       </form>
-      {!signedIn && (
+      {restricted && <p className="error">החשבון הזה מוגבל למודול הכספים ולא יכול לחבר אפליקציות ל-GTD.</p>}
+      {!signedIn && !restricted && (
         <form action="/api/auth/google">
           <input type="hidden" name="next" value={`/oauth/authorize?${new URLSearchParams(params)}`} />
           <button className="primary">כניסה עם Google</button>

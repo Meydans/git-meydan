@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { addItem, importInventory, patchItem, removeItem, takeSnapshot } from "@/app/(app)/finance/actions";
-import { listSnapshotsAction } from "@/app/(app)/finance/queries";
+import { addItem, importInventory, patchItem, removeItem, takeSnapshot } from "@/app/(finance)/finance/actions";
+import { listSnapshotsAction } from "@/app/(finance)/finance/queries";
 import type { Item, SnapshotInfo } from "@/lib/finance/store";
 import { initFinance } from "./engine";
 import "./finance.css";

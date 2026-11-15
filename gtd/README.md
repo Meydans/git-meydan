@@ -107,6 +107,7 @@ The web UI is for allowlisted Google accounts only. Pages redirect to `/login` (
 - Sign-in is Google OAuth (authorization code with PKCE, `state` and `nonce`). The id token is verified against Google's keys, and the email must be verified and listed in `ALLOWED_EMAILS`.
 - The session is a signed, HttpOnly, SameSite=Lax cookie that lasts 7 days (`lib/auth/`). Removing an address from `ALLOWED_EMAILS` ends its sessions.
 - The proxy (`proxy.ts`) is only an optimistic check. Pages, Server Actions and route handlers verify the session again.
+- **Finance-only accounts:** emails also listed in `FINANCE_ONLY_EMAILS` can sign in but only reach `/finance`. `requireSession()` (used by every GTD page, Server Action and the GTD layout) sends them to `/finance`, and the REST API's session path, capture sync and the MCP authorization screen refuse them. The finance module has its own layout (`app/(finance)/`) that loads no GTD data. `npm test` includes a check that every entry point under `app/` is guarded or on an explicit public list.
 - `SESSION_SECRET` also keys MCP OAuth tokens: rotating it signs everyone out and revokes them.
 - The API accepts either the session cookie or `Authorization: Bearer $API_TOKEN`, so scripts and the future MCP layer keep working.
 
@@ -322,6 +323,7 @@ Edit only `SKILL.md`: both uses pick up the change.
 | Command | What it does |
 | --- | --- |
 | `npm run db:generate` | Generate a SQL migration after changing `db/schema.ts` |
+| `npm test` | Unit tests (access policy, route guard coverage) |
 | `npm run db:migrate` | Apply pending migrations |
 | `npm run db:finance:migrate` | Apply pending finance migrations (manual, never part of a build) |
 | `npm run db:studio` | Open Drizzle Studio |
