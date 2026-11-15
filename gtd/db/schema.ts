@@ -96,7 +96,7 @@ export const oauthCodes = pgTable("oauth_codes", {
 export const oauthTokenKind = pgEnum("oauth_token_kind", ["access", "refresh"]);
 
 // Access and refresh tokens, stored as hashes. secretVersion ties a token to the
-// current APP_PASSWORD, so changing the password revokes every token at once.
+// current SESSION_SECRET, so rotating the secret revokes every token at once.
 export const oauthTokens = pgTable("oauth_tokens", {
   tokenHash: text("token_hash").primaryKey(),
   kind: oauthTokenKind("kind").notNull(),

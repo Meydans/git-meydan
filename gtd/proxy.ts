@@ -1,10 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { SESSION_COOKIE, isValidSession } from "@/lib/session";
+import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth/token";
 
 // Sends signed-out visitors to /login, remembering where they were going (e.g. a task link
 // opened from a calendar event). The API, MCP and OAuth endpoints handle their own auth.
-export function proxy(request: NextRequest) {
-  if (!isValidSession(request.cookies.get(SESSION_COOKIE)?.value)) {
+export async function proxy(request: NextRequest) {
+  if (!(await verifySessionToken(request.cookies.get(SESSION_COOKIE)?.value))) {
     const login = new URL("/login", request.url);
     const { pathname, search } = request.nextUrl;
     if (pathname !== "/") login.searchParams.set("next", pathname + search);

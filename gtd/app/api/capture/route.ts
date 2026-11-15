@@ -1,9 +1,8 @@
-import { cookies } from "next/headers";
 import { inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { projects, taskContext, taskStatus, tasks } from "@/db/schema";
-import { SESSION_COOKIE, isValidSession } from "@/lib/session";
+import { getSessionEmail } from "@/lib/session";
 
 // Sync target for the offline capture queue. Authenticated by the browser session cookie
 // (SameSite=Lax, and JSON-only, so cross-site pages can't post here).
@@ -24,7 +23,7 @@ const body = z.object({
 });
 
 export async function POST(request: Request) {
-  if (!isValidSession((await cookies()).get(SESSION_COOKIE)?.value)) {
+  if (!(await getSessionEmail())) {
     return Response.json({ error: "Not signed in" }, { status: 401 });
   }
   if (!request.headers.get("content-type")?.includes("application/json")) {

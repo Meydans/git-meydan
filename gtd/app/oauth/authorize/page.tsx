@@ -1,9 +1,8 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
 import { authorizeKeys, checkAuthorizeRequest, consentToken, type AuthorizeParams } from "@/lib/oauth";
 import { currentOrigin } from "@/lib/origin";
-import { isValidSession, SESSION_COOKIE } from "@/lib/session";
+import { getSessionEmail } from "@/lib/session";
 import { approve, deny } from "./actions";
 
 export const metadata = { title: "GTD · אישור גישה" };
@@ -27,7 +26,7 @@ export default async function AuthorizePage({ searchParams }: PageProps<"/oauth/
     );
   }
 
-  const signedIn = isValidSession((await cookies()).get(SESSION_COOKIE)?.value);
+  const signedIn = !!(await getSessionEmail());
   const clientName = check.client.name ?? "אפליקציה חיצונית";
   const redirectHost = new URL(check.redirectUri).host;
   const hidden = (
@@ -48,10 +47,14 @@ export default async function AuthorizePage({ searchParams }: PageProps<"/oauth/
 
       <form action={approve}>
         {hidden}
-        {!signedIn && <input type="password" name="password" placeholder="סיסמה" required autoFocus />}
-        {sp.login_error && <p className="error">סיסמה שגויה</p>}
-        <button className="primary">אישור גישה</button>
+        <button className="primary" disabled={!signedIn}>אישור גישה</button>
       </form>
+      {!signedIn && (
+        <form action="/api/auth/google">
+          <input type="hidden" name="next" value={`/oauth/authorize?${new URLSearchParams(params)}`} />
+          <button className="primary">כניסה עם Google</button>
+        </form>
+      )}
       <form action={deny}>
         {hidden}
         <button className="deny">ביטול</button>

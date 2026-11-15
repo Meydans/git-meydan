@@ -9,7 +9,7 @@ import { addDays, todayInIsrael } from "@/lib/labels";
 import { toggleLine } from "@/lib/notes";
 import { taskRuleCode } from "@/lib/pg";
 import { safePath } from "@/lib/safe-path";
-import { checkPassword, endSession, requireSession, startSession } from "@/lib/session";
+import { endSession, requireSession } from "@/lib/session";
 import { projectFocus } from "@/lib/next-action";
 import { markProjectReviewed } from "@/lib/review";
 import { idParam, projectCreate, projectStatusValue, reviewCadence, taskContextValue, taskCreate, taskStatusValue } from "@/lib/validation";
@@ -56,16 +56,6 @@ function returnTo(formData: FormData, fallback: string) {
 
 function refresh() {
   revalidatePath("/", "layout");
-}
-
-export async function login(formData: FormData) {
-  const next = safePath(formData.get("next"));
-  const password = formData.get("password");
-  if (typeof password !== "string" || !checkPassword(password)) {
-    redirect(`/login?error=1${next === "/" ? "" : `&next=${encodeURIComponent(next)}`}`);
-  }
-  await startSession();
-  redirect(next);
 }
 
 export async function logout() {

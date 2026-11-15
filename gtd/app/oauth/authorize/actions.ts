@@ -1,6 +1,5 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   authorizeKeys,
@@ -11,7 +10,7 @@ import {
   type AuthorizeParams,
 } from "@/lib/oauth";
 import { currentOrigin } from "@/lib/origin";
-import { checkPassword, isValidSession, SESSION_COOKIE, startSession } from "@/lib/session";
+import { getSessionEmail } from "@/lib/session";
 
 function paramsFrom(formData: FormData): AuthorizeParams {
   const params: AuthorizeParams = {};
@@ -36,14 +35,8 @@ async function validated(formData: FormData) {
 export async function approve(formData: FormData) {
   const { params, origin, check } = await validated(formData);
 
-  const signedIn = isValidSession((await cookies()).get(SESSION_COOKIE)?.value);
-  if (!signedIn) {
-    const password = formData.get("password");
-    if (typeof password !== "string" || !checkPassword(password)) {
-      redirect(withParams(`${origin}/oauth/authorize`, { ...params, login_error: "1" }));
-    }
-    await startSession();
-  }
+  // Not signed in (e.g. the session expired while the consent screen was open): go through Google first.
+  if (!(await getSessionEmail())) redirect(`/oauth/authorize?${new URLSearchParams(params)}`);
 
   const code = await issueCode(check);
   redirect(withParams(check.redirectUri, { code, state: params.state, iss: origin }));

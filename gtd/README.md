@@ -100,9 +100,25 @@ Where it shows:
 - **REST:** `POST /api/projects/:id/review` marks a project as reviewed.
 - **MCP:** the new tools `review_queue` and `mark_project_reviewed`, health fields on `list_projects`, `reviewQueue` in `gtd_overview`, and `reviewCadenceDays` on create and update.
 
+## Sign-in
+
+The web UI is for allowlisted Google accounts only. Pages redirect to `/login` (remembering where you were going) when there is no valid session. `/api/*`, `/oauth/*` and the MCP endpoint do their own auth: a session cookie or `API_TOKEN` for the API, OAuth or `API_TOKEN` for MCP.
+
+- Sign-in is Google OAuth (authorization code with PKCE, `state` and `nonce`). The id token is verified against Google's keys, and the email must be verified and listed in `ALLOWED_EMAILS`.
+- The session is a signed, HttpOnly, SameSite=Lax cookie that lasts 7 days (`lib/auth/`). Removing an address from `ALLOWED_EMAILS` ends its sessions.
+- The proxy (`proxy.ts`) is only an optimistic check. Pages, Server Actions and route handlers verify the session again.
+- `SESSION_SECRET` also keys MCP OAuth tokens: rotating it signs everyone out and revokes them.
+- The API accepts either the session cookie or `Authorization: Bearer $API_TOKEN`, so scripts and the future MCP layer keep working.
+
+Setup:
+
+1. In Google Cloud Console, create an OAuth client of type **Web application**. Add `<APP_URL>/api/auth/callback` as an authorized redirect URI (and `http://localhost:3000/api/auth/callback` for local work).
+2. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL`, `SESSION_SECRET` (`openssl rand -hex 32`) and `ALLOWED_EMAILS` in the Vercel project's environment variables, and in `.env.local` for local work. To add another person, add their email to `ALLOWED_EMAILS` and redeploy.
+3. Keep `.env.local` out of git (it is already ignored).
+
 ## Web UI
 
-Hebrew, right-to-left, in Rubik (self-hosted by `next/font`, so it works offline). Colors are CSS tokens in `app/globals.css`. The dark theme follows the design handoff; the light theme is derived from it with the same hues and text kept at 4.5:1 contrast or better. The app follows the system theme. Sign in at `/login` with `APP_PASSWORD`, which sets an HttpOnly session cookie for 30 days.
+Hebrew, right-to-left, in Rubik (self-hosted by `next/font`, so it works offline). Colors are CSS tokens in `app/globals.css`. The dark theme follows the design handoff; the light theme is derived from it with the same hues and text kept at 4.5:1 contrast or better. The app follows the system theme. Sign in at `/login` with Google (see Sign-in below).
 
 - **Lists**, in a sidebar on desktop and a drawer on mobile, with counts: `/inbox`, `/next`, `/waiting`, `/scheduled`, `/someday`, `/done`.
   - Each list has a capture box that adds to that list, a search box, and context and project filters, all kept in the URL.
@@ -279,10 +295,10 @@ Edit only `SKILL.md`: both uses pick up the change.
 - **OAuth 2.1**, for claude.ai (web and mobile) and Claude Desktop. The app is its own authorization server:
   - discovery via `/.well-known/oauth-protected-resource/api/mcp` and `/.well-known/oauth-authorization-server`
   - Dynamic Client Registration at `/oauth/register`, plus Client ID Metadata Documents (https `client_id`)
-  - `/oauth/authorize`: a Hebrew consent screen. It asks for `APP_PASSWORD` unless you're already signed in, and can't be framed.
+  - `/oauth/authorize`: a Hebrew consent screen. It needs a Google sign-in first if you aren't already signed in, and can't be framed.
   - `/oauth/token`: PKCE S256 is required, codes are single-use, and refresh tokens rotate
   - Access tokens last 1 hour and refresh tokens 90 days. They are stored only as SHA-256 hashes and bound to this server's `/api/mcp` resource.
-  - **Changing `APP_PASSWORD` revokes every OAuth token.**
+  - **Rotating `SESSION_SECRET` revokes every OAuth token.**
 - **`API_TOKEN` as a bearer token** also works, for Claude Code and scripts.
 
 ### Connecting

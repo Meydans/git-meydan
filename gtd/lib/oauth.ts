@@ -23,14 +23,14 @@ const sha256 = (value: string) => createHash("sha256").update(value).digest("hex
 const newSecret = () => randomBytes(32).toString("base64url");
 const inSeconds = (s: number) => new Date(Date.now() + s * 1000);
 
-function appPassword() {
-  const password = process.env.APP_PASSWORD;
-  if (!password) throw new Error("APP_PASSWORD is not configured");
-  return password;
+function sessionSecret() {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) throw new Error("SESSION_SECRET is not configured");
+  return secret;
 }
 
-// Ties tokens to the current APP_PASSWORD: rotating the password revokes them all.
-const secretVersion = () => createHmac("sha256", appPassword()).update("gtd-oauth-v1").digest("hex").slice(0, 16);
+// Ties tokens to the current SESSION_SECRET: rotating the secret revokes them all.
+const secretVersion = () => createHmac("sha256", sessionSecret()).update("gtd-oauth-v1").digest("hex").slice(0, 16);
 
 export const mcpResource = (origin: string) => `${origin}/api/mcp`;
 
@@ -157,7 +157,7 @@ export async function checkAuthorizeRequest(params: AuthorizeParams, origin: str
 // Binds the consent form to the exact request it was rendered for.
 export function consentToken(params: AuthorizeParams) {
   const payload = authorizeKeys.map((key) => params[key] ?? "").join("\n");
-  return createHmac("sha256", appPassword()).update(`gtd-consent-v1\n${payload}`).digest("hex");
+  return createHmac("sha256", sessionSecret()).update(`gtd-consent-v1\n${payload}`).digest("hex");
 }
 
 export function checkConsentToken(params: AuthorizeParams, token: string) {
