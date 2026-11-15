@@ -2,7 +2,7 @@ import { inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { projects, taskContext, taskStatus, tasks } from "@/db/schema";
-import { getSessionEmail } from "@/lib/session";
+import { getGtdSessionEmail } from "@/lib/session";
 
 // Sync target for the offline capture queue. Authenticated by the browser session cookie
 // (SameSite=Lax, and JSON-only, so cross-site pages can't post here).
@@ -23,7 +23,7 @@ const body = z.object({
 });
 
 export async function POST(request: Request) {
-  if (!(await getSessionEmail())) {
+  if (!(await getGtdSessionEmail())) {
     return Response.json({ error: "Not signed in" }, { status: 401 });
   }
   if (!request.headers.get("content-type")?.includes("application/json")) {

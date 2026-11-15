@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { canUseGtd } from "./access";
 import { SESSION_COOKIE, SESSION_SECONDS, signSession, verifySessionToken } from "./token";
 
 const cookieOptions = {
@@ -27,8 +28,23 @@ export const getSessionEmail = cache(async () =>
   verifySessionToken((await cookies()).get(SESSION_COOKIE)?.value),
 );
 
-// Use in pages and route handlers: the proxy is only an optimistic check.
+// The signed-in email if it may use GTD, else null. For route handlers that answer 401/403 themselves.
+export async function getGtdSessionEmail() {
+  const email = await getSessionEmail();
+  return canUseGtd(email) ? email : null;
+}
+
+// GTD pages and Server Actions. Default-deny: a finance-only account is sent to /finance, so any
+// GTD entry point that calls this stays closed to it. The proxy is only an optimistic check.
 export async function requireSession() {
+  const email = await getSessionEmail();
+  if (!email) redirect("/login");
+  if (!canUseGtd(email)) redirect("/finance");
+  return email;
+}
+
+// Finance pages and actions: any signed-in, allowlisted account.
+export async function requireFinanceSession() {
   const email = await getSessionEmail();
   if (!email) redirect("/login");
   return email;
