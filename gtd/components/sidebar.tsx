@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { ClipboardCheck, FolderKanban, LogOut, Menu, X } from "lucide-react";
+import { ClipboardCheck, FolderKanban, LogOut, Menu, Wallet, X } from "lucide-react";
 import { logout } from "@/app/actions";
 import { clearOfflinePages } from "@/components/offline-status";
 import { InstallButton } from "@/components/pwa";
@@ -15,13 +15,14 @@ type Props = {
   overdue: number;
   activeProjects: number;
   reviewDue: number;
+  financeDue: boolean; // the quarterly finance update is due
   done: { today: number; week: boolean[] }; // completions today, and per day for the last 7
 };
 
 // Hidden lists (done) don't need a count badge; open lists do.
 const showCount = (list: ListKey) => list !== "done";
 
-export function Sidebar({ counts, overdue, activeProjects, reviewDue, done }: Props) {
+export function Sidebar({ counts, overdue, activeProjects, reviewDue, financeDue, done }: Props) {
   const pathname = usePathname();
   // Remember which page the drawer was opened on, so navigating closes it.
   const [openOn, setOpenOn] = useState<string | null>(null);
@@ -35,7 +36,9 @@ export function Sidebar({ counts, overdue, activeProjects, reviewDue, done }: Pr
       ? "פרויקטים"
       : pathname.startsWith("/review")
         ? "סקירה"
-        : "GTD";
+        : pathname.startsWith("/finance")
+          ? "איפה אנחנו עומדים"
+          : "GTD";
 
   return (
     <>
@@ -82,6 +85,11 @@ export function Sidebar({ counts, overdue, activeProjects, reviewDue, done }: Pr
             <ClipboardCheck size={20} />
             <span>סקירה</span>
             {reviewDue > 0 && <span className="badge badge-review" title="פרויקטים שממתינים לסקירה">{reviewDue}</span>}
+          </Link>
+          <Link href="/finance" className="nav-item" aria-current={pathname.startsWith("/finance") ? "page" : undefined}>
+            <Wallet size={20} />
+            <span>איפה אנחנו עומדים</span>
+            {financeDue && <span className="badge badge-review" title="הגיע הזמן לעדכון הרבעוני">!</span>}
           </Link>
         </nav>
 

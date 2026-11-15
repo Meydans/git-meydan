@@ -1,0 +1,167 @@
+/* Scoped copy of the "איפה אנחנו עומדים" page styles; everything lives under .fin. */
+
+.fin {
+  color-scheme: light;
+  --bg: #f4f3ef;
+  --surface: #fcfcfb;
+  --surface-2: #efeee9;
+  --border: #dcdad3;
+  --text: #0b0b0b;
+  --text-2: #52514e;
+  --muted: #7a7873;
+  --accent: #256abf;
+  /* נזילות: סולם אורדינלי של כחול. כהה = הכי זמין */
+  --liq-1: #0d366b;
+  --liq-2: #184f95;
+  --liq-3: #256abf;
+  --liq-4: #3987e5;
+  --liq-5: #6da7ec;
+  /* סטטוס: שמור רק לסטטוס, תמיד עם אייקון ומילה */
+  --good: #0a7a3c;
+  --warn: #9a6400;
+  --bad: #b3261e;
+  --good-bg: #e3f3e8;
+  --warn-bg: #fbf0d9;
+  --bad-bg: #fbe3e1;
+}
+@media (prefers-color-scheme: dark) {
+  .fin {
+    color-scheme: dark;
+    --bg: #121211;
+    --surface: #1a1a19;
+    --surface-2: #232321;
+    --border: #34332f;
+    --text: #f0efec;
+    --text-2: #c3c2b7;
+    --muted: #94928a;
+    --accent: #5598e7;
+    --liq-1: #cde2fb;
+    --liq-2: #86b6ef;
+    --liq-3: #3987e5;
+    --liq-4: #256abf;
+    --liq-5: #184f95;
+    --good: #5cc98a;
+    --warn: #e0b04a;
+    --bad: #f08a80;
+    --good-bg: #16301f;
+    --warn-bg: #33290f;
+    --bad-bg: #3a1a17;
+  }
+}
+
+.fin, .fin * { box-sizing: border-box; }
+.fin { margin: 0; color: var(--text); font-size: 15px; line-height: 1.5; }
+.fin .wrap { max-width: 1080px; margin: 0 auto; padding: 24px 16px 64px; }
+.fin h1 { font-size: 26px; margin: 0 0 4px; }
+.fin h2 { font-size: 18px; margin: 0 0 12px; }
+.fin .sub { color: var(--text-2); margin: 0 0 20px; }
+.fin .fcard {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 18px; margin-bottom: 18px;
+}
+.fin .muted { color: var(--muted); }
+.fin .small { font-size: 13px; }
+.fin .num { font-variant-numeric: tabular-nums; unicode-bidi: isolate; }
+.fin button, .fin select, .fin input {
+  font: inherit; color: inherit; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px;
+}
+.fin button { cursor: pointer; }
+.fin button.fprimary { background: var(--accent); color: #fff; border-color: transparent; }
+.fin button:focus-visible, .fin select:focus-visible, .fin input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* שורת טעינה */
+.fin .loadbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.fin .drop { border: 2px dashed var(--border); border-radius: 12px; padding: 14px; text-align: center; color: var(--text-2); }
+.fin .drop.over { border-color: var(--accent); }
+.fin .fbanner { padding: 10px 14px; border-radius: 10px; margin-bottom: 18px; }
+.fin .fbanner.demo { background: var(--warn-bg); color: var(--text); }
+
+/* מספרים ראשיים */
+.fin .fhero { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 12px; }
+.fin .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+.fin .tile .label { color: var(--text-2); font-size: 13px; }
+.fin .tile .value { font-size: 24px; font-weight: 650; }
+.fin .tile.main .value { font-size: 32px; }
+.fin .tile .note { color: var(--muted); font-size: 12px; }
+@media (max-width: 760px) { .fin .fhero { grid-template-columns: 1fr 1fr; } .fin .tile.main { grid-column: 1 / -1; } }
+
+/* מפה */
+.fin .fseg, .fin .seg2 { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.fin .fseg button, .fin .seg2 button { border: 0; border-radius: 0; padding: 6px 12px; }
+.fin .fseg button[aria-pressed="true"], .fin .seg2 button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.fin .maphead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
+.fin #treemap { position: relative; width: 100%; height: 440px; }
+@media (max-width: 600px) { .fin #treemap { height: 520px; } }
+.fin .tm-group { position: absolute; }
+.fin .tm-ghead { position: absolute; font-size: 12px; font-weight: 600; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px; }
+.fin .tm-cell {
+  position: absolute; border-radius: 4px; padding: 6px 8px; overflow: hidden;
+  font-size: 12px; line-height: 1.3; cursor: default;
+}
+.fin .tm-cell:focus-visible { outline: 2px solid var(--text); outline-offset: -2px; }
+.fin .tm-cell b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fin .tm-cell.stale { background-image: repeating-linear-gradient(135deg, transparent 0 6px, rgba(255,255,255,.13) 6px 8px); }
+.fin .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: 13px; color: var(--text-2); }
+.fin .legend span { display: inline-flex; align-items: center; gap: 6px; }
+.fin .sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.fin #tooltip {
+  position: fixed; z-index: 10; pointer-events: none; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 13px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.15); max-width: 280px; display: none;
+}
+.fin .liab { margin-top: 12px; font-size: 14px; color: var(--text-2); }
+
+/* טבלאות */
+.fin table { width: 100%; border-collapse: collapse; }
+.fin th, .fin td { text-align: right; padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.fin th { font-size: 12px; color: var(--text-2); font-weight: 600; }
+.fin td.r, .fin th.r { text-align: left; }
+.fin .tablewrap { overflow-x: auto; }
+.fin #inv { min-width: 1500px; }
+.fin #inv input, .fin #inv select { padding: 4px 6px; width: 100%; min-width: 70px; }
+.fin #inv input[data-k="name"] { min-width: 190px; }
+.fin #inv select[data-k="type"] { min-width: 140px; }
+.fin #inv select[data-k="liq"] { min-width: 120px; }
+.fin #inv input[data-k="liqDate"] { min-width: 115px; direction: ltr; text-align: left; }
+.fin #inv input[data-k="purpose"] { min-width: 90px; }
+.fin #inv input[data-k="check"] { min-width: 340px; }
+.fin #inv input[data-k="link"] { min-width: 200px; direction: ltr; text-align: left; }
+.fin #inv td.lk { white-space: nowrap; }
+.fin #inv td.small { white-space: nowrap; }
+.fin #inv td.lk input { width: calc(100% - 34px); }
+.fin #inv a.go { display: inline-block; width: 28px; text-align: center; text-decoration: none; }
+.fin #inv[data-mode="liq"] tr[data-r], .fin #inv[data-mode="age"] tr[data-r] { background: color-mix(in srgb, var(--rc) 14%, transparent); }
+.fin #inv[data-mode="liq"] tr[data-r] > td:first-child, .fin #inv[data-mode="age"] tr[data-r] > td:first-child { box-shadow: inset -6px 0 0 var(--rc); }
+.fin #inv td.upd .pill { display: inline-block; margin-top: 2px; padding: 1px 8px; border-radius: 10px; font-size: 12px; background: color-mix(in srgb, var(--rc) 22%, transparent); color: var(--text); }
+.fin #inv input.val { min-width: 120px; direction: ltr; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* החלטה */
+.fin .two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 760px) { .fin .two { grid-template-columns: 1fr; } }
+.fin .fform { display: grid; gap: 10px; }
+.fin .fform label { display: grid; gap: 4px; font-size: 13px; color: var(--text-2); }
+.fin .fstatus { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: 8px; margin: 6px 0; }
+.fin .fstatus.good { background: var(--good-bg); }
+.fin .fstatus.warn { background: var(--warn-bg); }
+.fin .fstatus.bad { background: var(--bad-bg); }
+.fin .fstatus .ic { font-weight: 700; }
+.fin .fstatus.good .ic { color: var(--good); }
+.fin .fstatus.warn .ic { color: var(--warn); }
+.fin .fstatus.bad  .ic { color: var(--bad); }
+.fin .compare { display: grid; grid-template-columns: auto 1fr 1fr; gap: 4px 14px; align-items: baseline; margin: 8px 0 12px; }
+.fin .compare .h { font-size: 12px; color: var(--muted); }
+
+.fin ul.qs { margin: 0; padding: 0 18px 0 0; }
+.fin ul.qs li { margin: 4px 0; }
+.fin .owners { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; }
+.fin .owners .tile { flex: 1 1 180px; }
+.fin .scen label { display: flex; gap: 8px; align-items: center; }
+.fin details summary { cursor: pointer; color: var(--text-2); }
+.fin footer { color: var(--muted); font-size: 12px; margin-top: 24px; }
+
+.fin .tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; background: var(--surface-2); }
+.fin .fbanner.nudge { background: var(--warn-bg); color: var(--text); }
+.fin .hist { width: 100%; }
+.fin .hist td { vertical-align: baseline; }
+.fin .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
