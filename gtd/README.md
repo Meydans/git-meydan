@@ -182,6 +182,16 @@ The visual layer from the design handoff (`FUN-THEME.md`). It only changes how t
 - **Reduced motion:** with `prefers-reduced-motion`, no drift, confetti or toast animation.
 - **Light theme:** it uses its own glass and background values, derived from the dark spec.
 
+## Finance ("איפה אנחנו עומדים")
+
+A private household balance sheet at `/finance`, shared by everyone on the sign-in allowlist: where every shekel is, whose it is and when it can be reached. The page is the standalone "where we stand" tool (treemap by liquidity, decision checker, review list, scenarios, editable inventory), now saving to a database instead of a local CSV file.
+
+- **Storage:** its own Postgres schema `finance` (`db/finance-schema.ts`), reached through `DATABASE_URL_FINANCE` (and optionally `DATABASE_URL_FINANCE_UNPOOLED` for migrations). It can live in the same Neon database or a separate one. If the variable is missing the page says so and the rest of the app is unaffected.
+- **Migrations are manual** and never run by a build, so a preview deploy can't touch finance data: `npm run db:finance:migrate`. Generate new ones with `npm run db:finance:generate`.
+- **Access:** the page and every Server Action (`app/(app)/finance/actions.ts`) require the Google session. Finance has no bearer-token API on purpose.
+- **Import / export:** import a CSV (same columns as the standalone tool) to replace the inventory; the previous inventory is kept as a snapshot first. Export downloads the current inventory as CSV. Real data is never committed to the repo.
+- **Snapshots:** "שמירת תמונת מצב" stores the inventory and headline numbers; the history shows the trend. The sidebar item shows a badge when 90 days have passed without a snapshot (the quarterly update).
+
 ## Installable app (PWA)
 
 - `app/manifest.ts`: Hebrew/RTL, `standalone` display, starts at `/inbox`. It has `any` and `maskable` icons and two home-screen shortcuts: quick capture (`/inbox?capture=1`, which focuses the capture box) and Next actions.
@@ -313,5 +323,6 @@ Edit only `SKILL.md`: both uses pick up the change.
 | --- | --- |
 | `npm run db:generate` | Generate a SQL migration after changing `db/schema.ts` |
 | `npm run db:migrate` | Apply pending migrations |
+| `npm run db:finance:migrate` | Apply pending finance migrations (manual, never part of a build) |
 | `npm run db:studio` | Open Drizzle Studio |
 | `npm run dev` | Run the Next.js dev server |

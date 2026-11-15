@@ -9,7 +9,9 @@
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "db:finance:generate": "drizzle-kit generate --config drizzle.finance.config.ts",
+    "db:finance:migrate": "drizzle-kit migrate --config drizzle.finance.config.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.1.0",
