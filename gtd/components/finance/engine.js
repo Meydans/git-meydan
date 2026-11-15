@@ -562,7 +562,8 @@ async function importText(text, name) {
 }
 function loadFile(f) { if (!f) return; const r = new FileReader(); r.onload = () => importText(r.result, f.name); r.readAsText(f, 'utf-8'); }
 
-$('#drop').addEventListener('click', e => { e.preventDefault(); $('#file').click(); });
+// No click handler on #drop: it is a <label> around the file input, so a click already opens the picker.
+// (Calling input.click() from a label handler re-enters the label and cancels the dialog.)
 $('#file').addEventListener('change', e => { loadFile(e.target.files[0]); e.target.value = ''; });
 const drop = $('#drop');
 ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
