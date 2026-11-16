@@ -2,7 +2,8 @@ import "server-only";
 import { asc, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { financeDb } from "@/db/finance";
-import { financeItems, financeSnapshots } from "@/db/finance-schema";
+import { financeItems, financeSim, financeSnapshots } from "@/db/finance-schema";
+import { defaultAssumptions, type Assumptions } from "./simulator";
 
 // The columns of the inventory CSV, in order. The page and the table share these keys.
 export const itemKeys = ["name", "type", "owner", "inst", "liq", "liqDate", "purpose", "value", "cur", "monthly", "updated", "how", "check", "notes", "link"] as const;
@@ -90,4 +91,37 @@ export async function replaceItems(rows: Record<ItemKey, string>[], backup: Summ
     if (rows.length) await tx.insert(financeItems).values(rows.map((r, position) => ({ ...r, position })));
   });
   return listItems();
+}
+
+const n = (min: number, max: number) => z.number().finite().min(min).max(max);
+export const assumptionsSchema = z.object({
+  currentAge: n(18, 90),
+  retirementAge: n(30, 90),
+  pensionAge: n(50, 90),
+  pensionRatio: n(0, 100),
+  roi: n(0, 20),
+  inflation: n(0, 10),
+  lifestyleCreep: n(0, 10),
+  incomeGrowth: n(0, 10),
+  glidePath: z.boolean(),
+  workAfterRetirement: z.boolean(),
+  rule: n(100, 600),
+  childrenAges: z.array(n(0, 60)).max(10),
+  kidsMonthly: n(0, 1_000_000),
+  deductEmergency: z.boolean(),
+  events: z.array(z.object({ desc: z.string().trim().max(200), age: n(18, 90), amount: n(-1e9, 1e9) })).max(50),
+});
+
+export async function getAssumptions(): Promise<Assumptions> {
+  // Until migration 0001 has run the table is missing; the page then works with the defaults.
+  const [row] = await financeDb().select().from(financeSim).where(eq(financeSim.id, "main")).catch(() => [undefined]);
+  const parsed = assumptionsSchema.safeParse({ ...defaultAssumptions, ...(row?.data as object | undefined) });
+  return parsed.success ? parsed.data : defaultAssumptions;
+}
+
+export async function saveAssumptions(data: Assumptions, by: string) {
+  await financeDb()
+    .insert(financeSim)
+    .values({ id: "main", data, updatedBy: by })
+    .onConflictDoUpdate({ target: financeSim.id, set: { data, updatedBy: by, updatedAt: new Date() } });
 }

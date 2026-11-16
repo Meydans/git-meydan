@@ -8,6 +8,13 @@
       "when": 1794744444461,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794816861824,
+      "tag": "0001_neat_absorbing_man",
+      "breakpoints": true
     }
   ]
 }

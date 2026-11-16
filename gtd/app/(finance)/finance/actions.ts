@@ -5,10 +5,12 @@ import { requireFinanceSession } from "@/lib/session";
 import {
   createItem,
   deleteItem,
+  assumptionsSchema,
   importRows,
   itemPatch,
   listSnapshots,
   replaceItems,
+  saveAssumptions,
   saveSnapshot,
   summary,
   updateItem,
@@ -44,4 +46,9 @@ export async function takeSnapshot(sum: unknown): Promise<SnapshotInfo[]> {
   const email = await requireFinanceSession();
   await saveSnapshot(summary.parse(sum), email);
   return listSnapshots();
+}
+
+export async function saveSimSettings(data: unknown): Promise<void> {
+  const email = await requireFinanceSession();
+  await saveAssumptions(assumptionsSchema.parse(data), email);
 }

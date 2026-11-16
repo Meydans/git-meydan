@@ -1,0 +1,39 @@
+/* "כמה זה מספיק": layered on the shared .fin tokens */
+.fin.enough .en-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.fin.enough .en-kpis > div { background: var(--surface-2); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+.fin.enough .en-kpis span { color: var(--text-2); font-size: 13px; }
+.fin.enough .en-kpis b { font-size: 18px; }
+.fin.enough .good { color: var(--good); }
+.fin.enough .bad { color: var(--bad); }
+.fin.enough .en-warn { color: var(--warn); background: var(--warn-bg); }
+.fin.enough .en-verdict { font-weight: 600; margin: 4px 0 12px; }
+.fin.enough .en-chart { width: 100%; height: auto; display: block; }
+.fin.enough .en-grid { stroke: var(--border); stroke-width: 1; }
+.fin.enough .en-zero { stroke: var(--bad); stroke-width: 1; stroke-dasharray: 3 3; }
+.fin.enough .en-axis { fill: var(--muted); font-size: 11px; }
+.fin.enough .en-bal { stroke: var(--accent); stroke-width: 2.5; }
+.fin.enough .en-fi { stroke: var(--warn); stroke-width: 2; stroke-dasharray: 6 4; }
+.fin.enough .en-mark { stroke: var(--good); stroke-width: 1.5; stroke-dasharray: 2 3; }
+.fin.enough .en-legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--text-2); }
+.fin.enough .en-legend span::before { content: ""; display: inline-block; width: 18px; height: 0; border-top: 3px solid; margin-inline-end: 6px; vertical-align: middle; }
+.fin.enough .l-bal::before { border-color: var(--accent); }
+.fin.enough .l-fi::before { border-color: var(--warn); border-top-style: dashed; }
+.fin.enough .l-mark::before { border-color: var(--good); border-top-style: dotted; }
+.fin.enough .en-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.fin.enough button { font: inherit; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 8px; padding: 6px 12px; }
+.fin.enough button:hover:not(:disabled) { border-color: var(--accent); }
+.fin.enough button:disabled { opacity: .5; cursor: default; }
+.fin.enough .en-grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px 24px; margin-bottom: 8px; }
+.fin.enough .en-ctl { display: block; }
+.fin.enough .en-ctl-top { display: flex; justify-content: space-between; font-size: 14px; }
+.fin.enough .en-ctl input[type="range"] { width: 100%; }
+.fin.enough .en-check { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+.fin.enough .en-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.fin.enough .en-row label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.fin.enough input:not([type="range"]):not([type="checkbox"]) { font: inherit; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); width: 100%; }
+.fin.enough .en-events { width: 100%; border-collapse: collapse; margin: 8px 0; }
+.fin.enough .en-events th { text-align: start; font-size: 13px; color: var(--text-2); padding: 4px; }
+.fin.enough .en-events td { padding: 3px; }
+.fin.enough .en-add { margin-top: 4px; }
+.fin.enough .en-save { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.fin-crumb { margin: 0 0 4px; font-size: 14px; }

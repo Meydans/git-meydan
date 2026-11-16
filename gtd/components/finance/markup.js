@@ -1,7 +1,7 @@
 // Static page markup (no user data in here).
 export const MARKUP = `<div class="wrap">
   <h1>איפה אנחנו עומדים</h1>
-  <p class="sub">כל שקל: איפה הוא נמצא, של מי, ומתי אפשר להגיע אליו. הנתונים שמורים במסד נתונים פרטי, ורק בני הבית שנכנסו עם Google רואים אותם.</p>
+  <p class="sub">כל שקל: איפה הוא נמצא, של מי, ומתי אפשר להגיע אליו. הנתונים שמורים במסד נתונים פרטי, ורק בני הבית שנכנסו עם Google רואים אותם. <a href="/finance/enough">כמה זה מספיק? ←</a></p>
 
   <section class="fcard">
     <div class="loadbar">

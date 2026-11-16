@@ -44,3 +44,12 @@ export const financeSnapshots = finance.table("snapshots", {
   liquid: doublePrecision("liquid").notNull(),
   rows: jsonb("rows").notNull(),
 });
+
+// The plan behind the "how much is enough" simulator (ages, return, children, capital events).
+// One shared row: the household has one plan. Personal numbers live here, never in the code.
+export const financeSim = finance.table("sim_settings", {
+  id: text("id").primaryKey().default("main"),
+  data: jsonb("data").notNull(),
+  updatedBy: text("updated_by").notNull().default(""),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
