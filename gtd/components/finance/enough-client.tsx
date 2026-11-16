@@ -150,6 +150,25 @@ function Chart({ points, lines, mark, label }: { points: Pt[]; lines: { key: str
   );
 }
 
+// A whole-number field that lets you clear and retype (a plain controlled number input snaps
+// back to 0 on every keystroke). Commits only when the text is a valid number.
+function NumInput({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  return (
+    <input
+      inputMode="numeric"
+      value={draft ?? String(value)}
+      onChange={(e) => {
+        const t = e.target.value;
+        setDraft(t);
+        const n = Number(t.replace(/[,\s]/g, ""));
+        if (t.trim() !== "" && Number.isFinite(n)) onChange(n);
+      }}
+      onBlur={() => setDraft(null)}
+    />
+  );
+}
+
 export function EnoughClient({ base: inv, initial }: { base: InventoryBase; initial: Assumptions }) {
   const [a, setA] = useState<Assumptions>(initial);
   const [scenario, setScenario] = useState<Scenario>(SCENARIOS.now);
@@ -287,19 +306,34 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
           </div>
           <p className="muted small">התקציב מתחלק שווה בין הילדים; חלקו של כל ילד יורד בחצי בגיל 18 ונעלם בגיל 21.</p>
           <table className="en-events">
-            <thead><tr><th>אירוע <Info text={HELP.events} /></th><th>גיל</th><th>סכום (₪, שלילי להוצאה)</th><th /></tr></thead>
+            <thead><tr><th>אירוע <Info text={HELP.events} /></th><th>גיל</th><th>סוג</th><th>סכום (₪)</th><th /></tr></thead>
             <tbody>
-              {a.events.map((e, i) => (
-                <tr key={i}>
-                  <td><input value={e.desc} placeholder="למשל שיפוץ" onChange={(ev) => setEvent(i, { desc: ev.target.value })} /></td>
-                  <td><input type="number" value={e.age} onChange={(ev) => setEvent(i, { age: Number(ev.target.value) || 0 })} /></td>
-                  <td><input type="number" step={1000} value={e.amount} onChange={(ev) => setEvent(i, { amount: Number(ev.target.value) || 0 })} /></td>
-                  <td><button type="button" aria-label="מחיקה" onClick={() => set("events", a.events.filter((_, j) => j !== i))}>×</button></td>
-                </tr>
-              ))}
+              {a.events.map((e, i) => {
+                const outside = e.age < a.currentAge || e.age > END_AGE;
+                return (
+                  <tr key={i}>
+                    <td><input value={e.desc} placeholder="למשל שיפוץ" onChange={(ev) => setEvent(i, { desc: ev.target.value })} /></td>
+                    <td>
+                      <NumInput value={e.age} onChange={(n) => setEvent(i, { age: Math.round(n) })} />
+                      {outside && <span className="en-warn small">מחוץ לתחזית ({a.currentAge}-{END_AGE}), לא ישפיע</span>}
+                    </td>
+                    <td>
+                      <select value={e.amount < 0 ? "out" : "in"} onChange={(ev) => setEvent(i, { amount: (ev.target.value === "out" ? -1 : 1) * Math.abs(e.amount) })}>
+                        <option value="in">כסף נכנס</option>
+                        <option value="out">הוצאה</option>
+                      </select>
+                    </td>
+                    <td>
+                      <NumInput value={Math.abs(e.amount)} onChange={(n) => setEvent(i, { amount: (e.amount < 0 ? -1 : 1) * Math.abs(n) })} />
+                      {e.amount === 0 && <span className="muted small">הזינו סכום</span>}
+                    </td>
+                    <td><button type="button" aria-label="מחיקה" onClick={() => set("events", a.events.filter((_, j) => j !== i))}>×</button></td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
-          <button type="button" className="en-add" onClick={() => set("events", [...a.events, { desc: "", age: Math.min(90, a.currentAge + 5), amount: 0 }])}>+ הוסף אירוע</button>
+          <button type="button" className="en-add" onClick={() => set("events", [...a.events, { desc: "", age: Math.min(90, a.currentAge + 5), amount: -100000 }])}>+ הוסף אירוע</button>
         </div>
 
         <div className="fcard">
