@@ -5,14 +5,8 @@ import { financeDb } from "@/db/finance";
 import { financeItems, financeSim, financeSnapshots } from "@/db/finance-schema";
 import { defaultAssumptions, type Assumptions } from "./simulator";
 
-// The columns of the inventory CSV, in order. The page and the table share these keys.
-export const itemKeys = ["name", "type", "owner", "inst", "liq", "liqDate", "purpose", "value", "cur", "monthly", "updated", "how", "check", "notes", "link"] as const;
-export type ItemKey = (typeof itemKeys)[number];
-
-const field = z.string().trim().max(2000);
-export const itemFields = z.object(Object.fromEntries(itemKeys.map((k) => [k, field.default("")])) as Record<ItemKey, z.ZodDefault<z.ZodString>>);
-export const itemPatch = itemFields.partial();
-export const importRows = z.array(itemFields).max(1000);
+export { importRows, itemFields, itemKeys, itemPatch, type ItemKey } from "./fields";
+import { itemKeys, type ItemKey } from "./fields";
 
 export const summary = z.object({
   net: z.number().finite(),
