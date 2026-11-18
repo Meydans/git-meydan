@@ -7,7 +7,7 @@ import { saveSimSettings } from "@/app/(finance)/finance/actions";
 import { parseSettingsFile, settingsFile } from "@/lib/finance/fields";
 import type { InventoryBase } from "@/lib/finance/inventory";
 import { analysisReport } from "@/lib/finance/report";
-import { END_AGE, earliestRetirement, goalSeek, simulate, withAge, type Assumptions, type CapitalEvent, type IncomeChange, type Scenario } from "@/lib/finance/simulator";
+import { END_AGE, earliestRetirement, goalSeek, monthlyPension, PENSION_FACTOR, simulate, withAge, type Assumptions, type CapitalEvent, type IncomeChange, type Scenario } from "@/lib/finance/simulator";
 import "./finance.css";
 import "./enough.css";
 
@@ -41,7 +41,7 @@ const HELP = {
   currentAge: "הגיל שממנו התחזית מתחילה לרוץ קדימה. כשמזינים שנת לידה, הגיל מחושב ממנה ומתעדכן לבד כל שנה.",
   retirementAge: "הגיל שבו ההכנסה מעבודה נפסקת (אלא אם סימנתם שהיא נמשכת). מאותו גיל מושכים מהון.",
   pensionAge: "הגיל שבו מתחילה להיכנס קצבת הפנסיה החודשית.",
-  pensionRatio: "איזה חלק מההכנסה החודשית של היום תחליף קצבת הפנסיה, מגיל תחילת הפנסיה. 50% אומר קצבה בגובה חצי מההכנסה של היום; 0% אומר בלי פנסיה בכלל. זו הנחה קבועה: הקצבה צמודה לאינפלציה (כמו קצבאות פנסיה בישראל), והסימולטור לא מחשב אותה מהצבירה בפועל.",
+  pension: "הקצבה החודשית שכל אחד מכם צפוי לקבל מגיל הפנסיה, בכסף של היום. לוקחים אותה מהדוח השנתי של קרן הפנסיה, בשורה \"קצבה חודשית צפויה בגיל פרישה\" (או מהר הכסף). המספר הזה כבר כולל את ההפקדות שתמשיכו להפקיד עד הפרישה. כספי הפנסיה עצמם לא נכנסים להון הנזיל, כי אי אפשר למשוך אותם לפני הפרישה: הם משפיעים רק דרך הקצבה, שצמודה לאינפלציה. מתחת לכל שדה: בדיקת סבירות. הצבירה של היום חלקי 200 (מקדם ההמרה המקובל בקרנות פנסיה בגיל 67). זו הקצבה שהצבירה הנוכחית קונה לבדה, בלי הפקדות ותשואה עתידיות, ולכן הקצבה בדוח השנתי אמורה להיות גבוהה ממנה.",
   creep: "העלייה השנתית בהוצאות שמעבר לאינפלציה, בגלל שדרוג רמת החיים. 0% אומר שרמת החיים נשארת אותה רמה.",
   incomeGrowth: "העלייה השנתית בשכר שמעבר לאינפלציה (קידום, העלאות). 0% אומר שהשכר רק עוקב אחרי האינפלציה.",
   workAfter: "אם מסומן, ההכנסה מעבודה ממשיכה גם אחרי גיל הפרישה (למשל עבודה חלקית). אם לא, ההכנסה היחידה אחרי הפרישה היא הפנסיה.",
@@ -259,12 +259,13 @@ function Legend({ items }: { items: { label: string; cls: string }[] }) {
 
 // A whole-number field that lets you clear and retype (a plain controlled number input snaps
 // back to 0 on every keystroke). Commits only when the text is a valid number.
-function NumInput({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+function NumInput({ value, onChange, placeholder }: { value: number | null; onChange: (n: number) => void; placeholder?: string }) {
   const [draft, setDraft] = useState<string | null>(null);
   return (
     <input
       inputMode="numeric"
-      value={draft ?? String(value)}
+      value={draft ?? (value == null ? "" : String(value))}
+      placeholder={placeholder}
       onChange={(e) => {
         const t = e.target.value;
         setDraft(t);
@@ -340,6 +341,7 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
       base,
       liquidTotal: inv.liquid,
       emergency: inv.emergency,
+      pensionSavings: inv.pensionSavings,
       incomeMissing: inv.income == null,
       expenseMissing: inv.expense == null,
       assumptions: a,
@@ -359,6 +361,11 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
     setScenario(r.scenario);
     setMsg("ההגדרות נטענו מהקובץ. לחצו שמירה כדי לשמור אותן.");
   }
+  // One field per pension owner in the inventory (plus any already saved), or a single one.
+  const pensionWho = [...new Set([...inv.pensionSavings.map((p) => p.who), ...(a.pensions ?? []).map((p) => p.who)])];
+  if (!pensionWho.length) pensionWho.push("");
+  const setPension = (who: string, monthly: number) =>
+    set("pensions", pensionWho.map((w) => ({ who: w, monthly: w === who ? Math.max(0, monthly) : (a.pensions?.find((p) => p.who === w)?.monthly ?? 0) })));
   const setChange = (i: number, patch: Partial<IncomeChange>) => set("incomeChanges", a.incomeChanges.map((c, j) => (j === i ? { ...c, ...patch } : c)));
   const setEvent = (i: number, patch: Partial<CapitalEvent>) => set("events", a.events.map((e, j) => (j === i ? { ...e, ...patch } : e)));
 
@@ -420,7 +427,31 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
               <Slider label="התאמת הוצאה חודשית" help={HELP.expenseAdjust} value={scenario.expenseAdjust} min={-10000} max={20000} step={500} fmt={ils} onChange={(v) => setScenario((s) => ({ ...s, expenseAdjust: v }))} />
               <Slider label="תשואה שנתית נטו" help={HELP.roi} value={a.roi} min={1} max={15} step={0.5} fmt={(n) => n + "%"} onChange={(v) => set("roi", v)} />
               <Slider label="גיל פרישה" help={HELP.retirementAge} value={a.retirementAge} min={40} max={90} step={1} onChange={(v) => set("retirementAge", v)} />
-              <Slider label="כיסוי פנסיוני מההכנסה" help={HELP.pensionRatio} value={a.pensionRatio} min={0} max={100} step={1} fmt={(n) => n + "%"} onChange={(v) => set("pensionRatio", v)} />
+            </div>
+            <div className="en-pension">
+              <div className="en-ctl-top">
+                <span>קצבה חודשית צפויה <Info text={HELP.pension} /></span>
+                <b className="num">{ils(monthlyPension(a, r.monthlyIncome))}</b>
+              </div>
+              {pensionWho.map((who) => {
+                const bal = inv.pensionSavings.find((p) => p.who === who)?.balance;
+                return (
+                  <label key={who} className="en-pen-row">
+                    <span>{who || "קצבה"}</span>
+                    <NumInput value={a.pensions?.find((p) => p.who === who)?.monthly || null} placeholder="מהדוח השנתי" onChange={(n) => setPension(who, n)} />
+                    {bal != null && (
+                      <span className="muted small">
+                        צבירה {short(bal)} · לבדה ≈ {ils(bal / PENSION_FACTOR)} לחודש
+                      </span>
+                    )}
+                  </label>
+                );
+              })}
+              {a.pensions == null ? (
+                <p className="en-warn small">עוד לא הוזנה קצבה מהדוח השנתי, ולכן מניחים {a.pensionRatio}% מההכנסה של היום.</p>
+              ) : (
+                <button type="button" className="en-link small" onClick={() => set("pensions", null)}>חזרה להערכה לפי {a.pensionRatio}% מההכנסה</button>
+              )}
             </div>
             {a.roi >= 15 && <p className="en-warn">⚠ תשואה של {a.roi}% לאורך זמן נראית לא סבירה.</p>}
 

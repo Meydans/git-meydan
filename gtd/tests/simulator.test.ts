@@ -152,3 +152,22 @@ test("the analysis report states inputs, rules and the yearly projection", async
   assert.equal(rows.length, 51);
   assert.ok(rows[0].startsWith("| 40 | 2026 |"));
 });
+
+test("entered pensions replace the share of income, are summed and indexed", () => {
+  const flat = { ...A, inflation: 0, pensionRatio: 50 };
+  const entered = { ...flat, pensions: [{ who: "א", monthly: 6_000 }, { who: "ב", monthly: 4_000 }] };
+  const at = (r: ReturnType<typeof simulate>, age: number) => r.timeline.find((t) => t.age === age)!.monthlyIncome;
+  assert.equal(at(simulate(base, flat), 70), 15_000); // 50% of 30k
+  assert.equal(at(simulate(base, entered), 70), 10_000); // 6k + 4k
+  // A scenario cut in income no longer moves an entered pension.
+  assert.equal(at(simulate(base, entered, { incomeChange: -10_000, expenseAdjust: 0 }), 70), 10_000);
+  const indexed = simulate(base, { ...entered, inflation: 2 });
+  assert.equal(Math.round(at(indexed, 67)), Math.round(10_000 * 1.02 ** 27));
+});
+
+test("inventory base: pension balances per owner, outside the liquid capital", () => {
+  const row = (o: Record<string, string>) => ({ name: "", type: "פנסיה", liq: "פרישה", liqDate: "", purpose: "פרישה", value: "", cur: "ILS", owner: "", ...o });
+  const b = inventoryBase([row({ owner: "א", value: "500000" }), row({ owner: "א", value: "100000" }), row({ owner: "ב", value: "450000" })]);
+  assert.deepEqual(b.pensionSavings, [{ who: "א", balance: 600_000 }, { who: "ב", balance: 450_000 }]);
+  assert.equal(b.liquid, 0);
+});

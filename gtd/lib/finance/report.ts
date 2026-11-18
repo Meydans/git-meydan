@@ -1,12 +1,13 @@
 // "Export for analysis": a self-contained Markdown picture of the plan, written so that a person or
 // an AI tool can understand and check it without the code: starting point, every assumption with
 // its unit, the model's rules, the results and the year-by-year projection. Pure, no I/O.
-import { childWeight, earliestRetirement, END_AGE, goalSeek, simulate, type Assumptions, type Base, type Scenario } from "./simulator.ts";
+import { childWeight, earliestRetirement, END_AGE, goalSeek, monthlyPension, PENSION_FACTOR, simulate, type Assumptions, type Base, type Scenario } from "./simulator.ts";
 
 export type ReportInput = {
   base: Base; // after the emergency-fund choice
   liquidTotal: number; // liquid before that choice
   emergency: number;
+  pensionSavings?: { who: string; balance: number }[];
   incomeMissing: boolean;
   expenseMissing: boolean;
   assumptions: Assumptions;
@@ -84,7 +85,17 @@ export function analysisReport(input: ReportInput): string {
           ["גיל פרישה", String(a.retirementAge), "ממנו ההכנסה מעבודה נפסקת"],
           ["הכנסה מעבודה נמשכת אחרי הפרישה", yesNo(a.workAfterRetirement), ""],
           ["גיל תחילת פנסיה", String(a.pensionAge), ""],
-          ["כיסוי פנסיוני", pct(a.pensionRatio), "הקצבה החודשית = האחוז הזה מההכנסה החודשית של היום (כולל תרחיש), צמודה לאינפלציה"],
+          ...(a.pensions
+            ? [
+                ...a.pensions.map((p) => [`קצבה חודשית צפויה${p.who ? ` (${p.who})` : ""}`, ils(p.monthly), "מהדוח השנתי של הקרן, בכסף של היום, כולל ההפקדות עד הפרישה"]),
+                ["סך הקצבה החודשית", ils(monthlyPension(a, 0)), "צמודה לאינפלציה, מגיל תחילת הפנסיה"],
+              ]
+            : [["קצבה חודשית (הערכה)", ils(r.monthlyIncome * (a.pensionRatio / 100)), `לא הוזנה קצבה מהדוח השנתי, ולכן מניחים ${pct(a.pensionRatio)} מההכנסה החודשית של היום`]]),
+          ...(input.pensionSavings ?? []).map((p) => [
+            `צבירה בקרן פנסיה${p.who ? ` (${p.who})` : ""}`,
+            ils(p.balance),
+            `לא בהון הנזיל. לבדה, בלי הפקדות ותשואה עתידיות, שווה כ-${ils(p.balance / PENSION_FACTOR)} לחודש (חלקי ${PENSION_FACTOR})`,
+          ]),
           ["תשואה שנתית נטו", a.glidePath ? "לא בשימוש (מודל דינמי)" : pct(a.roi), "על ההון הנזיל, אחרי דמי ניהול ומס"],
           ["הפחתת סיכון הדרגתית", yesNo(a.glidePath), "אם כן: 8% ב-10 השנים הראשונות, ואז 4%"],
           ["אינפלציה שנתית", pct(a.inflation), "מצמידה הכנסה, הוצאה, אירועים ושינויים בהכנסה"],
@@ -148,7 +159,9 @@ export function analysisReport(input: ReportInput): string {
       "   4. מוסיפים אירועי הון של אותו גיל, מוצמדים לאינפלציה מהיום.",
       "2. הכנסה מעבודה: ההכנסה של היום × (1 + אינפלציה + גידול ריאלי)^שנים, עד גיל הפרישה. אחר כך 0, אלא אם העבודה נמשכת.",
       "3. שינויים עתידיים בהכנסה: מתווספים בטווח הגילים שלהם, מוצמדים כמו השכר. לא משפיעים על הפנסיה.",
-      "4. פנסיה: מגיל תחילת הפנסיה, אחוז הכיסוי × ההכנסה של היום, צמוד לאינפלציה מהיום.",
+      a.pensions
+        ? "4. פנסיה: מגיל תחילת הפנסיה, סכום הקצבאות הצפויות מהדוחות השנתיים (בכסף של היום), צמוד לאינפלציה מהיום. כספי הפנסיה עצמם לא בהון הנזיל, הם משפיעים רק דרך הקצבה."
+        : "4. פנסיה: לא הוזנה קצבה צפויה, ולכן מגיל תחילת הפנסיה: אחוז מההכנסה של היום, צמוד לאינפלציה מהיום. כספי הפנסיה עצמם לא בהון הנזיל.",
       "5. הוצאה: (הוצאה בלי ילדים + תקציב ילדים × מקדם גיל + תמיכה בבוגרים) × (1 + אינפלציה + זחילה)^שנים.",
       "6. מקדם גיל הילדים: סכום משקלי הילדים בשנה הזו חלקי הסכום היום. משקל לפי גיל: עד 10 = 1; 10 עד 18 = 1.8; 18 עד 21 (צבא) = 0.6; מ-21 = 0.",
       "   - מקור 1 ו-1.8: Karlinsky & Sarel, Estimating the Cost of Raising Children in Israel, Bank of Israel, Israel Economic Review 18(1), 2020 (נתוני סקר ההוצאות של הלמ\"ס): ילד בן 10 ומעלה עולה כ-1.8 מילד צעיר בכל רמת הכנסה.",
@@ -209,7 +222,9 @@ export function analysisReport(input: ReportInput): string {
     [
       "## מגבלות ידועות",
       "- גיל אחד למשק הבית: הפרישה והפנסיה של שני בני הזוג מחושבות לפי אותו גיל.",
-      "- הפנסיה היא אחוז מההכנסה של היום (צמוד לאינפלציה) ולא מחושבת מהצבירה בפועל; כספי הפנסיה עצמם לא בהון הנזיל.",
+      a.pensions
+        ? "- הקצבה הצפויה בדוח השנתי מניחה המשך הפקדות ותשואה של הקרן; אם השכר או ההפקדות משתנים, הקצבה בפועל תשתנה."
+        : "- לא הוזנה קצבה צפויה: הפנסיה היא אחוז מההכנסה של היום ולא מבוססת על הצבירה או על הדוח השנתי.",
       "- תשואה קבועה בכל שנה, בלי תנודתיות ובלי סיכון רצף תשואות.",
       "- מס: התשואה מוזנת נטו; אין חישוב מס נפרד על משיכות או על רווחי הון.",
       "- נדל\"ן, משכנתה והלוואות לא נכנסים לתחזית; רק ההון הנזיל.",

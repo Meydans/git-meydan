@@ -120,3 +120,9 @@
 .fin.enough .en-file-in { position: relative; display: inline-flex; align-items: center; cursor: pointer; border: 1px solid var(--border); background: var(--surface); border-radius: 8px; padding: 6px 12px; }
 .fin.enough .en-file-in:hover { border-color: var(--accent); }
 .fin.enough .en-file-in input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+/* Expected pension per person */
+.fin.enough .en-pension { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.fin.enough .en-pen-row { display: grid; grid-template-columns: 90px 1fr; gap: 4px 8px; align-items: center; font-size: 14px; }
+.fin.enough .en-pen-row > .small { grid-column: 2; display: block; line-height: 1.5; }
+.fin.enough .en-pension .en-warn { margin: 0; padding: 6px 8px; border-radius: 8px; }
+.fin.enough button.en-link { border: 0; background: none; padding: 0; color: var(--accent); text-align: start; align-self: flex-start; }

@@ -10,6 +10,10 @@ export type CapitalEvent = { desc: string; age: number; amount: number };
 // The pension is linked to inflation (as Israeli pension annuities are to the CPI).
 export type IncomeChange = { desc: string; monthly: number; fromAge: number; toAge: number | null };
 
+// The expected monthly pension of one person, in today's money, as the fund's annual statement
+// gives it ("קצבה חודשית צפויה"): it already counts the deposits until retirement.
+export type Pension = { who: string; monthly: number };
+
 // What the person keeps between visits (saved in the finance database).
 export type Assumptions = {
   currentAge: number;
@@ -17,9 +21,10 @@ export type Assumptions = {
   birthYear: number | null;
   retirementAge: number;
   pensionAge: number;
-  // Share of today's income that the pension replaces from pensionAge, in today's money: the
-  // monthly pension is that share of today's income, linked to inflation.
-  pensionRatio: number; // 0..100
+  // The expected monthly pensions, from pensionAge, in today's money and linked to inflation.
+  // null = not entered yet: then the pension is pensionRatio % of today's income (older plans).
+  pensions: Pension[] | null;
+  pensionRatio: number; // 0..100, only used while pensions is null
   roi: number; // % a year, net
   inflation: number; // % a year
   lifestyleCreep: number; // % a year above inflation
@@ -41,6 +46,7 @@ export const defaultAssumptions: Assumptions = {
   birthYear: null,
   retirementAge: 67,
   pensionAge: 67,
+  pensions: null,
   pensionRatio: 50,
   roi: 7,
   inflation: 2,
@@ -143,12 +149,23 @@ export function kidsFactor(ages: number[], y: number): number {
   return ages.reduce((s, a) => s + childWeight(a + y), 0) / now;
 }
 
+// Today's monthly pension: the entered amounts, or the old share of income until they are entered.
+export function monthlyPension(a: Assumptions, income: number): number {
+  if (a.pensions) return a.pensions.reduce((t, p) => t + Math.max(0, p.monthly), 0);
+  return income * (a.pensionRatio / 100);
+}
+
+// Rough monthly pension that a balance alone buys at retirement, in today's money: the balance
+// divided by a conversion factor (Israeli pension funds use about 200 at 67). It leaves out future
+// deposits and returns, so the annual statement's figure is normally higher.
+export const PENSION_FACTOR = 200;
+
 export function simulate(base: Base, a: Assumptions, s: Scenario = { incomeChange: 0, expenseAdjust: 0 }): Result {
   const income = base.income + s.incomeChange;
   const expense = Math.max(0, base.expense + s.expenseAdjust);
   const kids = Math.min(Math.max(0, a.kidsMonthly), expense);
   const rest = expense - kids;
-  const pension = income * (a.pensionRatio / 100);
+  const pension = monthlyPension(a, income);
 
   let balance = base.liquid;
   let lowest = balance;
