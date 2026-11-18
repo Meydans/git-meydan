@@ -103,3 +103,15 @@ test("birth year sets the current age and moves with the calendar", () => {
   assert.equal(withAge(a, new Date(2027, 0, 1)).currentAge, 43);
   assert.equal(withAge({ ...defaultAssumptions, currentAge: 50 }).currentAge, 50);
 });
+
+test("the analysis report states inputs, rules and the yearly projection", async () => {
+  const { analysisReport } = await import("../lib/finance/report.ts");
+  const a = { ...A, childrenAges: [8], kidsMonthly: 3_000, events: [{ desc: "שיפוץ", age: 55, amount: -200_000 }] };
+  const md = analysisReport({ base, liquidTotal: 600_000, emergency: 100_000, incomeMissing: false, expenseMissing: true, assumptions: a, scenario: { incomeChange: 0, expenseAdjust: 0 }, goalAge: 55, now: new Date(2026, 10, 18) });
+  assert.ok(md.startsWith("# כמה זה מספיק: תמונת מצב לניתוח (2026-11-18)"));
+  for (const s of ["## נקודת פתיחה", "## הנחות", "## כללי המודל", "## תוצאות", "## תחזית שנתית", "## מגבלות ידועות", "Karlinsky", "⚠ ההוצאה החודשית לא הוגדרה", "שיפוץ"]) assert.ok(md.includes(s), s);
+  // one row per year, 40..90
+  const rows = md.split("\n").filter((l) => /^\| \d{2} \| 20\d\d \|/.test(l));
+  assert.equal(rows.length, 51);
+  assert.ok(rows[0].startsWith("| 40 | 2026 |"));
+});

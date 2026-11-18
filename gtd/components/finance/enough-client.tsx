@@ -6,6 +6,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } 
 import { saveSimSettings } from "@/app/(finance)/finance/actions";
 import { parseSettingsFile, settingsFile } from "@/lib/finance/fields";
 import type { InventoryBase } from "@/lib/finance/inventory";
+import { analysisReport } from "@/lib/finance/report";
 import { END_AGE, goalSeek, simulate, withAge, type Assumptions, type CapitalEvent, type IncomeChange, type Scenario } from "@/lib/finance/simulator";
 import "./finance.css";
 import "./enough.css";
@@ -49,7 +50,7 @@ const HELP = {
   adultSupport: "תמיכה חודשית קבועה בכל ילד אחרי הצבא (סטודנט, שכר דירה). בסקרים בישראל, הורים שתומכים בילדים בוגרים נותנים בממוצע כ-2,100 ₪ בחודש. בכסף של היום. 0 = בלי תמיכה.",
   adultSupportUntil: "הגיל של הילד שבו התמיכה החודשית נגמרת.",
   events: "הכנסה או הוצאה חד-פעמית בגיל מסוים, כמו קרן השתלמות שנפתחת (חיובי), שיפוץ, טיול אחרי צבא, רישיון, עזרה בדירה או חתונה (שלילי). הסכום בכסף של היום, והוא עולה עם האינפלציה עד שנת האירוע.",
-  file: "ייצוא שומר בקובץ את כל ההגדרות: ההנחות, הילדים, אירועי ההון, השינויים בהכנסה וגם הסליידרים של התרחיש. טעינה מחליפה את הערכים בדף, וצריך ללחוץ שמירה כדי שיישמרו לשניכם. הקובץ מכיל את המספרים האישיים שלכם, שמרו אותו במקום פרטי.",
+  file: "\"ייצוא לניתוח\" מוריד קובץ Markdown קריא: נקודת הפתיחה, כל ההנחות ביחידות שלהן, כללי החישוב, התוצאות והתחזית השנתית, כדי שאדם או כלי AI יבינו את התמונה בלי הקוד. \"ייצוא לקובץ\" שומר את כל ההגדרות: ההנחות, הילדים, אירועי ההון, השינויים בהכנסה וגם הסליידרים של התרחיש. טעינה מחליפה את הערכים בדף, וצריך ללחוץ שמירה כדי שיישמרו לשניכם. הקובץ מכיל את המספרים האישיים שלכם, שמרו אותו במקום פרטי.",
   goalAge: "הגיל שבו הייתם רוצים להגיע לחופש כלכלי. החישוב מראה מה נדרש בשביל זה: חיסכון חודשי גבוה יותר, או תשואה גבוהה יותר.",
   s_now: "ההנחות שלכם כמו שהן שמורות: בלי שינוי בהכנסה ובהוצאה.",
   s_good: "תרחיש אופטימי: תשואה 9%, אינפלציה 1.5%, והוצאה נמוכה ב-2,000 ₪ בחודש.",
@@ -323,6 +324,28 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
     link.click();
     URL.revokeObjectURL(url);
   }
+  function download(text: string, name: string, type: string) {
+    const url = URL.createObjectURL(new Blob([text], { type }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = name;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+  // A readable Markdown picture (data, assumptions, rules, results) for a person or an AI tool.
+  function exportReport() {
+    const report = analysisReport({
+      base,
+      liquidTotal: inv.liquid,
+      emergency: inv.emergency,
+      incomeMissing: inv.income == null,
+      expenseMissing: inv.expense == null,
+      assumptions: a,
+      scenario,
+      goalAge,
+    });
+    download(report, `kama-ze-maspik-analysis-${new Date().toISOString().slice(0, 10)}.md`, "text/markdown;charset=utf-8");
+  }
   async function importFile(file: File | undefined) {
     if (!file) return;
     const r = parseSettingsFile(await file.text());
@@ -429,6 +452,7 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
                 טעינה מקובץ
                 <input type="file" accept="application/json,.json" onChange={(e) => { void importFile(e.target.files?.[0]); e.target.value = ""; }} />
               </label>
+              <button type="button" onClick={exportReport}>ייצוא לניתוח (AI)</button>
               <Info text={HELP.file} />
             </div>
           </aside>
