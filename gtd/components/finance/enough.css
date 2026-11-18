@@ -116,3 +116,7 @@
 }
 .fin.enough .en-events select { min-width: 130px; }
 .fin.enough .en-lbl { display: inline-flex; align-items: center; gap: 2px; }
+.fin.enough .en-file { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+.fin.enough .en-file-in { position: relative; display: inline-flex; align-items: center; cursor: pointer; border: 1px solid var(--border); background: var(--surface); border-radius: 8px; padding: 6px 12px; }
+.fin.enough .en-file-in:hover { border-color: var(--accent); }
+.fin.enough .en-file-in input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }

@@ -5,8 +5,8 @@ import { financeDb } from "@/db/finance";
 import { financeItems, financeSim, financeSnapshots } from "@/db/finance-schema";
 import { defaultAssumptions, type Assumptions } from "./simulator";
 
-export { importRows, itemFields, itemKeys, itemPatch, type ItemKey } from "./fields";
-import { itemKeys, type ItemKey } from "./fields";
+export { assumptionsSchema, importRows, itemFields, itemKeys, itemPatch, type ItemKey } from "./fields";
+import { assumptionsSchema, itemKeys, type ItemKey } from "./fields";
 
 export const summary = z.object({
   net: z.number().finite(),
@@ -87,30 +87,6 @@ export async function replaceItems(rows: Record<ItemKey, string>[], backup: Summ
   return listItems();
 }
 
-const n = (min: number, max: number) => z.number().finite().min(min).max(max);
-export const assumptionsSchema = z.object({
-  currentAge: n(18, 90),
-  birthYear: n(1930, 2010).nullable(),
-  retirementAge: n(30, 90),
-  pensionAge: n(50, 90),
-  pensionRatio: n(0, 100),
-  roi: n(0, 20),
-  inflation: n(0, 10),
-  lifestyleCreep: n(0, 10),
-  incomeGrowth: n(0, 10),
-  glidePath: z.boolean(),
-  workAfterRetirement: z.boolean(),
-  rule: n(100, 600),
-  childrenAges: z.array(n(0, 60)).max(10),
-  kidsMonthly: n(0, 1_000_000),
-  adultSupport: n(0, 1_000_000),
-  adultSupportUntil: n(21, 40),
-  deductEmergency: z.boolean(),
-  events: z.array(z.object({ desc: z.string().trim().max(200), age: n(18, 90), amount: n(-1e9, 1e9) })).max(50),
-  incomeChanges: z
-    .array(z.object({ desc: z.string().trim().max(200), monthly: n(-1e7, 1e7), fromAge: n(18, 90), toAge: n(18, 91).nullable() }))
-    .max(20),
-});
 
 export async function getAssumptions(): Promise<Assumptions> {
   // Until migration 0001 has run the table is missing; the page then works with the defaults.
