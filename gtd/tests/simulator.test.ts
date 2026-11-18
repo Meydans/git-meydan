@@ -27,17 +27,29 @@ test("FI is the first year after the start with balance >= rule x monthly spend"
   assert.equal(none.survives, false);
 });
 
-test("children: each child halves at 18 and is gone at 21", () => {
-  const r = simulate({ ...base, expense: 10_000 }, { ...A, inflation: 0, kidsMonthly: 4_000, childrenAges: [17, 20] });
-  // year 0: ages 17 (full) and 20 (half) -> 1 - 0.5*0.5 ; year 1: 18 (half) and 21 (gone)
-  assert.equal(r.timeline[0].monthlyExpense, 10_000 - 4_000 * 0.25);
-  assert.equal(r.timeline[1].monthlyExpense, 10_000 - 4_000 * 0.75);
+test("children: today's budget scales with the age mix (1 / 1.8 / 0.6 / 0)", () => {
+  // Ages 8 and 5 today: weight 2. In two years the older is 10: weight 2.8 -> budget x1.4.
+  const r = simulate({ ...base, expense: 10_000 }, { ...A, inflation: 0, kidsMonthly: 4_000, childrenAges: [8, 5] });
+  assert.equal(r.timeline[0].monthlyExpense, 10_000);
+  assert.ok(Math.abs(r.timeline[2].monthlyExpense - (6_000 + 4_000 * 1.4)) < 1e-9);
+  // Age 17 today (1.8): at 18 it is 0.6 -> a third; at 21 gone.
+  const t = simulate({ ...base, expense: 10_000 }, { ...A, inflation: 0, kidsMonthly: 1_800, childrenAges: [17] });
+  assert.ok(Math.abs(t.timeline[1].monthlyExpense - (8_200 + 600)) < 1e-9);
+  assert.equal(t.timeline[4].monthlyExpense, 8_200);
 });
 
-test("capital events land in their year", () => {
+test("adult support counts per child from 21 until the chosen age", () => {
+  const r = simulate({ ...base, expense: 10_000 }, { ...A, inflation: 0, childrenAges: [20], kidsMonthly: 0, adultSupport: 2_000, adultSupportUntil: 23 });
+  assert.equal(r.timeline[0].monthlyExpense, 10_000); // 20
+  assert.equal(r.timeline[1].monthlyExpense, 12_000); // 21
+  assert.equal(r.timeline[2].monthlyExpense, 12_000); // 22
+  assert.equal(r.timeline[3].monthlyExpense, 10_000); // 23
+});
+
+test("capital events are in today's money and grow with inflation to their year", () => {
   const r = simulate(base, { ...A, events: [{ desc: "x", age: 45, amount: -100_000 }] });
   const w = simulate(base, A);
-  assert.ok(Math.abs(w.timeline[5].balance - r.timeline[5].balance - 100_000) < 1e-6);
+  assert.ok(Math.abs(w.timeline[5].balance - r.timeline[5].balance - 100_000 * 1.02 ** 5) < 1e-6);
   assert.equal(r.timeline[5].events.length, 1);
 });
 
