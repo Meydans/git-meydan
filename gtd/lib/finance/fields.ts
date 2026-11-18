@@ -19,6 +19,7 @@ export const assumptionsSchema = z.object({
   birthYear: n(1930, 2010).nullable(),
   retirementAge: n(30, 90),
   pensionAge: n(50, 90),
+  pensions: z.array(z.object({ who: z.string().trim().max(100), monthly: n(0, 1_000_000) })).max(10).nullable(),
   pensionRatio: n(0, 100),
   roi: n(0, 20),
   inflation: n(0, 10),

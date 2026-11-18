@@ -1,7 +1,7 @@
 // The headline numbers of the inventory, in the same terms as the "where we stand" page
 // (components/finance/engine.js, model()). Pure, so the simulator can start from the same figures.
 
-type Row = { type: string; liq: string; liqDate: string; purpose: string; value: string; cur: string; name: string };
+type Row = { type: string; liq: string; liqDate: string; purpose: string; value: string; cur: string; name: string; owner?: string };
 
 function num(v: string): number | null {
   const s = String(v ?? "").replace(/[₪$,\s]/g, "").replace(/[^\d.-]/g, "");
@@ -24,6 +24,8 @@ export type InventoryBase = {
   emergency: number;
   income: number | null;
   expense: number | null;
+  // Pension fund balances per owner (rows of type פנסיה). Not part of the liquid capital.
+  pensionSavings: { who: string; balance: number }[];
   hasRows: boolean;
 };
 
@@ -46,11 +48,14 @@ export function inventoryBase(rows: Row[], now = new Date()): InventoryBase {
     return liq === "נעול עד תאריך" && d && d <= today ? "נזיל בעלות" : liq;
   };
   const sum = (list: Row[]) => list.reduce((s, r) => s + ils(r), 0);
+  const pensionRows = assets.filter((r) => r.type === "פנסיה");
+  const owner = (r: Row) => (r.owner ?? "").trim();
   return {
     liquid: sum(assets.filter((r) => ["מיידי", "נזיל בעלות"].includes(liqOf(r)))),
     emergency: sum(assets.filter((r) => r.purpose === "חירום")),
     income: param("הכנסה חודשית נטו"),
     expense: param("הוצאה חודשית"),
+    pensionSavings: [...new Set(pensionRows.map(owner))].map((who) => ({ who, balance: sum(pensionRows.filter((r) => owner(r) === who)) })),
     hasRows: rows.length > 0,
   };
 }
