@@ -1282,7 +1282,7 @@ Return ONLY valid JSON, no markdown:
         });
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
-          throw new Error(errData?.error?.message || `Proxy request failed with status ${res.status}`);
+          throw new Error((typeof errData?.error === "string" ? errData.error : errData?.error?.message) || `Proxy request failed with status ${res.status}`);
         }
         return res.json();
       };
