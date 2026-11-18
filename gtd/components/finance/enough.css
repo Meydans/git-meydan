@@ -114,3 +114,4 @@
   .fin.enough .en-kpis b { font-size: 17px; }
   .fin.enough .en-axis, .fin.enough .en-marker-label { font-size: 18px; }
 }
+.fin.enough .en-events select { min-width: 130px; }

@@ -45,7 +45,7 @@ test("goal seek inverts the compound formulas", () => {
   const fv = futureValue(100_000, 2_000, 6, 15);
   assert.ok(Math.abs(requiredSurplus(100_000, fv, 6, 15) - 2_000) < 1e-6);
   assert.ok(Math.abs(requiredRoi(100_000, fv, 2_000, 15) - 6) < 1e-4);
-  assert.equal(goalSeek(base, A, { incomeLoss: 0, expenseAdjust: 0 }, 40).years, 0);
+  assert.equal(goalSeek(base, A, { incomeChange: 0, expenseAdjust: 0 }, 40).years, 0);
 });
 
 test("inventory base: liquid, emergency, USD and unlocked funds", () => {
@@ -66,4 +66,21 @@ test("inventory base: liquid, emergency, USD and unlocked funds", () => {
   assert.equal(b.emergency, 100_000);
   assert.equal(b.expense, 20_000);
   assert.equal(b.income, null);
+});
+
+test("an income change counts from its start age until retirement (or its end age)", () => {
+  const flat = { ...A, inflation: 0 };
+  const r = simulate(base, { ...flat, incomeChanges: [{ desc: "x", monthly: 10_000, fromAge: 45, toAge: null }] });
+  const at = (age: number) => r.timeline.find((t) => t.age === age)!.monthlyIncome;
+  assert.equal(at(44), 30_000);
+  assert.equal(at(45), 40_000);
+  assert.equal(at(59), 40_000);
+  assert.equal(at(60), 0); // retired at 60, pension from 67
+  const ended = simulate(base, { ...flat, incomeChanges: [{ desc: "x", monthly: 10_000, fromAge: 45, toAge: 50 }] });
+  assert.equal(ended.timeline.find((t) => t.age === 50)!.monthlyIncome, 30_000);
+});
+
+test("the income-change scenario can raise or cut today's income", () => {
+  assert.equal(simulate(base, A, { incomeChange: 5_000, expenseAdjust: 0 }).monthlyIncome, 35_000);
+  assert.equal(simulate(base, A, { incomeChange: -5_000, expenseAdjust: 0 }).monthlyIncome, 25_000);
 });

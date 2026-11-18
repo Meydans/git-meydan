@@ -104,6 +104,9 @@ export const assumptionsSchema = z.object({
   kidsMonthly: n(0, 1_000_000),
   deductEmergency: z.boolean(),
   events: z.array(z.object({ desc: z.string().trim().max(200), age: n(18, 90), amount: n(-1e9, 1e9) })).max(50),
+  incomeChanges: z
+    .array(z.object({ desc: z.string().trim().max(200), monthly: n(-1e7, 1e7), fromAge: n(18, 90), toAge: n(18, 91).nullable() }))
+    .max(20),
 });
 
 export async function getAssumptions(): Promise<Assumptions> {

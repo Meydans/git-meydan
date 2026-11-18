@@ -5,11 +5,12 @@ import { Info as InfoIcon } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
 import { saveSimSettings } from "@/app/(finance)/finance/actions";
 import type { InventoryBase } from "@/lib/finance/inventory";
-import { END_AGE, goalSeek, simulate, type Assumptions, type CapitalEvent, type Scenario } from "@/lib/finance/simulator";
+import { END_AGE, goalSeek, simulate, type Assumptions, type CapitalEvent, type IncomeChange, type Scenario } from "@/lib/finance/simulator";
 import "./finance.css";
 import "./enough.css";
 
 const ils = (n: number) => "₪" + Math.round(n).toLocaleString("he-IL");
+const signed = (n: number) => (n > 0 ? "+" : n < 0 ? "-" : "") + ils(Math.abs(n));
 const short = (n: number) => {
   const a = Math.abs(n);
   const s = n < 0 ? "-" : "";
@@ -29,7 +30,8 @@ const HELP = {
   fiTarget: "כלל ה-300: הון בגובה 300 פעמים ההוצאה החודשית (בערכי אותה שנה, כולל אינפלציה). מאפשר למשוך כ-4% בשנה בלי לפגוע בקרן.",
   fiAge: "הגיל הראשון, אחרי שנת ההתחלה, שבו ההון הנזיל מגיע ליעד החופש הכלכלי. אם הוא לא מגיע עד גיל 90, כתוב \"לא הושג\".",
   lowest: "הנקודה הנמוכה ביותר שאליה ההון יורד לאורך התחזית. אם היא שלילית, ההון אוזל באותו גיל.",
-  incomeLoss: "סכום שמופחת מההכנסה החודשית, כדי לבדוק למשל מעבר לחצי משרה או הפסקת עבודה של אחד מכם. זה תרחיש בלבד ולא נשמר.",
+  incomeChange: "שינוי בהכנסה החודשית מהיום: שלילי לירידה (למשל חצי משרה), חיובי לעלייה (למשל העלאה). זה תרחיש לבדיקה ולא נשמר. לשינוי שמתחיל בגיל מסוים, הוסיפו אותו ב\"שינויים עתידיים בהכנסה\".",
+  incomeChanges: "הכנסה חודשית שמתחילה בגיל מסוים ונמשכת עד הפרישה או עד גיל שתבחרו. למשל: משכורת של אפרת, 10,000 ₪ בחודש מגיל 43. הסכום בכסף של היום, והוא עולה עם האינפלציה והגידול בשכר. סכום שלילי מתאים להכנסה שנפסקת. לא משנה את הפנסיה.",
   expenseAdjust: "סכום שמתווסף להוצאה החודשית (או מופחת ממנה, אם שלילי). תרחיש בלבד, לא נשמר.",
   roi: "התשואה השנתית הממוצעת שמניחים על ההון הנזיל, נטו אחרי דמי ניהול ומס. תשואה גבוהה מאוד נראית טוב בגרף אבל לא סבירה לאורך שנים.",
   inflation: "קצב העלייה השנתי במחירים. ההוצאה ושכר העבודה עולים בקצב הזה בכל שנה.",
@@ -123,10 +125,10 @@ function Kpi({ label, help, value, cls }: { label: string; help: string; value: 
 }
 
 const SCENARIOS: Record<string, { label: string; roi?: number; inflation?: number } & Scenario> = {
-  now: { label: "מצב נוכחי", incomeLoss: 0, expenseAdjust: 0 },
-  good: { label: "אופטימי", incomeLoss: 0, expenseAdjust: -2000, roi: 9, inflation: 1.5 },
-  safe: { label: "שמרני", incomeLoss: 0, expenseAdjust: 2500, roi: 4, inflation: 3 },
-  crisis: { label: "משבר", incomeLoss: 15000, expenseAdjust: 6000, roi: 2, inflation: 4 },
+  now: { label: "מצב נוכחי", incomeChange: 0, expenseAdjust: 0 },
+  good: { label: "אופטימי", incomeChange: 0, expenseAdjust: -2000, roi: 9, inflation: 1.5 },
+  safe: { label: "שמרני", incomeChange: 0, expenseAdjust: 2500, roi: 4, inflation: 3 },
+  crisis: { label: "משבר", incomeChange: -15000, expenseAdjust: 6000, roi: 2, inflation: 4 },
 };
 
 function Slider(props: { label: string; help?: string; value: number; min: number; max: number; step: number; fmt?: (n: number) => string; onChange: (n: number) => void }) {
@@ -288,7 +290,7 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
 
   function pick(key: string) {
     const s = SCENARIOS[key];
-    setScenario({ incomeLoss: s.incomeLoss, expenseAdjust: s.expenseAdjust });
+    setScenario({ incomeChange: s.incomeChange, expenseAdjust: s.expenseAdjust });
     if (s.roi != null) setA((p) => ({ ...p, roi: s.roi!, inflation: s.inflation! }));
   }
   function save() {
@@ -303,6 +305,7 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
       }
     });
   }
+  const setChange = (i: number, patch: Partial<IncomeChange>) => set("incomeChanges", a.incomeChanges.map((c, j) => (j === i ? { ...c, ...patch } : c)));
   const setEvent = (i: number, patch: Partial<CapitalEvent>) => set("events", a.events.map((e, j) => (j === i ? { ...e, ...patch } : e)));
 
   const ok = r.survives && r.lowest >= 0;
@@ -352,7 +355,7 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
             </dl>
 
             <div className="en-sliders">
-              <Slider label="ירידה בהכנסה" help={HELP.incomeLoss} value={scenario.incomeLoss} min={0} max={35000} step={1000} fmt={ils} onChange={(v) => setScenario((s) => ({ ...s, incomeLoss: v }))} />
+              <Slider label="שינוי בהכנסה" help={HELP.incomeChange} value={scenario.incomeChange} min={-35000} max={20000} step={500} fmt={signed} onChange={(v) => setScenario((s) => ({ ...s, incomeChange: v }))} />
               <Slider label="התאמת הוצאה חודשית" help={HELP.expenseAdjust} value={scenario.expenseAdjust} min={-10000} max={20000} step={500} fmt={ils} onChange={(v) => setScenario((s) => ({ ...s, expenseAdjust: v }))} />
               <Slider label="תשואה שנתית נטו" help={HELP.roi} value={a.roi} min={1} max={15} step={0.5} fmt={(n) => n + "%"} onChange={(v) => set("roi", v)} />
               <Slider label="גיל פרישה" help={HELP.retirementAge} value={a.retirementAge} min={40} max={90} step={1} onChange={(v) => set("retirementAge", v)} />
@@ -378,7 +381,7 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
               <button type="button" className="primary" disabled={!dirty || pending} onClick={save}>{pending ? "שומר..." : "שמירת ההנחות"}</button>
               <span className="muted small">{dirty ? "יש שינויים שלא נשמרו" : msg}</span>
             </div>
-            <p className="muted small">ירידה בהכנסה והתאמת הוצאה הן תרחיש ולא נשמרות. שאר ההנחות נשמרות לשניכם.</p>
+            <p className="muted small">שינוי בהכנסה והתאמת הוצאה הם תרחיש ולא נשמרים. שאר ההנחות נשמרות לשניכם.</p>
           </aside>
 
           <div className="en-charts">
@@ -413,54 +416,102 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
                 markers={markers.filter((m) => m.cls === "m-ret")}
               />
             </section>
-          </div>
-        </div>
 
-        <div className="fcard">
-          <h2>ילדים ואירועי הון</h2>
-          <div className="en-row">
-            <label>גילאי הילדים (מופרדים בפסיק) <Info text={HELP.children} />
-              <input
-                key={a.childrenAges.length}
-                defaultValue={a.childrenAges.join(", ")}
-                placeholder="למשל 6, 9"
-                onBlur={(e) => set("childrenAges", e.target.value.split(/[,\s]+/).map(Number).filter((n) => Number.isFinite(n) && n >= 0 && n <= 60 && e.target.value.trim() !== "").slice(0, 10))}
-              />
-            </label>
-            <label>חלק הילדים בהוצאה החודשית (₪) <Info text={HELP.kids} />
-              <input type="number" min={0} step={100} value={a.kidsMonthly} onChange={(e) => set("kidsMonthly", Math.max(0, Number(e.target.value) || 0))} />
-            </label>
+            <section className="fcard">
+              <div className="en-card-head">
+                <h2>שינויים עתידיים בהכנסה <Info text={HELP.incomeChanges} /></h2>
+              </div>
+              {a.incomeChanges.length > 0 && (
+                <table className="en-events">
+                  <thead><tr><th>תיאור</th><th>סוג</th><th>סכום חודשי (₪)</th><th>מגיל</th><th>עד</th><th /></tr></thead>
+                  <tbody>
+                    {a.incomeChanges.map((c, i) => (
+                      <tr key={i}>
+                        <td><input value={c.desc} placeholder="למשל משכורת של אפרת" onChange={(ev) => setChange(i, { desc: ev.target.value })} /></td>
+                        <td>
+                          <select value={c.monthly < 0 ? "out" : "in"} onChange={(ev) => setChange(i, { monthly: (ev.target.value === "out" ? -1 : 1) * Math.abs(c.monthly) })}>
+                            <option value="in">הכנסה נוספת</option>
+                            <option value="out">הכנסה שנפסקת</option>
+                          </select>
+                        </td>
+                        <td><NumInput value={Math.abs(c.monthly)} onChange={(n) => setChange(i, { monthly: (c.monthly < 0 ? -1 : 1) * Math.abs(n) })} /></td>
+                        <td>
+                          <NumInput value={c.fromAge} onChange={(n) => setChange(i, { fromAge: Math.round(n) })} />
+                          {(c.fromAge < a.currentAge || c.fromAge > END_AGE) && <span className="en-warn small">מחוץ לתחזית</span>}
+                        </td>
+                        <td>
+                          <select
+                            value={c.toAge == null ? "ret" : "age"}
+                            onChange={(ev) => setChange(i, { toAge: ev.target.value === "ret" ? null : Math.max(c.fromAge + 1, a.retirementAge) })}
+                          >
+                            <option value="ret">הפרישה ({a.retirementAge})</option>
+                            <option value="age">גיל מסוים</option>
+                          </select>
+                          {c.toAge != null && <NumInput value={c.toAge} onChange={(n) => setChange(i, { toAge: Math.round(n) })} />}
+                        </td>
+                        <td><button type="button" aria-label="מחיקה" onClick={() => set("incomeChanges", a.incomeChanges.filter((_, j) => j !== i))}>×</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              <button
+                type="button"
+                className="en-add"
+                onClick={() => set("incomeChanges", [...a.incomeChanges, { desc: "", monthly: 10000, fromAge: Math.min(90, a.currentAge + 2), toAge: null }])}
+              >
+                + הוסף שינוי בהכנסה
+              </button>
+              <p className="muted small">השינוי נראה בגרף ההכנסה וההוצאה. הסכום בכסף של היום.</p>
+            </section>
+
+            <section className="fcard">
+              <h2>ילדים ואירועי הון</h2>
+              <div className="en-row">
+                <label>גילאי הילדים (מופרדים בפסיק) <Info text={HELP.children} />
+                  <input
+                    key={a.childrenAges.length}
+                    defaultValue={a.childrenAges.join(", ")}
+                    placeholder="למשל 6, 9"
+                    onBlur={(e) => set("childrenAges", e.target.value.split(/[,\s]+/).map(Number).filter((n) => Number.isFinite(n) && n >= 0 && n <= 60 && e.target.value.trim() !== "").slice(0, 10))}
+                  />
+                </label>
+                <label>חלק הילדים בהוצאה החודשית (₪) <Info text={HELP.kids} />
+                  <input type="number" min={0} step={100} value={a.kidsMonthly} onChange={(e) => set("kidsMonthly", Math.max(0, Number(e.target.value) || 0))} />
+                </label>
+              </div>
+              <p className="muted small">התקציב מתחלק שווה בין הילדים; חלקו של כל ילד יורד בחצי בגיל 18 ונעלם בגיל 21.</p>
+              <table className="en-events">
+                <thead><tr><th>אירוע <Info text={HELP.events} /></th><th>גיל</th><th>סוג</th><th>סכום (₪)</th><th /></tr></thead>
+                <tbody>
+                  {a.events.map((e, i) => {
+                    const outside = e.age < a.currentAge || e.age > END_AGE;
+                    return (
+                      <tr key={i}>
+                        <td><input value={e.desc} placeholder="למשל שיפוץ" onChange={(ev) => setEvent(i, { desc: ev.target.value })} /></td>
+                        <td>
+                          <NumInput value={e.age} onChange={(n) => setEvent(i, { age: Math.round(n) })} />
+                          {outside && <span className="en-warn small">מחוץ לתחזית ({a.currentAge}-{END_AGE}), לא ישפיע</span>}
+                        </td>
+                        <td>
+                          <select value={e.amount < 0 ? "out" : "in"} onChange={(ev) => setEvent(i, { amount: (ev.target.value === "out" ? -1 : 1) * Math.abs(e.amount) })}>
+                            <option value="in">כסף נכנס</option>
+                            <option value="out">הוצאה</option>
+                          </select>
+                        </td>
+                        <td>
+                          <NumInput value={Math.abs(e.amount)} onChange={(n) => setEvent(i, { amount: (e.amount < 0 ? -1 : 1) * Math.abs(n) })} />
+                          {e.amount === 0 && <span className="muted small">הזינו סכום</span>}
+                        </td>
+                        <td><button type="button" aria-label="מחיקה" onClick={() => set("events", a.events.filter((_, j) => j !== i))}>×</button></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <button type="button" className="en-add" onClick={() => set("events", [...a.events, { desc: "", age: Math.min(90, a.currentAge + 5), amount: -100000 }])}>+ הוסף אירוע</button>
+            </section>
           </div>
-          <p className="muted small">התקציב מתחלק שווה בין הילדים; חלקו של כל ילד יורד בחצי בגיל 18 ונעלם בגיל 21.</p>
-          <table className="en-events">
-            <thead><tr><th>אירוע <Info text={HELP.events} /></th><th>גיל</th><th>סוג</th><th>סכום (₪)</th><th /></tr></thead>
-            <tbody>
-              {a.events.map((e, i) => {
-                const outside = e.age < a.currentAge || e.age > END_AGE;
-                return (
-                  <tr key={i}>
-                    <td><input value={e.desc} placeholder="למשל שיפוץ" onChange={(ev) => setEvent(i, { desc: ev.target.value })} /></td>
-                    <td>
-                      <NumInput value={e.age} onChange={(n) => setEvent(i, { age: Math.round(n) })} />
-                      {outside && <span className="en-warn small">מחוץ לתחזית ({a.currentAge}-{END_AGE}), לא ישפיע</span>}
-                    </td>
-                    <td>
-                      <select value={e.amount < 0 ? "out" : "in"} onChange={(ev) => setEvent(i, { amount: (ev.target.value === "out" ? -1 : 1) * Math.abs(e.amount) })}>
-                        <option value="in">כסף נכנס</option>
-                        <option value="out">הוצאה</option>
-                      </select>
-                    </td>
-                    <td>
-                      <NumInput value={Math.abs(e.amount)} onChange={(n) => setEvent(i, { amount: (e.amount < 0 ? -1 : 1) * Math.abs(n) })} />
-                      {e.amount === 0 && <span className="muted small">הזינו סכום</span>}
-                    </td>
-                    <td><button type="button" aria-label="מחיקה" onClick={() => set("events", a.events.filter((_, j) => j !== i))}>×</button></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <button type="button" className="en-add" onClick={() => set("events", [...a.events, { desc: "", age: Math.min(90, a.currentAge + 5), amount: -100000 }])}>+ הוסף אירוע</button>
         </div>
 
         <div className="fcard">
