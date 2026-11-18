@@ -90,6 +90,7 @@ export async function replaceItems(rows: Record<ItemKey, string>[], backup: Summ
 const n = (min: number, max: number) => z.number().finite().min(min).max(max);
 export const assumptionsSchema = z.object({
   currentAge: n(18, 90),
+  birthYear: n(1930, 2010).nullable(),
   retirementAge: n(30, 90),
   pensionAge: n(50, 90),
   pensionRatio: n(0, 100),
@@ -102,6 +103,8 @@ export const assumptionsSchema = z.object({
   rule: n(100, 600),
   childrenAges: z.array(n(0, 60)).max(10),
   kidsMonthly: n(0, 1_000_000),
+  adultSupport: n(0, 1_000_000),
+  adultSupportUntil: n(21, 40),
   deductEmergency: z.boolean(),
   events: z.array(z.object({ desc: z.string().trim().max(200), age: n(18, 90), amount: n(-1e9, 1e9) })).max(50),
   incomeChanges: z

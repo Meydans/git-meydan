@@ -5,7 +5,7 @@ import { Info as InfoIcon } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
 import { saveSimSettings } from "@/app/(finance)/finance/actions";
 import type { InventoryBase } from "@/lib/finance/inventory";
-import { END_AGE, goalSeek, simulate, type Assumptions, type CapitalEvent, type IncomeChange, type Scenario } from "@/lib/finance/simulator";
+import { END_AGE, goalSeek, simulate, withAge, type Assumptions, type CapitalEvent, type IncomeChange, type Scenario } from "@/lib/finance/simulator";
 import "./finance.css";
 import "./enough.css";
 
@@ -35,7 +35,7 @@ const HELP = {
   expenseAdjust: "סכום שמתווסף להוצאה החודשית (או מופחת ממנה, אם שלילי). תרחיש בלבד, לא נשמר.",
   roi: "התשואה השנתית הממוצעת שמניחים על ההון הנזיל, נטו אחרי דמי ניהול ומס. תשואה גבוהה מאוד נראית טוב בגרף אבל לא סבירה לאורך שנים.",
   inflation: "קצב העלייה השנתי במחירים. ההוצאה ושכר העבודה עולים בקצב הזה בכל שנה.",
-  currentAge: "הגיל שממנו התחזית מתחילה לרוץ קדימה.",
+  currentAge: "הגיל שממנו התחזית מתחילה לרוץ קדימה. כשמזינים שנת לידה, הגיל מחושב ממנה ומתעדכן לבד כל שנה.",
   retirementAge: "הגיל שבו ההכנסה מעבודה נפסקת (אלא אם סימנתם שהיא נמשכת). מאותו גיל מושכים מהון.",
   pensionAge: "הגיל שבו מתחילה להיכנס קצבת הפנסיה החודשית.",
   pensionRatio: "איזה חלק מההכנסה החודשית של היום תחליף קצבת הפנסיה, מגיל תחילת הפנסיה. 50% אומר קצבה בגובה חצי מההכנסה של היום; 0% אומר בלי פנסיה בכלל. זו הנחה קבועה: הסימולטור לא מחשב את הקצבה מהצבירה בפועל.",
@@ -43,9 +43,11 @@ const HELP = {
   incomeGrowth: "העלייה השנתית בשכר שמעבר לאינפלציה (קידום, העלאות). 0% אומר שהשכר רק עוקב אחרי האינפלציה.",
   workAfter: "אם מסומן, ההכנסה מעבודה ממשיכה גם אחרי גיל הפרישה (למשל עבודה חלקית). אם לא, ההכנסה היחידה אחרי הפרישה היא הפנסיה.",
   glide: "מודל הפחתת סיכון: 8% תשואה ב-10 השנים הראשונות, ואז 4% לשמירה על ההון. כשמסומן הוא מחליף את סליידר התשואה.",
-  children: "גילאי הילדים משפיעים על ההוצאה: חלקו של כל ילד בתקציב הילדים יורד בחצי בגיל 18 ונעלם בגיל 21.",
-  kids: "כמה מההוצאה החודשית הכוללת הולך לילדים (גן, חוגים וכו'). הסכום הזה קטן עם השנים לפי גיל הילדים.",
-  events: "הכנסה או הוצאה חד-פעמית בגיל מסוים, כמו קרן השתלמות שנפתחת (חיובי), שיפוץ או עזרה לילדים בדירה (שלילי). היא נוספת להון בשנה הזו.",
+  children: "תקציב הילדים משתנה עם הגיל. משקל לכל ילד: עד גיל 10 = 1, מגיל 10 עד 18 = 1.8 (ילד גדול עולה בערך פי 1.8, לפי מחקר של קרלינסקי ושראל, בנק ישראל 2020, על נתוני סקר ההוצאות של הלמ\"ס), בשירות הצבאי 18-21 = 0.6 (כשליש מגיל ההתבגרות, לפי סקר מרכז המחקר של הכנסת 2018 ונוהג בתי המשפט), ומגיל 21 = 0. התקציב של היום מוכפל ביחס בין סכום המשקלות בכל שנה לסכום של היום.",
+  kids: "כמה מההוצאה החודשית הכוללת הולך היום לילדים (גן, חוגים, בגדים, אוכל שלהם וכו'). הסכום עולה כשילד עובר את גיל 10, יורד בשירות הצבאי ונגמר בגיל 21.",
+  adultSupport: "תמיכה חודשית קבועה בכל ילד אחרי הצבא (סטודנט, שכר דירה). בסקרים בישראל, הורים שתומכים בילדים בוגרים נותנים בממוצע כ-2,100 ₪ בחודש. בכסף של היום. 0 = בלי תמיכה.",
+  adultSupportUntil: "הגיל של הילד שבו התמיכה החודשית נגמרת.",
+  events: "הכנסה או הוצאה חד-פעמית בגיל מסוים, כמו קרן השתלמות שנפתחת (חיובי), שיפוץ, טיול אחרי צבא, רישיון, עזרה בדירה או חתונה (שלילי). הסכום בכסף של היום, והוא עולה עם האינפלציה עד שנת האירוע.",
   goalAge: "הגיל שבו הייתם רוצים להגיע לחופש כלכלי. החישוב מראה מה נדרש בשביל זה: חיסכון חודשי גבוה יותר, או תשואה גבוהה יותר.",
   s_now: "ההנחות שלכם כמו שהן שמורות: בלי שינוי בהכנסה ובהוצאה.",
   s_good: "תרחיש אופטימי: תשואה 9%, אינפלציה 1.5%, והוצאה נמוכה ב-2,000 ₪ בחודש.",
@@ -271,10 +273,10 @@ function NumInput({ value, onChange }: { value: number; onChange: (n: number) =>
 }
 
 export function EnoughClient({ base: inv, initial }: { base: InventoryBase; initial: Assumptions }) {
-  const [a, setA] = useState<Assumptions>(initial);
+  const [a, setA] = useState<Assumptions>(() => withAge(initial));
   const [scenario, setScenario] = useState<Scenario>(SCENARIOS.now);
   const [goalAge, setGoalAge] = useState(Math.min(90, Math.max(a.currentAge + 1, 55)));
-  const [saved, setSaved] = useState(JSON.stringify(initial));
+  const [saved, setSaved] = useState(() => JSON.stringify(withAge(initial)));
   const [msg, setMsg] = useState("");
   const [pending, start] = useTransition();
   const set = <K extends keyof Assumptions>(k: K, v: Assumptions[K]) => setA((p) => ({ ...p, [k]: v }));
@@ -367,7 +369,19 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
               <summary>עוד הנחות</summary>
               <div className="en-sliders">
                 <Slider label="אינפלציה שנתית" help={HELP.inflation} value={a.inflation} min={0} max={6} step={0.5} fmt={(n) => n + "%"} onChange={(v) => set("inflation", v)} />
-                <Slider label="גיל נוכחי" help={HELP.currentAge} value={a.currentAge} min={20} max={80} step={1} onChange={(v) => set("currentAge", v)} />
+                <label className="en-ctl">
+                  <span className="en-ctl-top">
+                    <span>שנת לידה <Info text={HELP.currentAge} /></span>
+                    <b className="num">גיל {a.currentAge}</b>
+                  </span>
+                  <NumInput
+                    value={a.birthYear ?? new Date().getFullYear() - a.currentAge}
+                    onChange={(n) => {
+                      const y = Math.round(n);
+                      if (y >= 1930 && y <= 2010) setA((p) => withAge({ ...p, birthYear: y }));
+                    }}
+                  />
+                </label>
                 <Slider label="גיל תחילת פנסיה" help={HELP.pensionAge} value={a.pensionAge} min={55} max={75} step={1} onChange={(v) => set("pensionAge", v)} />
                 <Slider label="זחילת רמת חיים" help={HELP.creep} value={a.lifestyleCreep} min={0} max={5} step={0.5} fmt={(n) => n + "%"} onChange={(v) => set("lifestyleCreep", v)} />
                 <Slider label="גידול ריאלי בשכר" help={HELP.incomeGrowth} value={a.incomeGrowth} min={0} max={5} step={0.5} fmt={(n) => n + "%"} onChange={(v) => set("incomeGrowth", v)} />
@@ -468,7 +482,8 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
             <section className="fcard">
               <h2>ילדים ואירועי הון</h2>
               <div className="en-row">
-                <label>גילאי הילדים (מופרדים בפסיק) <Info text={HELP.children} />
+                <label>
+                  <span className="en-lbl">גילאי הילדים (מופרדים בפסיק) <Info text={HELP.children} /></span>
                   <input
                     key={a.childrenAges.length}
                     defaultValue={a.childrenAges.join(", ")}
@@ -476,13 +491,22 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
                     onBlur={(e) => set("childrenAges", e.target.value.split(/[,\s]+/).map(Number).filter((n) => Number.isFinite(n) && n >= 0 && n <= 60 && e.target.value.trim() !== "").slice(0, 10))}
                   />
                 </label>
-                <label>חלק הילדים בהוצאה החודשית (₪) <Info text={HELP.kids} />
-                  <input type="number" min={0} step={100} value={a.kidsMonthly} onChange={(e) => set("kidsMonthly", Math.max(0, Number(e.target.value) || 0))} />
+                <label>
+                  <span className="en-lbl">חלק הילדים בהוצאה החודשית היום (₪) <Info text={HELP.kids} /></span>
+                  <NumInput value={a.kidsMonthly} onChange={(n) => set("kidsMonthly", Math.max(0, n))} />
+                </label>
+                <label>
+                  <span className="en-lbl">תמיכה חודשית בכל ילד אחרי 21 (₪) <Info text={HELP.adultSupport} /></span>
+                  <NumInput value={a.adultSupport} onChange={(n) => set("adultSupport", Math.max(0, n))} />
+                </label>
+                <label>
+                  <span className="en-lbl">התמיכה נגמרת בגיל <Info text={HELP.adultSupportUntil} /></span>
+                  <NumInput value={a.adultSupportUntil} onChange={(n) => set("adultSupportUntil", Math.min(40, Math.max(21, Math.round(n))))} />
                 </label>
               </div>
-              <p className="muted small">התקציב מתחלק שווה בין הילדים; חלקו של כל ילד יורד בחצי בגיל 18 ונעלם בגיל 21.</p>
+              <p className="muted small">משקל לפי גיל: עד 10 = 1, 10-18 = 1.8, צבא 18-21 = 0.6, מ-21 = 0 (מקורות ב-i). סכומי אירועים הם בכסף של היום.</p>
               <table className="en-events">
-                <thead><tr><th>אירוע <Info text={HELP.events} /></th><th>גיל</th><th>סוג</th><th>סכום (₪)</th><th /></tr></thead>
+                <thead><tr><th>אירוע <Info text={HELP.events} /></th><th>גיל</th><th>סוג</th><th>סכום (₪, בכסף של היום)</th><th /></tr></thead>
                 <tbody>
                   {a.events.map((e, i) => {
                     const outside = e.age < a.currentAge || e.age > END_AGE;

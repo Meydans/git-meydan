@@ -115,3 +115,4 @@
   .fin.enough .en-axis, .fin.enough .en-marker-label { font-size: 18px; }
 }
 .fin.enough .en-events select { min-width: 130px; }
+.fin.enough .en-lbl { display: inline-flex; align-items: center; gap: 2px; }
