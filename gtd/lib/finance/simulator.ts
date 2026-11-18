@@ -12,6 +12,8 @@ export type IncomeChange = { desc: string; monthly: number; fromAge: number; toA
 // What the person keeps between visits (saved in the finance database).
 export type Assumptions = {
   currentAge: number;
+  // When set, currentAge follows it (this year minus birthYear), so the plan ages by itself.
+  birthYear: number | null;
   retirementAge: number;
   pensionAge: number;
   // Share of today's income that the pension replaces from pensionAge.
@@ -34,6 +36,7 @@ export type Assumptions = {
 
 export const defaultAssumptions: Assumptions = {
   currentAge: 40,
+  birthYear: null,
   retirementAge: 67,
   pensionAge: 67,
   pensionRatio: 50,
@@ -211,4 +214,10 @@ export function goalSeek(base: Base, a: Assumptions, s: Scenario, goalAge: numbe
     surplus: requiredSurplus(base.liquid, target, a.roi, years),
     roi: requiredRoi(base.liquid, target, income - expense, years),
   };
+}
+
+// currentAge from birthYear, as of `now`.
+export function withAge(a: Assumptions, now = new Date()): Assumptions {
+  if (a.birthYear == null) return a;
+  return { ...a, currentAge: Math.min(90, Math.max(18, now.getFullYear() - a.birthYear)) };
 }

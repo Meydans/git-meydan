@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { inventoryBase } from "../lib/finance/inventory.ts";
-import { defaultAssumptions, futureValue, goalSeek, requiredRoi, requiredSurplus, simulate } from "../lib/finance/simulator.ts";
+import { defaultAssumptions, futureValue, withAge, goalSeek, requiredRoi, requiredSurplus, simulate } from "../lib/finance/simulator.ts";
 
 const A = { ...defaultAssumptions, currentAge: 40, retirementAge: 60, pensionAge: 67, pensionRatio: 50, roi: 6, inflation: 2 };
 const base = { liquid: 500_000, income: 30_000, expense: 20_000 };
@@ -95,4 +95,11 @@ test("an income change counts from its start age until retirement (or its end ag
 test("the income-change scenario can raise or cut today's income", () => {
   assert.equal(simulate(base, A, { incomeChange: 5_000, expenseAdjust: 0 }).monthlyIncome, 35_000);
   assert.equal(simulate(base, A, { incomeChange: -5_000, expenseAdjust: 0 }).monthlyIncome, 25_000);
+});
+
+test("birth year sets the current age and moves with the calendar", () => {
+  const a = { ...defaultAssumptions, birthYear: 1984 };
+  assert.equal(withAge(a, new Date(2026, 10, 18)).currentAge, 42);
+  assert.equal(withAge(a, new Date(2027, 0, 1)).currentAge, 43);
+  assert.equal(withAge({ ...defaultAssumptions, currentAge: 50 }).currentAge, 50);
 });

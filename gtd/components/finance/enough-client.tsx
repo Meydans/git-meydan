@@ -5,7 +5,7 @@ import { Info as InfoIcon } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
 import { saveSimSettings } from "@/app/(finance)/finance/actions";
 import type { InventoryBase } from "@/lib/finance/inventory";
-import { END_AGE, goalSeek, simulate, type Assumptions, type CapitalEvent, type IncomeChange, type Scenario } from "@/lib/finance/simulator";
+import { END_AGE, goalSeek, simulate, withAge, type Assumptions, type CapitalEvent, type IncomeChange, type Scenario } from "@/lib/finance/simulator";
 import "./finance.css";
 import "./enough.css";
 
@@ -35,7 +35,7 @@ const HELP = {
   expenseAdjust: "סכום שמתווסף להוצאה החודשית (או מופחת ממנה, אם שלילי). תרחיש בלבד, לא נשמר.",
   roi: "התשואה השנתית הממוצעת שמניחים על ההון הנזיל, נטו אחרי דמי ניהול ומס. תשואה גבוהה מאוד נראית טוב בגרף אבל לא סבירה לאורך שנים.",
   inflation: "קצב העלייה השנתי במחירים. ההוצאה ושכר העבודה עולים בקצב הזה בכל שנה.",
-  currentAge: "הגיל שממנו התחזית מתחילה לרוץ קדימה.",
+  currentAge: "הגיל שממנו התחזית מתחילה לרוץ קדימה. כשמזינים שנת לידה, הגיל מחושב ממנה ומתעדכן לבד כל שנה.",
   retirementAge: "הגיל שבו ההכנסה מעבודה נפסקת (אלא אם סימנתם שהיא נמשכת). מאותו גיל מושכים מהון.",
   pensionAge: "הגיל שבו מתחילה להיכנס קצבת הפנסיה החודשית.",
   pensionRatio: "איזה חלק מההכנסה החודשית של היום תחליף קצבת הפנסיה, מגיל תחילת הפנסיה. 50% אומר קצבה בגובה חצי מההכנסה של היום; 0% אומר בלי פנסיה בכלל. זו הנחה קבועה: הסימולטור לא מחשב את הקצבה מהצבירה בפועל.",
@@ -273,10 +273,10 @@ function NumInput({ value, onChange }: { value: number; onChange: (n: number) =>
 }
 
 export function EnoughClient({ base: inv, initial }: { base: InventoryBase; initial: Assumptions }) {
-  const [a, setA] = useState<Assumptions>(initial);
+  const [a, setA] = useState<Assumptions>(() => withAge(initial));
   const [scenario, setScenario] = useState<Scenario>(SCENARIOS.now);
   const [goalAge, setGoalAge] = useState(Math.min(90, Math.max(a.currentAge + 1, 55)));
-  const [saved, setSaved] = useState(JSON.stringify(initial));
+  const [saved, setSaved] = useState(() => JSON.stringify(withAge(initial)));
   const [msg, setMsg] = useState("");
   const [pending, start] = useTransition();
   const set = <K extends keyof Assumptions>(k: K, v: Assumptions[K]) => setA((p) => ({ ...p, [k]: v }));
@@ -369,7 +369,19 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
               <summary>עוד הנחות</summary>
               <div className="en-sliders">
                 <Slider label="אינפלציה שנתית" help={HELP.inflation} value={a.inflation} min={0} max={6} step={0.5} fmt={(n) => n + "%"} onChange={(v) => set("inflation", v)} />
-                <Slider label="גיל נוכחי" help={HELP.currentAge} value={a.currentAge} min={20} max={80} step={1} onChange={(v) => set("currentAge", v)} />
+                <label className="en-ctl">
+                  <span className="en-ctl-top">
+                    <span>שנת לידה <Info text={HELP.currentAge} /></span>
+                    <b className="num">גיל {a.currentAge}</b>
+                  </span>
+                  <NumInput
+                    value={a.birthYear ?? new Date().getFullYear() - a.currentAge}
+                    onChange={(n) => {
+                      const y = Math.round(n);
+                      if (y >= 1930 && y <= 2010) setA((p) => withAge({ ...p, birthYear: y }));
+                    }}
+                  />
+                </label>
                 <Slider label="גיל תחילת פנסיה" help={HELP.pensionAge} value={a.pensionAge} min={55} max={75} step={1} onChange={(v) => set("pensionAge", v)} />
                 <Slider label="זחילת רמת חיים" help={HELP.creep} value={a.lifestyleCreep} min={0} max={5} step={0.5} fmt={(n) => n + "%"} onChange={(v) => set("lifestyleCreep", v)} />
                 <Slider label="גידול ריאלי בשכר" help={HELP.incomeGrowth} value={a.incomeGrowth} min={0} max={5} step={0.5} fmt={(n) => n + "%"} onChange={(v) => set("incomeGrowth", v)} />
