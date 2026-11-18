@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Info as InfoIcon } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
 import { saveSimSettings } from "@/app/(finance)/finance/actions";
+import { parseSettingsFile, settingsFile } from "@/lib/finance/fields";
 import type { InventoryBase } from "@/lib/finance/inventory";
 import { END_AGE, goalSeek, simulate, withAge, type Assumptions, type CapitalEvent, type IncomeChange, type Scenario } from "@/lib/finance/simulator";
 import "./finance.css";
@@ -48,6 +49,7 @@ const HELP = {
   adultSupport: "תמיכה חודשית קבועה בכל ילד אחרי הצבא (סטודנט, שכר דירה). בסקרים בישראל, הורים שתומכים בילדים בוגרים נותנים בממוצע כ-2,100 ₪ בחודש. בכסף של היום. 0 = בלי תמיכה.",
   adultSupportUntil: "הגיל של הילד שבו התמיכה החודשית נגמרת.",
   events: "הכנסה או הוצאה חד-פעמית בגיל מסוים, כמו קרן השתלמות שנפתחת (חיובי), שיפוץ, טיול אחרי צבא, רישיון, עזרה בדירה או חתונה (שלילי). הסכום בכסף של היום, והוא עולה עם האינפלציה עד שנת האירוע.",
+  file: "ייצוא שומר בקובץ את כל ההגדרות: ההנחות, הילדים, אירועי ההון, השינויים בהכנסה וגם הסליידרים של התרחיש. טעינה מחליפה את הערכים בדף, וצריך ללחוץ שמירה כדי שיישמרו לשניכם. הקובץ מכיל את המספרים האישיים שלכם, שמרו אותו במקום פרטי.",
   goalAge: "הגיל שבו הייתם רוצים להגיע לחופש כלכלי. החישוב מראה מה נדרש בשביל זה: חיסכון חודשי גבוה יותר, או תשואה גבוהה יותר.",
   s_now: "ההנחות שלכם כמו שהן שמורות: בלי שינוי בהכנסה ובהוצאה.",
   s_good: "תרחיש אופטימי: תשואה 9%, אינפלציה 1.5%, והוצאה נמוכה ב-2,000 ₪ בחודש.",
@@ -279,7 +281,10 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
   const [saved, setSaved] = useState(() => JSON.stringify(withAge(initial)));
   const [msg, setMsg] = useState("");
   const [pending, start] = useTransition();
-  const set = <K extends keyof Assumptions>(k: K, v: Assumptions[K]) => setA((p) => ({ ...p, [k]: v }));
+  const set = <K extends keyof Assumptions>(k: K, v: Assumptions[K]) => {
+    setMsg("");
+    setA((p) => ({ ...p, [k]: v }));
+  };
 
   const dirty = JSON.stringify(a) !== saved;
   const missing = inv.income == null || inv.expense == null;
@@ -306,6 +311,28 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
         setMsg("השמירה נכשלה. ודאו שהמיגרציה האחרונה הורצה (npm run db:finance:migrate).");
       }
     });
+  }
+  // The whole picture (saved plan + what-if sliders) to a JSON file, and back. A loaded file
+  // replaces the page's values; it is saved only when you press save.
+  function exportFile() {
+    const blob = new Blob([JSON.stringify(settingsFile(a, scenario), null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `kama-ze-maspik-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+  async function importFile(file: File | undefined) {
+    if (!file) return;
+    const r = parseSettingsFile(await file.text());
+    if (!r.ok) {
+      setMsg(r.error);
+      return;
+    }
+    setA(withAge(r.assumptions));
+    setScenario(r.scenario);
+    setMsg("ההגדרות נטענו מהקובץ. לחצו שמירה כדי לשמור אותן.");
   }
   const setChange = (i: number, patch: Partial<IncomeChange>) => set("incomeChanges", a.incomeChanges.map((c, j) => (j === i ? { ...c, ...patch } : c)));
   const setEvent = (i: number, patch: Partial<CapitalEvent>) => set("events", a.events.map((e, j) => (j === i ? { ...e, ...patch } : e)));
@@ -393,9 +420,17 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
 
             <div className="en-save">
               <button type="button" className="primary" disabled={!dirty || pending} onClick={save}>{pending ? "שומר..." : "שמירת ההנחות"}</button>
-              <span className="muted small">{dirty ? "יש שינויים שלא נשמרו" : msg}</span>
+              <span className="muted small">{msg || (dirty ? "יש שינויים שלא נשמרו" : "")}</span>
             </div>
             <p className="muted small">שינוי בהכנסה והתאמת הוצאה הם תרחיש ולא נשמרים. שאר ההנחות נשמרות לשניכם.</p>
+            <div className="en-file">
+              <button type="button" onClick={exportFile}>ייצוא לקובץ</button>
+              <label className="en-file-in">
+                טעינה מקובץ
+                <input type="file" accept="application/json,.json" onChange={(e) => { void importFile(e.target.files?.[0]); e.target.value = ""; }} />
+              </label>
+              <Info text={HELP.file} />
+            </div>
           </aside>
 
           <div className="en-charts">
