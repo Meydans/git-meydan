@@ -58,7 +58,7 @@ const HELP = {
   s_safe: "תרחיש שמרני: תשואה 4%, אינפלציה 3%, והוצאה גבוהה ב-2,500 ₪ בחודש.",
   s_crisis: "תרחיש משבר: ירידה של 15,000 ₪ בהכנסה, תשואה 2%, אינפלציה 4% והוצאה גבוהה ב-6,000 ₪.",
   chartBalance: "ההון הנזיל בסוף כל שנה, אחרי צמיחה, חיסכון ואירועי הון. הקו המקווקו הוא יעד החופש הכלכלי של אותה שנה; כשההון חוצה אותו, הגעתם.",
-  chartFlow: "הכנסה והוצאה חודשית ממוצעת בכל שנה, בכסף של אותה שנה (כולל אינפלציה). הפער ביניהם הוא החיסכון, ומגיל הפרישה רואים את הירידה בהכנסה.",
+  chartFlow: "הכנסה והוצאה חודשית ממוצעת בכל שנה, בכסף של אותה שנה (כולל אינפלציה). הקו המקווקו הוא התזרים החודשי, הכנסה פחות הוצאה: מעל 0 זה החיסכון שנכנס להון, מתחת ל-0 זה כמה אוכלים מההון בכל חודש. התזרים לא כולל את התשואה על ההון ואירועי הון חד-פעמיים, ולכן ההון יכול להמשיך לגדול גם כשהתזרים שלילי, כל עוד התשואה גדולה מהמשיכה.",
 } as const;
 
 // Opens on hover or keyboard focus, and stays open when clicked or tapped ("pinned") until a tap
@@ -517,14 +517,15 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
             <section className="fcard">
               <div className="en-card-head">
                 <h2>הכנסה והוצאה חודשית <Info text={HELP.chartFlow} /></h2>
-                <Legend items={[{ label: "הכנסה", cls: "s-inc" }, { label: "הוצאה", cls: "s-exp" }]} />
+                <Legend items={[{ label: "הכנסה", cls: "s-inc" }, { label: "הוצאה", cls: "s-exp" }, { label: "תזרים (חיסכון / אכילה מההון)", cls: "s-flow" }]} />
               </div>
               <Chart
                 label="הכנסה והוצאה חודשית ממוצעת לפי גיל"
-                points={r.timeline.map((t) => ({ age: t.age, income: t.monthlyIncome, expense: t.monthlyExpense }))}
+                points={r.timeline.map((t) => ({ age: t.age, income: t.monthlyIncome, expense: t.monthlyExpense, flow: t.monthlyIncome - t.monthlyExpense }))}
                 series={[
                   { key: "income", label: "הכנסה", cls: "s-inc" },
                   { key: "expense", label: "הוצאה", cls: "s-exp" },
+                  { key: "flow", label: "תזרים", cls: "s-flow", area: true },
                 ]}
                 markers={markers.filter((m) => m.cls === "m-ret")}
               />
