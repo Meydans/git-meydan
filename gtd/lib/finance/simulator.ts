@@ -4,6 +4,11 @@
 
 export type CapitalEvent = { desc: string; age: number; amount: number };
 
+// A monthly income that starts (or stops, if negative) at fromAge and lasts until toAge, or until
+// retirement when toAge is null. In today's money: it grows with inflation and real wage growth
+// like the salary. It does not change the pension, which is a share of today's income.
+export type IncomeChange = { desc: string; monthly: number; fromAge: number; toAge: number | null };
+
 // What the person keeps between visits (saved in the finance database).
 export type Assumptions = {
   currentAge: number;
@@ -22,6 +27,7 @@ export type Assumptions = {
   kidsMonthly: number; // part of the monthly spending that goes to the children
   deductEmergency: boolean; // keep the emergency fund out of the invested capital
   events: CapitalEvent[];
+  incomeChanges: IncomeChange[];
 };
 
 export const defaultAssumptions: Assumptions = {
@@ -40,10 +46,11 @@ export const defaultAssumptions: Assumptions = {
   kidsMonthly: 0,
   deductEmergency: false,
   events: [],
+  incomeChanges: [],
 };
 
 // What-if levers, never saved: they change the picture, not the plan.
-export type Scenario = { incomeLoss: number; expenseAdjust: number };
+export type Scenario = { incomeChange: number; expenseAdjust: number };
 
 export type Base = { liquid: number; income: number; expense: number };
 
@@ -116,8 +123,8 @@ function kidsFactor(ages: number[], y: number): number {
   return Math.max(0, f);
 }
 
-export function simulate(base: Base, a: Assumptions, s: Scenario = { incomeLoss: 0, expenseAdjust: 0 }): Result {
-  const income = base.income - s.incomeLoss;
+export function simulate(base: Base, a: Assumptions, s: Scenario = { incomeChange: 0, expenseAdjust: 0 }): Result {
+  const income = base.income + s.incomeChange;
   const expense = Math.max(0, base.expense + s.expenseAdjust);
   const kids = Math.min(Math.max(0, a.kidsMonthly), expense);
   const rest = expense - kids;
@@ -135,6 +142,10 @@ export function simulate(base: Base, a: Assumptions, s: Scenario = { incomeLoss:
     let yearlyIncome = 0;
     if (age < a.retirementAge || a.workAfterRetirement) {
       yearlyIncome = income * Math.pow(1 + (a.inflation + a.incomeGrowth) / 100, y) * 12;
+    }
+    for (const c of a.incomeChanges) {
+      const end = c.toAge ?? (a.workAfterRetirement ? END_AGE + 1 : a.retirementAge);
+      if (age >= c.fromAge && age < end) yearlyIncome += c.monthly * Math.pow(1 + (a.inflation + a.incomeGrowth) / 100, y) * 12;
     }
     if (age >= a.pensionAge) yearlyIncome += pension * 12;
 
@@ -175,7 +186,7 @@ export function simulate(base: Base, a: Assumptions, s: Scenario = { incomeLoss:
 // "How do I retire at goalAge?": the saving or the return that gets the capital to the target.
 export function goalSeek(base: Base, a: Assumptions, s: Scenario, goalAge: number) {
   const years = Math.max(0, goalAge - a.currentAge);
-  const income = base.income - s.incomeLoss;
+  const income = base.income + s.incomeChange;
   const expense = Math.max(0, base.expense + s.expenseAdjust);
   const target = expense * Math.pow(1 + a.inflation / 100, years) * a.rule;
   return {
