@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { inventoryBase } from "../lib/finance/inventory.ts";
-import { defaultAssumptions, futureValue, withAge, goalSeek, requiredRoi, requiredSurplus, simulate } from "../lib/finance/simulator.ts";
+import { defaultAssumptions, earliestRetirement, futureValue, withAge, goalSeek, requiredRoi, requiredSurplus, simulate } from "../lib/finance/simulator.ts";
 
 const A = { ...defaultAssumptions, currentAge: 40, retirementAge: 60, pensionAge: 67, pensionRatio: 50, roi: 6, inflation: 2 };
 const base = { liquid: 500_000, income: 30_000, expense: 20_000 };
@@ -20,7 +20,7 @@ test("income stops at retirement and the pension starts at pensionAge", () => {
 });
 
 test("FI is the first year after the start with balance >= rule x monthly spend", () => {
-  const r = simulate({ liquid: 7_000_000, income: 30_000, expense: 20_000 }, { ...A, inflation: 0 });
+  const r = simulate({ liquid: 7_000_000, income: 30_000, expense: 20_000 }, { ...A, inflation: 0, pensionRatio: 0 });
   assert.equal(r.fiAge, 41); // 6,000,000 needed from the start, but y must be > 0
   const none = simulate({ liquid: 0, income: 10_000, expense: 20_000 }, A);
   assert.equal(none.fiAge, null);
@@ -53,11 +53,48 @@ test("capital events are in today's money and grow with inflation to their year"
   assert.equal(r.timeline[5].events.length, 1);
 });
 
-test("goal seek inverts the compound formulas", () => {
+test("compound helpers invert each other", () => {
   const fv = futureValue(100_000, 2_000, 6, 15);
   assert.ok(Math.abs(requiredSurplus(100_000, fv, 6, 15) - 2_000) < 1e-6);
   assert.ok(Math.abs(requiredRoi(100_000, fv, 2_000, 15) - 6) < 1e-4);
-  assert.equal(goalSeek(base, A, { incomeChange: 0, expenseAdjust: 0 }, 40).years, 0);
+});
+
+test("the pension is linked to inflation", () => {
+  const r = simulate(base, A); // 2% inflation, retire 60, pension 50% from 67
+  assert.ok(Math.abs(r.timeline.find((t) => t.age === 67)!.monthlyIncome - 15_000 * 1.02 ** 27) < 1e-6);
+});
+
+test("the FI target leaves out what the pension covers, plus a bridge until it starts", () => {
+  const flat = { ...A, inflation: 0 };
+  const r = simulate(base, flat); // expense 20k, pension 15k from 67
+  assert.equal(r.timeline.find((t) => t.age === 70)!.fiTarget, 5_000 * 300);
+  assert.equal(r.timeline.find((t) => t.age === 60)!.fiTarget, 5_000 * 300 + 15_000 * 12 * 7);
+  const noPension = simulate(base, { ...flat, pensionRatio: 0 });
+  assert.equal(noPension.timeline[0].fiTarget, 20_000 * 300);
+});
+
+test("a shortfall does not earn a return, and the depletion age is reported", () => {
+  const r = simulate({ liquid: 0, income: 0, expense: 1_000 }, { ...A, inflation: 0, pensionRatio: 0 });
+  assert.equal(r.timeline[0].balance, -12_000);
+  assert.equal(r.timeline[1].balance, -24_000);
+  assert.equal(r.depletionAge, 40);
+  assert.equal(r.survives, false);
+});
+
+test("earliest retirement and goal seek use the full model", () => {
+  const s0 = { incomeChange: 0, expenseAdjust: 0 };
+  const e = earliestRetirement(base, A, s0);
+  assert.ok(e !== null);
+  assert.equal(simulate(base, { ...A, retirementAge: e! }, s0).survives, true);
+  assert.equal(simulate(base, { ...A, retirementAge: e! - 1 }, s0).survives, false);
+  assert.equal(goalSeek(base, A, s0, e!).alreadyOk, true);
+  const g = goalSeek(base, A, s0, e! - 3);
+  assert.equal(g.alreadyOk, false);
+  assert.ok(g.extraSaving! > 0);
+  const extra = { desc: "", monthly: g.extraSaving! + 1, fromAge: A.currentAge, toAge: e! - 3 };
+  assert.equal(simulate(base, { ...A, retirementAge: e! - 3, incomeChanges: [extra] }, s0).survives, true);
+  assert.ok(g.roi! > A.roi);
+  assert.equal(goalSeek(base, A, s0, 40).years, 0);
 });
 
 test("inventory base: liquid, emergency, USD and unlocked funds", () => {

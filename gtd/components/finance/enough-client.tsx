@@ -7,7 +7,7 @@ import { saveSimSettings } from "@/app/(finance)/finance/actions";
 import { parseSettingsFile, settingsFile } from "@/lib/finance/fields";
 import type { InventoryBase } from "@/lib/finance/inventory";
 import { analysisReport } from "@/lib/finance/report";
-import { END_AGE, goalSeek, simulate, withAge, type Assumptions, type CapitalEvent, type IncomeChange, type Scenario } from "@/lib/finance/simulator";
+import { END_AGE, earliestRetirement, goalSeek, simulate, withAge, type Assumptions, type CapitalEvent, type IncomeChange, type Scenario } from "@/lib/finance/simulator";
 import "./finance.css";
 import "./enough.css";
 
@@ -29,9 +29,10 @@ const HELP = {
   surplus: "הכנסה פחות הוצאה בחודש. זה מה שמתווסף להון הנזיל כל שנה (ומוכפל ב-12), כל עוד עובדים.",
   deduct: "קרן חירום נועדה להישאר בצד. כשמסמנים, היא יוצאת מההון שהתחזית משקיעה, והתוצאה שמרנית יותר.",
   atRetirement: "ההון הנזיל הצפוי בגיל הפרישה, אחרי ריבית דריבית, חיסכון שנתי ואירועי הון.",
-  fiTarget: "כלל ה-300: הון בגובה 300 פעמים ההוצאה החודשית (בערכי אותה שנה, כולל אינפלציה). מאפשר למשוך כ-4% בשנה בלי לפגוע בקרן.",
-  fiAge: "הגיל הראשון, אחרי שנת ההתחלה, שבו ההון הנזיל מגיע ליעד החופש הכלכלי. אם הוא לא מגיע עד גיל 90, כתוב \"לא הושג\".",
-  lowest: "הנקודה הנמוכה ביותר שאליה ההון יורד לאורך התחזית. אם היא שלילית, ההון אוזל באותו גיל.",
+  fiTarget: "כלל ה-300: הון בגובה 300 פעמים החלק מההוצאה החודשית שהפנסיה לא מכסה (מאפשר למשוך כ-4% בשנה בלי לפגוע בקרן). לפני גיל הפנסיה נוסף \"גשר\": החלק שהפנסיה תכסה, כפול מספר החודשים עד שהיא מתחילה. בערכי אותה שנה, כולל אינפלציה.",
+  fiAge: "הגיל הראשון, אחרי שנת ההתחלה, שבו ההון הנזיל מגיע ליעד החופש הכלכלי. אם הוא לא מגיע עד גיל 90, כתוב \"לא הושג\". זה מבחן מחמיר יותר מ\"ההון מחזיק עד 90\": יעד ה-300 מכוון להון שמחזיק לתמיד, ולכן אפשר לא להגיע לחופש כלכלי ועדיין שההון יחזיק עד 90.",
+  lowest: "אם ההון נגמר: הגיל שבו הוא יורד מתחת לאפס. אם לא: הנקודה הנמוכה ביותר שאליה הוא יורד. אחרי שההון נגמר, החוסר לא צובר תשואה, כך שהמספרים השליליים בגרף הם החוסר המצטבר ולא חוב שגדל בריבית.",
+  earliest: "הגיל המוקדם ביותר לפרישה שבו ההון לא נגמר עד גיל 90, לפי כל ההנחות (פנסיה, ילדים, אירועים, שינויים בהכנסה).",
   incomeChange: "שינוי בהכנסה החודשית מהיום: שלילי לירידה (למשל חצי משרה), חיובי לעלייה (למשל העלאה). זה תרחיש לבדיקה ולא נשמר. לשינוי שמתחיל בגיל מסוים, הוסיפו אותו ב\"שינויים עתידיים בהכנסה\".",
   incomeChanges: "הכנסה חודשית שמתחילה בגיל מסוים ונמשכת עד הפרישה או עד גיל שתבחרו. למשל: משכורת של אפרת, 10,000 ₪ בחודש מגיל 43. הסכום בכסף של היום, והוא עולה עם האינפלציה והגידול בשכר. סכום שלילי מתאים להכנסה שנפסקת. לא משנה את הפנסיה.",
   expenseAdjust: "סכום שמתווסף להוצאה החודשית (או מופחת ממנה, אם שלילי). תרחיש בלבד, לא נשמר.",
@@ -40,7 +41,7 @@ const HELP = {
   currentAge: "הגיל שממנו התחזית מתחילה לרוץ קדימה. כשמזינים שנת לידה, הגיל מחושב ממנה ומתעדכן לבד כל שנה.",
   retirementAge: "הגיל שבו ההכנסה מעבודה נפסקת (אלא אם סימנתם שהיא נמשכת). מאותו גיל מושכים מהון.",
   pensionAge: "הגיל שבו מתחילה להיכנס קצבת הפנסיה החודשית.",
-  pensionRatio: "איזה חלק מההכנסה החודשית של היום תחליף קצבת הפנסיה, מגיל תחילת הפנסיה. 50% אומר קצבה בגובה חצי מההכנסה של היום; 0% אומר בלי פנסיה בכלל. זו הנחה קבועה: הסימולטור לא מחשב את הקצבה מהצבירה בפועל.",
+  pensionRatio: "איזה חלק מההכנסה החודשית של היום תחליף קצבת הפנסיה, מגיל תחילת הפנסיה. 50% אומר קצבה בגובה חצי מההכנסה של היום; 0% אומר בלי פנסיה בכלל. זו הנחה קבועה: הקצבה צמודה לאינפלציה (כמו קצבאות פנסיה בישראל), והסימולטור לא מחשב אותה מהצבירה בפועל.",
   creep: "העלייה השנתית בהוצאות שמעבר לאינפלציה, בגלל שדרוג רמת החיים. 0% אומר שרמת החיים נשארת אותה רמה.",
   incomeGrowth: "העלייה השנתית בשכר שמעבר לאינפלציה (קידום, העלאות). 0% אומר שהשכר רק עוקב אחרי האינפלציה.",
   workAfter: "אם מסומן, ההכנסה מעבודה ממשיכה גם אחרי גיל הפרישה (למשל עבודה חלקית). אם לא, ההכנסה היחידה אחרי הפרישה היא הפנסיה.",
@@ -51,7 +52,7 @@ const HELP = {
   adultSupportUntil: "הגיל של הילד שבו התמיכה החודשית נגמרת.",
   events: "הכנסה או הוצאה חד-פעמית בגיל מסוים, כמו קרן השתלמות שנפתחת (חיובי), שיפוץ, טיול אחרי צבא, רישיון, עזרה בדירה או חתונה (שלילי). הסכום בכסף של היום, והוא עולה עם האינפלציה עד שנת האירוע.",
   file: "\"ייצוא לניתוח\" מוריד קובץ Markdown קריא: נקודת הפתיחה, כל ההנחות ביחידות שלהן, כללי החישוב, התוצאות והתחזית השנתית, כדי שאדם או כלי AI יבינו את התמונה בלי הקוד. \"ייצוא לקובץ\" שומר את כל ההגדרות: ההנחות, הילדים, אירועי ההון, השינויים בהכנסה וגם הסליידרים של התרחיש. טעינה מחליפה את הערכים בדף, וצריך ללחוץ שמירה כדי שיישמרו לשניכם. הקובץ מכיל את המספרים האישיים שלכם, שמרו אותו במקום פרטי.",
-  goalAge: "הגיל שבו הייתם רוצים להגיע לחופש כלכלי. החישוב מראה מה נדרש בשביל זה: חיסכון חודשי גבוה יותר, או תשואה גבוהה יותר.",
+  goalAge: "פורשים בגיל הזה, וההון צריך להחזיק עד גיל 90. החישוב רץ על המודל המלא ומראה מה נדרש: חיסכון חודשי נוסף מהיום ועד הפרישה (בכסף של היום), או תשואה שנתית גבוהה יותר.",
   s_now: "ההנחות שלכם כמו שהן שמורות: בלי שינוי בהכנסה ובהוצאה.",
   s_good: "תרחיש אופטימי: תשואה 9%, אינפלציה 1.5%, והוצאה נמוכה ב-2,000 ₪ בחודש.",
   s_safe: "תרחיש שמרני: תשואה 4%, אינפלציה 3%, והוצאה גבוהה ב-2,500 ₪ בחודש.",
@@ -295,6 +296,7 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
   );
   const r = useMemo(() => simulate(base, a, scenario), [base, a, scenario]);
   const goal = useMemo(() => goalSeek(base, a, scenario, goalAge), [base, a, scenario, goalAge]);
+  const earliest = useMemo(() => earliestRetirement(base, a, scenario), [base, a, scenario]);
 
   function pick(key: string) {
     const s = SCENARIOS[key];
@@ -360,7 +362,7 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
   const setChange = (i: number, patch: Partial<IncomeChange>) => set("incomeChanges", a.incomeChanges.map((c, j) => (j === i ? { ...c, ...patch } : c)));
   const setEvent = (i: number, patch: Partial<CapitalEvent>) => set("events", a.events.map((e, j) => (j === i ? { ...e, ...patch } : e)));
 
-  const ok = r.survives && r.lowest >= 0;
+  const ok = r.survives;
   const markers: Marker[] = [
     { age: a.retirementAge, label: "פרישה", cls: "m-ret" },
     ...(r.fiAge ? [{ age: r.fiAge, label: "חופש כלכלי", cls: "m-fi" }] : []),
@@ -381,10 +383,17 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
           <Kpi label={`הון בפרישה (גיל ${a.retirementAge})`} help={HELP.atRetirement} value={r.atRetirement == null ? "—" : short(r.atRetirement)} />
           <Kpi label="יעד חופש כלכלי בפרישה" help={HELP.fiTarget} value={r.fiTargetAtRetirement == null ? "—" : short(r.fiTargetAtRetirement)} />
           <Kpi label="הגעה לחופש כלכלי" help={HELP.fiAge} value={r.fiAge ? `גיל ${r.fiAge}` : "לא הושג"} cls={r.fiAge ? "good" : "bad"} />
-          <Kpi label="נקודת השפל" help={HELP.lowest} value={`${short(r.lowest)} · גיל ${r.lowestAge}`} cls={r.lowest < 0 ? "bad" : ""} />
+          {r.depletionAge != null ? (
+            <Kpi label="ההון נגמר" help={HELP.lowest} value={`בגיל ${r.depletionAge}`} cls="bad" />
+          ) : (
+            <Kpi label="נקודת השפל" help={HELP.lowest} value={`${short(r.lowest)} · גיל ${r.lowestAge}`} />
+          )}
+          <Kpi label="פרישה מוקדמת שמחזיקה" help={HELP.earliest} value={earliest != null ? `גיל ${earliest}` : "אין עד 90"} cls={earliest != null ? "good" : "bad"} />
         </div>
         <p className={"en-verdict " + (ok ? "good" : "bad")}>
-          {ok ? `✓ ההון מחזיק עד גיל ${END_AGE} אם פורשים בגיל ${a.retirementAge}.` : `✕ ההון אוזל לפני גיל ${END_AGE} אם פורשים בגיל ${a.retirementAge}.`}
+          {ok
+            ? `✓ ההון מחזיק עד גיל ${END_AGE} אם פורשים בגיל ${a.retirementAge}.`
+            : `✕ אם פורשים בגיל ${a.retirementAge}, ההון נגמר בגיל ${r.depletionAge}.`}
         </p>
 
         <div className="en-layout">
@@ -602,13 +611,34 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
           <Slider label="גיל יעד לפרישה" help={HELP.goalAge} value={goalAge} min={Math.max(a.currentAge, 40)} max={75} step={1} onChange={setGoalAge} />
           {goal.years <= 0 ? (
             <p>בחרו גיל יעד מאוחר מהגיל הנוכחי.</p>
+          ) : goal.alreadyOk ? (
+            <p className="good">✓ פרישה בגיל {goalAge} כבר מחזיקה עד גיל {END_AGE} עם ההנחות הנוכחיות.</p>
           ) : (
-            <p>
-              כדי להגיע לחופש כלכלי בגיל <b>{goalAge}</b> (בעוד {goal.years} שנים, יעד {short(goal.target)}):<br />
-              1. להגדיל את החיסכון החודשי ל-<b className="num">{ils(Math.max(0, goal.surplus))}</b>.<br />
-              2. או להשיג תשואה שנתית של <b className="num">{goal.roi.toFixed(2)}%</b>
-              {goal.roi > 12 && <span className="bad"> (לא ריאלי ללא סיכון)</span>}.
-            </p>
+            <div>
+              <p>כדי לפרוש בגיל <b>{goalAge}</b> (בעוד {goal.years} שנים) וההון יחזיק עד גיל {END_AGE}, צריך אחד מאלה:</p>
+              <p>
+                1.{" "}
+                {goal.extraSaving == null ? (
+                  <span className="bad">חיסכון נוסף לא מספיק גם ב-200 אלף ₪ בחודש.</span>
+                ) : (
+                  <>
+                    לחסוך עוד <b className="num">{ils(goal.extraSaving)}</b> בחודש (בכסף של היום) מהיום ועד הפרישה
+                    {goal.extraSaving > goal.income && <span className="bad"> — יותר מכל ההכנסה החודשית, כלומר לא ריאלי</span>}.
+                  </>
+                )}
+                <br />
+                2.{" "}
+                {goal.roi == null ? (
+                  <span className="bad">גם תשואה של 30% בשנה לא מספיקה.</span>
+                ) : (
+                  <>
+                    או להשיג תשואה שנתית של <b className="num">{goal.roi.toFixed(1)}%</b>
+                    {goal.roi > 10 && <span className="bad"> — לא ריאלי לאורך שנים</span>}.
+                  </>
+                )}
+              </p>
+              {earliest != null && earliest > goalAge && <p className="muted small">לשם השוואה: עם ההנחות הנוכחיות, הגיל המוקדם ביותר שמחזיק הוא {earliest}.</p>}
+            </div>
           )}
         </div>
 

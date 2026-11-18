@@ -7,6 +7,7 @@ export type CapitalEvent = { desc: string; age: number; amount: number };
 // A monthly income that starts (or stops, if negative) at fromAge and lasts until toAge, or until
 // retirement when toAge is null. In today's money: it grows with inflation and real wage growth
 // like the salary. It does not change the pension, which is a share of today's income.
+// The pension is linked to inflation (as Israeli pension annuities are to the CPI).
 export type IncomeChange = { desc: string; monthly: number; fromAge: number; toAge: number | null };
 
 // What the person keeps between visits (saved in the finance database).
@@ -16,7 +17,8 @@ export type Assumptions = {
   birthYear: number | null;
   retirementAge: number;
   pensionAge: number;
-  // Share of today's income that the pension replaces from pensionAge.
+  // Share of today's income that the pension replaces from pensionAge, in today's money: the
+  // monthly pension is that share of today's income, linked to inflation.
   pensionRatio: number; // 0..100
   roi: number; // % a year, net
   inflation: number; // % a year
@@ -76,6 +78,8 @@ export type Result = {
   fiYears: number | null;
   lowest: number;
   lowestAge: number;
+  // First age at which the capital ends the year below zero, or null if it never does.
+  depletionAge: number | null;
   atRetirement: number | null;
   fiTargetAtRetirement: number | null;
   survives: boolean;
@@ -151,6 +155,7 @@ export function simulate(base: Base, a: Assumptions, s: Scenario = { incomeChang
   let lowestAge = a.currentAge;
   let fiAge: number | null = null;
   let fiYears: number | null = null;
+  let depletionAge: number | null = null;
   const timeline: Year[] = [];
 
   for (let age = a.currentAge; age <= END_AGE; age++) {
@@ -163,22 +168,28 @@ export function simulate(base: Base, a: Assumptions, s: Scenario = { incomeChang
       const end = c.toAge ?? (a.workAfterRetirement ? END_AGE + 1 : a.retirementAge);
       if (age >= c.fromAge && age < end) yearlyIncome += c.monthly * Math.pow(1 + (a.inflation + a.incomeGrowth) / 100, y) * 12;
     }
-    if (age >= a.pensionAge) yearlyIncome += pension * 12;
+    const pensionNow = pension * Math.pow(1 + a.inflation / 100, y); // monthly, this year's money
+    if (age >= a.pensionAge) yearlyIncome += pensionNow * 12;
 
     const adults = a.childrenAges.filter((c) => c + y >= 21 && c + y < a.adultSupportUntil).length;
     const monthlyExpense =
       (rest + kids * kidsFactor(a.childrenAges, y) + a.adultSupport * adults) * Math.pow(1 + (a.inflation + a.lifestyleCreep) / 100, y);
-    const fiTarget = monthlyExpense * a.rule;
+    // Enough capital = rule x the part of spending the pension does not cover, plus, before the
+    // pension starts, the pension-sized part of spending for the years until it does (the bridge).
+    const covered = Math.min(pensionNow, monthlyExpense);
+    const fiTarget = (monthlyExpense - covered) * a.rule + (age < a.pensionAge ? covered * 12 * (a.pensionAge - age) : 0);
     if (fiAge === null && y > 0 && balance >= fiTarget) {
       fiAge = age;
       fiYears = y;
     }
 
     const roi = a.glidePath ? (y < 10 ? 8 : 4) : a.roi;
-    balance = balance * (1 + roi / 100) + yearlyIncome - monthlyExpense * 12;
+    // Only money that exists earns a return: a shortfall stays a shortfall, it does not compound.
+    balance = (balance > 0 ? balance * (1 + roi / 100) : balance) + yearlyIncome - monthlyExpense * 12;
     const events = a.events.filter((e) => e.age === age);
     // Event amounts are in today's money, like income and spending.
     for (const e of events) balance += e.amount * Math.pow(1 + a.inflation / 100, y);
+    if (depletionAge === null && balance < 0) depletionAge = age;
     if (balance < lowest) {
       lowest = balance;
       lowestAge = age;
@@ -193,27 +204,63 @@ export function simulate(base: Base, a: Assumptions, s: Scenario = { incomeChang
     fiYears,
     lowest,
     lowestAge,
+    depletionAge,
     atRetirement: ret ? ret.balance : null,
     fiTargetAtRetirement: ret ? ret.fiTarget : null,
-    survives: timeline.length > 0 && timeline[timeline.length - 1].balance > 0,
+    survives: depletionAge === null,
     monthlyIncome: income,
     monthlyExpense: expense,
     surplus: income - expense,
   };
 }
 
-// "How do I retire at goalAge?": the saving or the return that gets the capital to the target.
+// The earliest retirement age at which the capital never runs out before END_AGE (full model).
+export function earliestRetirement(base: Base, a: Assumptions, s: Scenario): number | null {
+  for (let r = a.currentAge; r <= END_AGE; r++) {
+    if (simulate(base, { ...a, retirementAge: r }, s).survives) return r;
+  }
+  return null;
+}
+
+const MAX_EXTRA = 200_000;
+const MAX_ROI = 30;
+
+// "What would it take to retire at goalAge?", on the full model: retire at goalAge and the capital
+// must last to END_AGE. Either an extra monthly saving from now until goalAge (today's money,
+// growing like the salary), or a higher yearly return. null = not reachable within the bounds.
 export function goalSeek(base: Base, a: Assumptions, s: Scenario, goalAge: number) {
   const years = Math.max(0, goalAge - a.currentAge);
+  const at = { ...a, retirementAge: goalAge };
   const income = base.income + s.incomeChange;
-  const expense = Math.max(0, base.expense + s.expenseAdjust);
-  const target = expense * Math.pow(1 + a.inflation / 100, years) * a.rule;
-  return {
-    years,
-    target,
-    surplus: requiredSurplus(base.liquid, target, a.roi, years),
-    roi: requiredRoi(base.liquid, target, income - expense, years),
-  };
+  if (years <= 0) return { years, alreadyOk: false, extraSaving: null as number | null, roi: null as number | null, income };
+  if (simulate(base, at, s).survives) return { years, alreadyOk: true, extraSaving: 0, roi: a.glidePath ? null : a.roi, income };
+
+  const withExtra = (x: number) => ({ ...at, incomeChanges: [...at.incomeChanges, { desc: "", monthly: x, fromAge: a.currentAge, toAge: goalAge }] });
+  let extraSaving: number | null = null;
+  if (simulate(base, withExtra(MAX_EXTRA), s).survives) {
+    let lo = 0;
+    let hi = MAX_EXTRA;
+    for (let i = 0; i < 40; i++) {
+      const mid = (lo + hi) / 2;
+      if (simulate(base, withExtra(mid), s).survives) hi = mid;
+      else lo = mid;
+    }
+    extraSaving = hi;
+  }
+
+  const withRoi = (r: number) => ({ ...at, glidePath: false, roi: r });
+  let roi: number | null = null;
+  if (simulate(base, withRoi(MAX_ROI), s).survives) {
+    let lo = 0;
+    let hi = MAX_ROI;
+    for (let i = 0; i < 40; i++) {
+      const mid = (lo + hi) / 2;
+      if (simulate(base, withRoi(mid), s).survives) hi = mid;
+      else lo = mid;
+    }
+    roi = hi;
+  }
+  return { years, alreadyOk: false, extraSaving, roi, income };
 }
 
 // currentAge from birthYear, as of `now`.
