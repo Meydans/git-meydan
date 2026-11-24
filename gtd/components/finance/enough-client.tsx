@@ -24,7 +24,7 @@ const short = (n: number) => {
 // Plain-language explanations, shown by the (i) next to each label: hover, focus or tap.
 const HELP = {
   liquid: "כסף שאפשר להשתמש בו עכשיו בלי קנס: שורות במלאי שהנזילות שלהן \"מיידי\" או \"נזיל בעלות\" (כולל קרן נעולה שהתאריך שלה כבר עבר). לא כולל פנסיה ונדל\"ן. זה ההון שהתחזית מושיבה ומשקיעה.",
-  income: "ההכנסה החודשית נטו של הבית היום, מהפרמטר \"הכנסה חודשית נטו\" במלאי, אחרי התאמת סליידר \"ירידה בהכנסה\". כדי לשנות אותה קבועה, עדכנו את הפרמטר במלאי.",
+  income: "ההכנסה החודשית נטו של הבית היום, מהפרמטר \"הכנסה חודשית נטו\" במלאי, אחרי התאמת סליידר \"שינוי בהכנסה\". כדי לשנות אותה קבועה, עדכנו את הפרמטר במלאי.",
   expense: "ההוצאה החודשית של הבית היום, מהפרמטר \"הוצאה חודשית\" במלאי, אחרי התאמת הסליידר.",
   surplus: "הכנסה פחות הוצאה בחודש. זה מה שמתווסף להון הנזיל כל שנה (ומוכפל ב-12), כל עוד עובדים.",
   deduct: "קרן חירום נועדה להישאר בצד. כשמסמנים, היא יוצאת מההון שהתחזית משקיעה, והתוצאה שמרנית יותר.",
@@ -36,7 +36,7 @@ const HELP = {
   incomeChange: "שינוי בהכנסה החודשית מהיום: שלילי לירידה (למשל חצי משרה), חיובי לעלייה (למשל העלאה). זה תרחיש לבדיקה ולא נשמר. לשינוי שמתחיל בגיל מסוים, הוסיפו אותו ב\"שינויים עתידיים בהכנסה\".",
   incomeChanges: "הכנסה חודשית שמתחילה בגיל מסוים ונמשכת עד הפרישה או עד גיל שתבחרו. למשל: משכורת של אפרת, 10,000 ₪ בחודש מגיל 43. הסכום בכסף של היום, והוא עולה עם האינפלציה והגידול בשכר. סכום שלילי מתאים להכנסה שנפסקת. לא משנה את הפנסיה.",
   expenseAdjust: "סכום שמתווסף להוצאה החודשית (או מופחת ממנה, אם שלילי). תרחיש בלבד, לא נשמר.",
-  roi: "התשואה השנתית הממוצעת שמניחים על ההון הנזיל, נטו אחרי דמי ניהול ומס. תשואה גבוהה מאוד נראית טוב בגרף אבל לא סבירה לאורך שנים.",
+  roi: "התשואה השנתית הממוצעת על ההון הנזיל, נטו אחרי דמי ניהול ומס. היא כוללת את האינפלציה, ולכן התשואה ה\"אמיתית\" היא התשואה פחות האינפלציה. דוגמה: 5% תשואה ו-2% אינפלציה = כ-3% ריאלי בשנה. תיק מנייתי לטווח ארוך הניב בעבר יותר, אבל עם תנודות; 4%-6% הוא טווח סביר לתכנון.",
   inflation: "קצב העלייה השנתי במחירים. ההוצאה ושכר העבודה עולים בקצב הזה בכל שנה.",
   currentAge: "הגיל שממנו התחזית מתחילה לרוץ קדימה. כשמזינים שנת לידה, הגיל מחושב ממנה ומתעדכן לבד כל שנה.",
   retirementAge: "הגיל שבו ההכנסה מעבודה נפסקת (אלא אם סימנתם שהיא נמשכת). מאותו גיל מושכים מהון.",
@@ -45,7 +45,10 @@ const HELP = {
   creep: "העלייה השנתית בהוצאות שמעבר לאינפלציה, בגלל שדרוג רמת החיים. 0% אומר שרמת החיים נשארת אותה רמה.",
   incomeGrowth: "העלייה השנתית בשכר שמעבר לאינפלציה (קידום, העלאות). 0% אומר שהשכר רק עוקב אחרי האינפלציה.",
   workAfter: "אם מסומן, ההכנסה מעבודה ממשיכה גם אחרי גיל הפרישה (למשל עבודה חלקית). אם לא, ההכנסה היחידה אחרי הפרישה היא הפנסיה.",
-  glide: "מודל הפחתת סיכון: 8% תשואה ב-10 השנים הראשונות, ואז 4% לשמירה על ההון. כשמסומן הוא מחליף את סליידר התשואה.",
+  glide: "כמו מסלול תלוי גיל בקרן הפנסיה: מ-10 שנים לפני הפרישה עוברים בהדרגה לתיק סולידי יותר. התשואה יורדת בהדרגה עד 2 נקודות פחות ביום הפרישה, ונשארת כך. למה? ירידה חדה בשוק בשנה שפורשים היא הכי מסוכנת, כי מושכים מההון כשהוא נמוך. דוגמה: 6% עד גיל 57, ירידה הדרגתית ל-4% בגיל 67. המחיר: פחות תשואה. התמורה: ב\"קריסה בפרישה\" ההון יורד 15% במקום 30%.",
+  retireExpense: "מגיל הפרישה כל ההוצאה החודשית משתנה באחוז הזה. בפרישה נגמרות בדרך כלל הוצאות כמו נסיעות לעבודה, ולפעמים המשכנתא; מצד שני אולי יותר טיולים. דוגמה: הוצאה של 36,000 ₪ ו-15%- = מגיל הפרישה 30,600 ₪ בחודש (בכסף של היום). 0% = בלי שינוי.",
+  s_crash: "מבחן לחץ: השוק יורד בדיוק בשנה שפורשים, הרגע הכי רגיש כי מתחילים למשוך מההון כשהוא נמוך. ההון יורד 30% (או 15% עם הפחתת סיכון לקראת הפרישה). דוגמה: 5 מיליון ₪ בפרישה הופכים ל-3.5 מיליון. אם ההון עדיין מחזיק עד 90, התוכנית עמידה. לחיצה נוספת מבטלת. לא נשמר.",
+  bl: "מוסיף את קצבת הזקנה מביטוח לאומי לכל אחד, בנוסף לפנסיה מהקרן. ב-2026 הבסיס 1,838 ₪ בחודש, ועוד 2% לכל שנת ביטוח עד 50% (2,757 ₪). גבר מקבל מגיל 67; אישה ילידת 1970 ואילך מגיל 65, אז שנו את הגיל בשורה שלה. לא חייבת במס, אבל מנכים כ-237 ₪ דמי ביטוח בריאות. קצבה מקרן פנסיה לא פוגעת בזכאות. את הסכום המדויק אפשר לבדוק באתר ביטוח לאומי.",
   children: "תקציב הילדים משתנה עם הגיל. משקל לכל ילד: עד גיל 10 = 1, מגיל 10 עד 18 = 1.8 (ילד גדול עולה בערך פי 1.8, לפי מחקר של קרלינסקי ושראל, בנק ישראל 2020, על נתוני סקר ההוצאות של הלמ\"ס), בשירות הצבאי 18-21 = 0.6 (כשליש מגיל ההתבגרות, לפי סקר מרכז המחקר של הכנסת 2018 ונוהג בתי המשפט), ומגיל 21 = 0. התקציב של היום מוכפל ביחס בין סכום המשקלות בכל שנה לסכום של היום.",
   kids: "כמה מההוצאה החודשית הכוללת הולך היום לילדים (גן, חוגים, בגדים, אוכל שלהם וכו'). הסכום עולה כשילד עובר את גיל 10, יורד בשירות הצבאי ונגמר בגיל 21.",
   adultSupport: "תמיכה חודשית קבועה בכל ילד אחרי הצבא (סטודנט, שכר דירה). בסקרים בישראל, הורים שתומכים בילדים בוגרים נותנים בממוצע כ-2,100 ₪ בחודש. בכסף של היום. 0 = בלי תמיכה.",
@@ -301,7 +304,7 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
 
   function pick(key: string) {
     const s = SCENARIOS[key];
-    setScenario({ incomeChange: s.incomeChange, expenseAdjust: s.expenseAdjust });
+    setScenario((p) => ({ incomeChange: s.incomeChange, expenseAdjust: s.expenseAdjust, crash: p.crash }));
     if (s.roi != null) setA((p) => ({ ...p, roi: s.roi!, inflation: s.inflation! }));
   }
   function save() {
@@ -366,6 +369,14 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
   if (!pensionWho.length) pensionWho.push("");
   const setPension = (who: string, monthly: number) =>
     set("pensions", pensionWho.map((w) => ({ who: w, monthly: w === who ? Math.max(0, monthly) : (a.pensions?.find((p) => p.who === w)?.monthly ?? 0) })));
+  // Bituach Leumi old-age pension: one income change per person from 67 to the end of the plan.
+  const BL_DESC = "ביטוח לאומי";
+  const hasBL = a.incomeChanges.some((c) => c.desc.startsWith(BL_DESC));
+  const addBL = () =>
+    set("incomeChanges", [
+      ...a.incomeChanges,
+      ...pensionWho.map((who) => ({ desc: who ? `${BL_DESC} (${who})` : BL_DESC, monthly: 1838, fromAge: 67, toAge: END_AGE + 1 })),
+    ]);
   const setChange = (i: number, patch: Partial<IncomeChange>) => set("incomeChanges", a.incomeChanges.map((c, j) => (j === i ? { ...c, ...patch } : c)));
   const setEvent = (i: number, patch: Partial<CapitalEvent>) => set("events", a.events.map((e, j) => (j === i ? { ...e, ...patch } : e)));
 
@@ -413,6 +424,12 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
                   <Info text={HELP[("s_" + k) as keyof typeof HELP]} />
                 </span>
               ))}
+              <span className="en-chip">
+                <button type="button" className={scenario.crash ? "on" : ""} aria-pressed={!!scenario.crash} onClick={() => setScenario((p) => ({ ...p, crash: !p.crash }))}>
+                  קריסה בפרישה
+                </button>
+                <Info text={HELP.s_crash} />
+              </span>
             </div>
 
             <dl className="en-base-list">
@@ -421,6 +438,7 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
               <div><dt>הוצאה חודשית <Info text={HELP.expense} /></dt><dd className="num">{ils(r.monthlyExpense)}</dd></div>
               <div><dt>עודף חודשי <Info text={HELP.surplus} /></dt><dd className={"num " + (r.surplus < 0 ? "bad" : "good")}>{ils(r.surplus)}</dd></div>
             </dl>
+            <p className="muted small en-focus">מה הכי משפיע על התוצאה: ההוצאה החודשית, זחילת רמת החיים וההכנסה העתידית. כדאי לדייק בהן קודם.</p>
 
             <div className="en-sliders">
               <Slider label="שינוי בהכנסה" help={HELP.incomeChange} value={scenario.incomeChange} min={-35000} max={20000} step={500} fmt={signed} onChange={(v) => setScenario((s) => ({ ...s, incomeChange: v }))} />
@@ -473,11 +491,12 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
                   />
                 </label>
                 <Slider label="גיל תחילת פנסיה" help={HELP.pensionAge} value={a.pensionAge} min={55} max={75} step={1} onChange={(v) => set("pensionAge", v)} />
+                <Slider label="שינוי בהוצאה מגיל הפרישה" help={HELP.retireExpense} value={a.retireExpenseChange} min={-40} max={20} step={5} fmt={(n) => (n > 0 ? "+" : "") + n + "%"} onChange={(v) => set("retireExpenseChange", v)} />
                 <Slider label="זחילת רמת חיים" help={HELP.creep} value={a.lifestyleCreep} min={0} max={5} step={0.5} fmt={(n) => n + "%"} onChange={(v) => set("lifestyleCreep", v)} />
                 <Slider label="גידול ריאלי בשכר" help={HELP.incomeGrowth} value={a.incomeGrowth} min={0} max={5} step={0.5} fmt={(n) => n + "%"} onChange={(v) => set("incomeGrowth", v)} />
               </div>
               <label className="en-check"><input type="checkbox" checked={a.workAfterRetirement} onChange={(e) => set("workAfterRetirement", e.target.checked)} /><span>עבודה נמשכת אחרי הפרישה <Info text={HELP.workAfter} /></span></label>
-              <label className="en-check"><input type="checkbox" checked={a.glidePath} onChange={(e) => set("glidePath", e.target.checked)} /><span>הפחתת סיכון הדרגתית (8% ואז 4%) <Info text={HELP.glide} /></span></label>
+              <label className="en-check"><input type="checkbox" checked={a.glidePath} onChange={(e) => set("glidePath", e.target.checked)} /><span>הפחתת סיכון לקראת הפרישה <Info text={HELP.glide} /></span></label>
               <label className="en-check"><input type="checkbox" checked={a.deductEmergency} onChange={(e) => set("deductEmergency", e.target.checked)} /><span>לנכות קרן חירום ({short(inv.emergency)}) <Info text={HELP.deduct} /></span></label>
             </details>
 
@@ -555,13 +574,17 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
                         </td>
                         <td>
                           <select
-                            value={c.toAge == null ? "ret" : "age"}
-                            onChange={(ev) => setChange(i, { toAge: ev.target.value === "ret" ? null : Math.max(c.fromAge + 1, a.retirementAge) })}
+                            value={c.toAge == null ? "ret" : c.toAge > END_AGE ? "end" : "age"}
+                            onChange={(ev) => {
+                              const v = ev.target.value;
+                              setChange(i, { toAge: v === "ret" ? null : v === "end" ? END_AGE + 1 : Math.max(c.fromAge + 1, a.retirementAge) });
+                            }}
                           >
                             <option value="ret">הפרישה ({a.retirementAge})</option>
+                            <option value="end">לכל החיים ({END_AGE})</option>
                             <option value="age">גיל מסוים</option>
                           </select>
-                          {c.toAge != null && <NumInput value={c.toAge} onChange={(n) => setChange(i, { toAge: Math.round(n) })} />}
+                          {c.toAge != null && c.toAge <= END_AGE && <NumInput value={c.toAge} onChange={(n) => setChange(i, { toAge: Math.round(n) })} />}
                         </td>
                         <td><button type="button" aria-label="מחיקה" onClick={() => set("incomeChanges", a.incomeChanges.filter((_, j) => j !== i))}>×</button></td>
                       </tr>
@@ -575,7 +598,11 @@ export function EnoughClient({ base: inv, initial }: { base: InventoryBase; init
                 onClick={() => set("incomeChanges", [...a.incomeChanges, { desc: "", monthly: 10000, fromAge: Math.min(90, a.currentAge + 2), toAge: null }])}
               >
                 + הוסף שינוי בהכנסה
-              </button>
+              </button>{" "}
+              <span className="en-chip">
+                <button type="button" className="en-add" disabled={hasBL} onClick={addBL}>+ קצבת ביטוח לאומי</button>
+                <Info text={HELP.bl} />
+              </span>
               <p className="muted small">השינוי נראה בגרף ההכנסה וההוצאה. הסכום בכסף של היום.</p>
             </section>
 

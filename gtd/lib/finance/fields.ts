@@ -27,6 +27,7 @@ export const assumptionsSchema = z.object({
   incomeGrowth: n(0, 10),
   glidePath: z.boolean(),
   workAfterRetirement: z.boolean(),
+  retireExpenseChange: n(-50, 50),
   rule: n(100, 600),
   childrenAges: z.array(n(0, 60)).max(10),
   kidsMonthly: n(0, 1_000_000),
@@ -43,7 +44,7 @@ export const assumptionsSchema = z.object({
 export const SETTINGS_APP = "gtd-enough";
 export type SettingsFile = { app: typeof SETTINGS_APP; version: 1; exportedAt: string; assumptions: Assumptions; scenario: Scenario };
 
-const scenarioSchema = z.object({ incomeChange: n(-1e6, 1e6), expenseAdjust: n(-1e6, 1e6) });
+const scenarioSchema = z.object({ incomeChange: n(-1e6, 1e6), expenseAdjust: n(-1e6, 1e6), crash: z.boolean().optional() });
 
 export function settingsFile(assumptions: Assumptions, scenario: Scenario, now = new Date()): SettingsFile {
   return { app: SETTINGS_APP, version: 1, exportedAt: now.toISOString(), assumptions, scenario };

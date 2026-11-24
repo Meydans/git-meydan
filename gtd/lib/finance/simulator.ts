@@ -29,7 +29,12 @@ export type Assumptions = {
   inflation: number; // % a year
   lifestyleCreep: number; // % a year above inflation
   incomeGrowth: number; // % a year above inflation
-  glidePath: boolean; // 8% for the first ten years, then 4%
+  // Reduce risk toward retirement: from GLIDE_YEARS before retirement the return falls evenly by
+  // GLIDE_DROP points, reaching roi − GLIDE_DROP at retirement, and stays there. A safer mix also
+  // falls less in a crash (see CRASH).
+  glidePath: boolean;
+  // % change in the whole monthly spending from retirement on (−15 = spend 15% less once retired).
+  retireExpenseChange: number;
   workAfterRetirement: boolean;
   rule: number; // multiplier of the monthly spending that is "enough"
   childrenAges: number[];
@@ -54,6 +59,7 @@ export const defaultAssumptions: Assumptions = {
   incomeGrowth: 0,
   glidePath: false,
   workAfterRetirement: false,
+  retireExpenseChange: 0,
   rule: 300,
   childrenAges: [],
   kidsMonthly: 0,
@@ -65,7 +71,22 @@ export const defaultAssumptions: Assumptions = {
 };
 
 // What-if levers, never saved: they change the picture, not the plan.
-export type Scenario = { incomeChange: number; expenseAdjust: number };
+// crash: the capital falls at the start of the retirement year (CRASH), to test the plan's weakest moment.
+export type Scenario = { incomeChange: number; expenseAdjust: number; crash?: boolean };
+
+export const GLIDE_YEARS = 10;
+export const GLIDE_DROP = 2;
+// Size of the crash-at-retirement test: a stock-heavy portfolio vs one that reduced risk (roughly an
+// all-equity vs a balanced portfolio in 2008).
+export const CRASH = { full: 0.3, reduced: 0.15 };
+
+// The yearly return at a given age.
+export function returnAt(a: Assumptions, age: number): number {
+  if (!a.glidePath) return a.roi;
+  const start = a.retirementAge - GLIDE_YEARS;
+  const drop = age >= a.retirementAge ? GLIDE_DROP : age <= start ? 0 : (GLIDE_DROP * (age - start)) / GLIDE_YEARS;
+  return Math.max(0, a.roi - drop);
+}
 
 export type Base = { liquid: number; income: number; expense: number };
 
@@ -189,8 +210,11 @@ export function simulate(base: Base, a: Assumptions, s: Scenario = { incomeChang
     if (age >= a.pensionAge) yearlyIncome += pensionNow * 12;
 
     const adults = a.childrenAges.filter((c) => c + y >= 21 && c + y < a.adultSupportUntil).length;
+    const retired = age >= a.retirementAge ? 1 + a.retireExpenseChange / 100 : 1;
     const monthlyExpense =
-      (rest + kids * kidsFactor(a.childrenAges, y) + a.adultSupport * adults) * Math.pow(1 + (a.inflation + a.lifestyleCreep) / 100, y);
+      (rest + kids * kidsFactor(a.childrenAges, y) + a.adultSupport * adults) * Math.pow(1 + (a.inflation + a.lifestyleCreep) / 100, y) * retired;
+    // The crash test hits at the start of the retirement year, before that year's return.
+    if (s.crash && age === a.retirementAge && balance > 0) balance *= 1 - (a.glidePath ? CRASH.reduced : CRASH.full);
     // Enough capital = rule x the part of spending the pension does not cover, plus, before the
     // pension starts, the pension-sized part of spending for the years until it does (the bridge).
     const covered = Math.min(pensionNow, monthlyExpense);
@@ -200,7 +224,7 @@ export function simulate(base: Base, a: Assumptions, s: Scenario = { incomeChang
       fiYears = y;
     }
 
-    const roi = a.glidePath ? (y < 10 ? 8 : 4) : a.roi;
+    const roi = returnAt(a, age);
     // Only money that exists earns a return: a shortfall stays a shortfall, it does not compound.
     balance = (balance > 0 ? balance * (1 + roi / 100) : balance) + yearlyIncome - monthlyExpense * 12;
     const events = a.events.filter((e) => e.age === age);
@@ -250,7 +274,7 @@ export function goalSeek(base: Base, a: Assumptions, s: Scenario, goalAge: numbe
   const at = { ...a, retirementAge: goalAge };
   const income = base.income + s.incomeChange;
   if (years <= 0) return { years, alreadyOk: false, extraSaving: null as number | null, roi: null as number | null, income };
-  if (simulate(base, at, s).survives) return { years, alreadyOk: true, extraSaving: 0, roi: a.glidePath ? null : a.roi, income };
+  if (simulate(base, at, s).survives) return { years, alreadyOk: true, extraSaving: 0, roi: a.roi, income };
 
   const withExtra = (x: number) => ({ ...at, incomeChanges: [...at.incomeChanges, { desc: "", monthly: x, fromAge: a.currentAge, toAge: goalAge }] });
   let extraSaving: number | null = null;
@@ -265,7 +289,8 @@ export function goalSeek(base: Base, a: Assumptions, s: Scenario, goalAge: numbe
     extraSaving = hi;
   }
 
-  const withRoi = (r: number) => ({ ...at, glidePath: false, roi: r });
+  // The return slider's value (with risk reduction, the starting return).
+  const withRoi = (r: number) => ({ ...at, roi: r });
   let roi: number | null = null;
   if (simulate(base, withRoi(MAX_ROI), s).survives) {
     let lo = 0;

@@ -1,7 +1,7 @@
 // "Export for analysis": a self-contained Markdown picture of the plan, written so that a person or
 // an AI tool can understand and check it without the code: starting point, every assumption with
 // its unit, the model's rules, the results and the year-by-year projection. Pure, no I/O.
-import { childWeight, earliestRetirement, END_AGE, goalSeek, monthlyPension, PENSION_FACTOR, simulate, type Assumptions, type Base, type Scenario } from "./simulator.ts";
+import { childWeight, CRASH, earliestRetirement, END_AGE, GLIDE_DROP, GLIDE_YEARS, goalSeek, monthlyPension, PENSION_FACTOR, simulate, type Assumptions, type Base, type Scenario } from "./simulator.ts";
 
 export type ReportInput = {
   base: Base; // after the emergency-fund choice
@@ -67,6 +67,7 @@ export function analysisReport(input: ReportInput): string {
           ["הוצאה חודשית (בסיס)", ils(base.expense), "של משק הבית, היום, כולל הילדים"],
           ["תרחיש: שינוי בהכנסה", ils(s.incomeChange), "תרחיש \"מה אם\", מתווסף להכנסה של היום"],
           ["תרחיש: התאמת הוצאה", ils(s.expenseAdjust), "תרחיש \"מה אם\", מתווסף להוצאה של היום"],
+          ["תרחיש: קריסה בפרישה", yesNo(!!s.crash), s.crash ? `ההון יורד ב-${Math.round((a.glidePath ? CRASH.reduced : CRASH.full) * 100)}% בתחילת שנת הפרישה` : ""],
           ["הכנסה חודשית בתחזית", ils(r.monthlyIncome), "בסיס + תרחיש"],
           ["הוצאה חודשית בתחזית", ils(r.monthlyExpense), "בסיס + תרחיש"],
           ["עודף חודשי", ils(r.surplus), "הכנסה פחות הוצאה"],
@@ -96,8 +97,15 @@ export function analysisReport(input: ReportInput): string {
             ils(p.balance),
             `לא בהון הנזיל. לבדה, בלי הפקדות ותשואה עתידיות, שווה כ-${ils(p.balance / PENSION_FACTOR)} לחודש (חלקי ${PENSION_FACTOR})`,
           ]),
-          ["תשואה שנתית נטו", a.glidePath ? "לא בשימוש (מודל דינמי)" : pct(a.roi), "על ההון הנזיל, אחרי דמי ניהול ומס"],
-          ["הפחתת סיכון הדרגתית", yesNo(a.glidePath), "אם כן: 8% ב-10 השנים הראשונות, ואז 4%"],
+          ["תשואה שנתית נטו", pct(a.roi), "על ההון הנזיל, אחרי דמי ניהול ומס, נומינלית (כוללת אינפלציה)"],
+          [
+            "הפחתת סיכון לקראת הפרישה",
+            yesNo(a.glidePath),
+            a.glidePath
+              ? `מ-${GLIDE_YEARS} שנים לפני הפרישה התשואה יורדת בהדרגה ל-${pct(Math.max(0, a.roi - GLIDE_DROP))} ונשארת כך; בקריסה ההון יורד ${Math.round(CRASH.reduced * 100)}% במקום ${Math.round(CRASH.full * 100)}%`
+              : "התשואה קבועה בכל השנים",
+          ],
+          ["שינוי בהוצאה מגיל הפרישה", pct(a.retireExpenseChange), "כל ההוצאה החודשית מוכפלת ב-(1 + האחוז) מגיל הפרישה"],
           ["אינפלציה שנתית", pct(a.inflation), "מצמידה הכנסה, הוצאה, אירועים ושינויים בהכנסה"],
           ["זחילת רמת חיים", pct(a.lifestyleCreep), "עלייה שנתית בהוצאה מעבר לאינפלציה"],
           ["גידול ריאלי בשכר", pct(a.incomeGrowth), "עלייה שנתית בהכנסה מעבודה מעבר לאינפלציה"],
@@ -143,7 +151,7 @@ export function analysisReport(input: ReportInput): string {
       a.incomeChanges.length
         ? table(
             ["תיאור", "סכום חודשי בכסף של היום", "מגיל", "עד גיל (לא כולל)"],
-            a.incomeChanges.map((c) => [c.desc || "—", ils(c.monthly), String(c.fromAge), c.toAge == null ? `הפרישה (${a.workAfterRetirement ? END_AGE + 1 : a.retirementAge})` : String(c.toAge)]),
+            a.incomeChanges.map((c) => [c.desc || "—", ils(c.monthly), String(c.fromAge), c.toAge == null ? `הפרישה (${a.workAfterRetirement ? END_AGE + 1 : a.retirementAge})` : c.toAge > END_AGE ? `לכל החיים (כולל ${END_AGE})` : String(c.toAge)]),
           )
         : "אין.",
     ].join("\n\n"),
@@ -162,7 +170,7 @@ export function analysisReport(input: ReportInput): string {
       a.pensions
         ? "4. פנסיה: מגיל תחילת הפנסיה, סכום הקצבאות הצפויות מהדוחות השנתיים (בכסף של היום), צמוד לאינפלציה מהיום. כספי הפנסיה עצמם לא בהון הנזיל, הם משפיעים רק דרך הקצבה."
         : "4. פנסיה: לא הוזנה קצבה צפויה, ולכן מגיל תחילת הפנסיה: אחוז מההכנסה של היום, צמוד לאינפלציה מהיום. כספי הפנסיה עצמם לא בהון הנזיל.",
-      "5. הוצאה: (הוצאה בלי ילדים + תקציב ילדים × מקדם גיל + תמיכה בבוגרים) × (1 + אינפלציה + זחילה)^שנים.",
+      "5. הוצאה: (הוצאה בלי ילדים + תקציב ילדים × מקדם גיל + תמיכה בבוגרים) × (1 + אינפלציה + זחילה)^שנים, ומגיל הפרישה × (1 + השינוי בהוצאה מגיל הפרישה).",
       "6. מקדם גיל הילדים: סכום משקלי הילדים בשנה הזו חלקי הסכום היום. משקל לפי גיל: עד 10 = 1; 10 עד 18 = 1.8; 18 עד 21 (צבא) = 0.6; מ-21 = 0.",
       "   - מקור 1 ו-1.8: Karlinsky & Sarel, Estimating the Cost of Raising Children in Israel, Bank of Israel, Israel Economic Review 18(1), 2020 (נתוני סקר ההוצאות של הלמ\"ס): ילד בן 10 ומעלה עולה כ-1.8 מילד צעיר בכל רמת הכנסה.",
       "   - מקור 0.6: סקר מרכז המחקר והמידע של הכנסת על חיילים בשירות סדיר (2018), ונוהג בתי המשפט להפחית מזונות לכשליש בזמן השירות.",
@@ -170,7 +178,11 @@ export function analysisReport(input: ReportInput): string {
       `8. "ההון מחזיק" = ההון לא יורד מתחת ל-0 באף שנה עד גיל ${END_AGE}. "גיל הדלדול" = השנה הראשונה שבה הוא יורד מתחת ל-0.`,
       `   - יעד ה-${a.rule} מכוון להון שמחזיק לתמיד, ולכן הוא מבחן מחמיר יותר מ"ההון מחזיק עד ${END_AGE}". אפשר לא להגיע לחופש כלכלי ועדיין שההון יחזיק עד ${END_AGE}.`,
       `9. "פרישה מוקדמת שמחזיקה" = גיל הפרישה הנמוך ביותר שבו ההון מחזיק, כשכל שאר ההנחות קבועות.`,
-      `10. הנדסה לאחור: פורשים בגיל היעד וההון צריך להחזיק עד ${END_AGE}. מחפשים (בחיפוש בינארי על המודל המלא) את החיסכון החודשי הנוסף מהיום עד הפרישה, בכסף של היום ומוצמד כמו השכר, או את התשואה השנתית הקבועה, שמספיקים לכך.`,
+      `10. הנדסה לאחור: פורשים בגיל היעד וההון צריך להחזיק עד ${END_AGE}. מחפשים (בחיפוש בינארי על המודל המלא) את החיסכון החודשי הנוסף מהיום עד הפרישה, בכסף של היום ומוצמד כמו השכר, או את התשואה השנתית (ערך הסליידר), שמספיקים לכך.`,
+      a.glidePath
+        ? `11. תשואה: ${pct(a.roi)} עד ${GLIDE_YEARS} שנים לפני הפרישה, יורדת בקו ישר ל-${pct(Math.max(0, a.roi - GLIDE_DROP))} בגיל הפרישה ונשארת כך.`
+        : `11. תשואה: ${pct(a.roi)} בכל שנה.`,
+      `12. מבחן קריסה (אם הופעל): בתחילת שנת הפרישה ההון יורד ב-${Math.round(CRASH.full * 100)}%, או ב-${Math.round(CRASH.reduced * 100)}% אם יש הפחתת סיכון (תיק מאוזן יורד פחות).`,
     ].join("\n"),
   );
 
