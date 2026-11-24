@@ -131,3 +131,6 @@
 .fin.enough path.s-flow { stroke: var(--s-bal); stroke-width: 2; stroke-dasharray: 6 4; }
 .fin.enough path.s-flow.en-area { fill: var(--s-bal); opacity: .1; stroke: none; }
 .fin.enough circle.s-flow { fill: var(--s-bal); }
+/* Toggle chip (crash test) and the "what matters most" hint */
+.fin.enough .en-chip > button.on { background: var(--bad); border-color: var(--bad); color: #fff; }
+.fin.enough .en-focus { margin: -4px 0 12px; }

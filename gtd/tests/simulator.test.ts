@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { inventoryBase } from "../lib/finance/inventory.ts";
-import { defaultAssumptions, earliestRetirement, futureValue, withAge, goalSeek, requiredRoi, requiredSurplus, simulate } from "../lib/finance/simulator.ts";
+import { defaultAssumptions, earliestRetirement, futureValue, returnAt, withAge, goalSeek, requiredRoi, requiredSurplus, simulate } from "../lib/finance/simulator.ts";
 
 const A = { ...defaultAssumptions, currentAge: 40, retirementAge: 60, pensionAge: 67, pensionRatio: 50, roi: 6, inflation: 2 };
 const base = { liquid: 500_000, income: 30_000, expense: 20_000 };
@@ -170,4 +170,32 @@ test("inventory base: pension balances per owner, outside the liquid capital", (
   const b = inventoryBase([row({ owner: "א", value: "500000" }), row({ owner: "א", value: "100000" }), row({ owner: "ב", value: "450000" })]);
   assert.deepEqual(b.pensionSavings, [{ who: "א", balance: 600_000 }, { who: "ב", balance: 450_000 }]);
   assert.equal(b.liquid, 0);
+});
+
+test("spending changes by the chosen percent from retirement", () => {
+  const flat = { ...A, inflation: 0, retireExpenseChange: -15 };
+  const r = simulate(base, flat);
+  const at = (age: number) => r.timeline.find((t) => t.age === age)!.monthlyExpense;
+  assert.equal(at(59), 20_000);
+  assert.equal(at(60), 17_000);
+});
+
+test("risk reduction lowers the return over the ten years before retirement", () => {
+  const g = { ...A, roi: 6, retirementAge: 67, glidePath: true };
+  assert.equal(returnAt(g, 50), 6);
+  assert.equal(returnAt(g, 57), 6);
+  assert.equal(returnAt(g, 62), 5);
+  assert.equal(returnAt(g, 67), 4);
+  assert.equal(returnAt(g, 80), 4);
+  assert.equal(returnAt({ ...g, glidePath: false }, 80), 6);
+});
+
+test("the crash test cuts the capital at retirement, less with risk reduction", () => {
+  const flat = { ...A, inflation: 0, roi: 0 };
+  const before = simulate(base, flat).timeline.find((t) => t.age === 59)!.balance;
+  const end60 = (a: typeof flat, crash: boolean) => simulate(base, a, { incomeChange: 0, expenseAdjust: 0, crash }).timeline.find((t) => t.age === 60)!.balance;
+  const spend = 20_000 * 12; // retired at 60, no income yet
+  assert.equal(Math.round(end60(flat, false)), Math.round(before - spend));
+  assert.equal(Math.round(end60(flat, true)), Math.round(before * 0.7 - spend));
+  assert.equal(Math.round(end60({ ...flat, glidePath: true }, true)), Math.round(before * 0.85 - spend));
 });
